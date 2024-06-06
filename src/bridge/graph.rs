@@ -10,6 +10,7 @@ use super::components::bridge::BridgeTransaction;
 pub const INITIAL_AMOUNT: u64 = 100_000;
 pub const FEE_AMOUNT: u64 = 1_000;
 pub const DUST_AMOUNT: u64 = 10_000;
+pub const ASSERT_AMOUNT: u64 = 20_000;
 
 lazy_static! {
     pub static ref UNSPENDABLE_PUBKEY: XOnlyPublicKey = XOnlyPublicKey::from_str(
@@ -71,14 +72,14 @@ mod tests {
         let mut client = BitVMClient::new();
         let funding_utxo = client
             .get_initial_utxo(
-                connector_c_address(n_of_n_key.x_only_public_key().0),
+                connector_c_address(operator_key.x_only_public_key().0, n_of_n_key.x_only_public_key().0),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c_address(n_of_n_key.x_only_public_key().0),
+                    connector_c_address(operator_key.x_only_public_key().0, n_of_n_key.x_only_public_key().0),
                     INITIAL_AMOUNT
                 );
             });

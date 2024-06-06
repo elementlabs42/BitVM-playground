@@ -6,7 +6,7 @@ use bitcoin::{
 
 pub struct BridgeContext {
   pub secp: Secp256k1<All>,
-  operator_key: Option<Keypair>,
+  pub operator_key: Option<Keypair>,
   pub n_of_n_pubkey: Option<XOnlyPublicKey>,
   pub unspendable_pubkey: Option<XOnlyPublicKey>,
   // TODO: current_height: Height,

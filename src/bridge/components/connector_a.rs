@@ -14,6 +14,7 @@ use super::helper::*;
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
 pub fn connector_a_spend_info(
   operator_pubkey: XOnlyPublicKey,
+  n_of_n_pubkey: XOnlyPublicKey,
 ) -> (TaprootSpendInfo, TaprootSpendInfo) {
   let secp = Secp256k1::new();
 
@@ -43,19 +44,21 @@ pub fn connector_a_spend_info(
 }
 
 pub fn connector_a_address(
-  operator_pubkey: XOnlyPublicKey
+  operator_pubkey: XOnlyPublicKey,
+  n_of_n_pubkey: XOnlyPublicKey
 ) -> Address {
   Address::p2tr_tweaked(
-      connector_a_spend_info(operator_pubkey).1.output_key(),
+      connector_a_spend_info(operator_pubkey, n_of_n_pubkey).1.output_key(),
       Network::Testnet,
   )
 }
 
 pub fn connector_a_pre_sign_address(
-  operator_pubkey: XOnlyPublicKey
+  operator_pubkey: XOnlyPublicKey,
+  n_of_n_pubkey: XOnlyPublicKey
 ) -> Address {
   Address::p2tr_tweaked(
-      connector_a_spend_info(operator_pubkey).0.output_key(),
+      connector_a_spend_info(operator_pubkey, n_of_n_pubkey).0.output_key(),
       Network::Testnet,
   )
 }
