@@ -1,19 +1,19 @@
-use crate::bridge::graph::N_OF_N_SECRET;
+use crate::bridge::components::helper::NUM_BLOCKS_PER_WEEK;
+use crate::bridge::graph::{FEE_AMOUNT, N_OF_N_SECRET};
 use crate::treepp::*;
 use bitcoin::key::Keypair;
 use bitcoin::sighash::{Prevouts, SighashCache};
 use bitcoin::taproot::LeafVersion;
 use bitcoin::{
-    absolute, Address, Amount, Network, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness
+    ScriptBuf, absolute, Address, Amount, Network, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
 };
 use musig2::secp256k1::Message;
 
 use super::super::context::BridgeContext;
-use super::super::graph::FEE_AMOUNT;
 
 use super::bridge::*;
-use super::connector_b::connector_b_spend_info;
-use super::connector_c::*;
+use super::connector_b::{connector_b_address, connector_b_pre_sign_address};
+use super::connector_c::{assert_leaf, connector_c_spend_info};
 use super::helper::generate_pre_sign_script;
 
 pub struct AssertTransaction {
@@ -23,7 +23,7 @@ pub struct AssertTransaction {
 }
 
 impl AssertTransaction {
-    pub fn new(context: &BridgeContext, input: OutPoint, input_value: Amount, script_index: u32) -> Self {
+    pub fn new(context: &BridgeContext, input: OutPoint, input_value: Amount, pre_sign: OutPoint, pre_sign_value: Amount, script_index: u32) -> Self {
         let operator_key = context
             .operator_key
             .expect("operator_key required in context");
@@ -31,16 +31,26 @@ impl AssertTransaction {
             .n_of_n_pubkey
             .expect("n_of_n_pubkey is required in context");
         let connector_c_output = TxOut {
-            value: input_value - Amount::from_sat(FEE_AMOUNT),
+            value: input_value - Amount::from_sat(FEE_AMOUNT * 2),
             // TODO: This has to be KickOff transaction address
             script_pubkey: Address::p2tr_tweaked(
-                connector_b_spend_info(operator_key.x_only_public_key().0, n_of_n_pubkey).0.output_key(),
+                connector_c_spend_info(operator_key.x_only_public_key().0, n_of_n_pubkey).0.output_key(),
                 Network::Testnet,
             )
             .script_pubkey(),
         };
+        let operator_output = TxOut {
+            value: Amount::from_sat(0),
+            script_pubkey:  operator_timelock_script(operator_key.x_only_public_key().0),
+        };
         let input = TxIn {
             previous_output: input,
+            script_sig: Script::new(),
+            sequence: Sequence::MAX,
+            witness: Witness::default(),
+        };
+        let pre_sign_input = TxIn {
+            previous_output: pre_sign,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
@@ -49,13 +59,32 @@ impl AssertTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![input],
-                output: vec![connector_c_output],
+                input: vec![pre_sign_input, input],
+                output: vec![operator_output, connector_c_output],
             },
-            prev_outs: vec![],
+            prev_outs: vec![
+                TxOut {
+                    value: pre_sign_value,
+                    script_pubkey: connector_b_pre_sign_address(operator_key.x_only_public_key().0, n_of_n_pubkey).script_pubkey(),
+                },
+                TxOut {
+                    value: input_value,
+                    script_pubkey: connector_b_address(operator_key.x_only_public_key().0, n_of_n_pubkey).script_pubkey(),
+                },                
+            ],
             script_index,
         }
     }
+}
+
+fn operator_timelock_script(operator_pubkey: XOnlyPublicKey) -> ScriptBuf {
+  script! {
+    { NUM_BLOCKS_PER_WEEK * 2 }
+    OP_CSV
+    OP_DROP
+    { operator_pubkey }
+    OP_CHECKSIGVERIFY
+  }
 }
 
 impl BridgeTransaction for AssertTransaction {

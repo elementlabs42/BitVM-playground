@@ -109,6 +109,23 @@ mod tests {
             txid: funding_utxo.txid,
             vout: funding_utxo.vout,
         };
+        let funding_utxo_pre_sign = client
+            .get_initial_utxo(
+                connector_c_pre_sign_address(operator_key.x_only_public_key().0, n_of_n_key.x_only_public_key().0),
+                Amount::from_sat(DUST_AMOUNT),
+            )
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                    connector_c_pre_sign_address(operator_key.x_only_public_key().0, n_of_n_key.x_only_public_key().0),
+                    DUST_AMOUNT
+                );
+            });
+        let funding_outpoint_pre_sign = OutPoint {
+            txid: funding_utxo_pre_sign.txid,
+            vout: funding_utxo_pre_sign.vout,
+        };
         let mut context = BridgeContext::new();
         context.set_n_of_n_pubkey(n_of_n_key.x_only_public_key().0);
         context.set_operator_key(operator_key);
@@ -117,6 +134,8 @@ mod tests {
             &context,
             funding_outpoint,
             Amount::from_sat(ASSERT_AMOUNT),
+            funding_outpoint_pre_sign,
+            Amount::from_sat(DUST_AMOUNT),
             1
         );
 
