@@ -7,6 +7,7 @@ use std::{collections::HashMap, str::FromStr};
 use super::transactions::{BridgeContext, BridgeTransaction};
 
 pub const INITIAL_AMOUNT: u64 = 100_000;
+pub const KICKOFF_AMOUNT: u64 = INITIAL_AMOUNT / 50; // %2 of the INITIAL_AMOUNT
 pub const FEE_AMOUNT: u64 = 1_000;
 pub const DUST_AMOUNT: u64 = 10_000;
 

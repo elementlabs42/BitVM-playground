@@ -10,7 +10,7 @@ use bitcoin::{
     Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
 };
 
-use super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use super::graph::{FEE_AMOUNT, KICKOFF_AMOUNT, N_OF_N_SECRET};
 
 // Specialized for assert leaves currently.a
 // TODO: Attach the pubkeys after constructing leaf scripts
@@ -56,6 +56,10 @@ impl BridgeContext {
     }
 }
 
+pub struct KickOffTransaction {
+    tx: Transaction,
+}
+
 pub struct AssertTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
@@ -74,6 +78,64 @@ pub trait BridgeTransaction {
     // TODO: Implement default that goes through all leaves and checks if one of them is executable
     // TODO: Return a Result with an Error in case the witness can't be created
     fn finalize(&self, context: &BridgeContext) -> Transaction;
+}
+
+impl KickOffTransaction {
+    pub fn new(context: &BridgeContext, input: OutPoint) -> Self {
+        let n_of_n_pubkey = context
+            .n_of_n_pubkey
+            .expect("n_of_n_pubkey is required in context");
+        
+        // TODO: add outputs for 2 week delayed take 1 spend and connector A
+
+        let connector_b_output = TxOut {
+            value: Amount::from_sat(KICKOFF_AMOUNT),
+            script_pubkey: Address::p2tr_tweaked(
+                connector_b_spend_info(n_of_n_pubkey).output_key(),
+                Network::Testnet,
+            )
+            .script_pubkey(),
+        };
+        let input = TxIn {
+            previous_output: input,
+            script_sig: Script::new(),
+            sequence: Sequence(0xFFFFFFFF),
+            witness: Witness::default(),
+        };
+        KickOffTransaction {
+            tx: Transaction {
+                version: bitcoin::transaction::Version(2),
+                lock_time: absolute::LockTime::ZERO,
+                input: vec![input],
+                output: vec![connector_b_output], // TODO: add remaining outputs
+            },
+        }
+    }
+}
+
+impl BridgeTransaction for KickOffTransaction {
+    fn pre_sign(&mut self, context: &BridgeContext) {
+        todo!();
+    }
+
+    fn finalize(&self, context: &BridgeContext) -> Transaction { todo!() }
+}
+
+pub fn connector_b_spend_info(n_of_n_pubkey: XOnlyPublicKey) -> TaprootSpendInfo {
+    let secp = Secp256k1::new();
+
+    TaprootBuilder::new()
+        .add_leaf(0, generate_pre_sign_script(n_of_n_pubkey))
+        .expect("Unable to add pre_sign script as leaf")
+        .finalize(&secp, n_of_n_pubkey)
+        .expect("Unable to finalize OP_CHECKSIG taproot")
+}
+
+pub fn connector_b_pre_sign_address(n_of_n_pubkey: XOnlyPublicKey) -> Address {
+    Address::p2tr_tweaked(
+        connector_b_spend_info(n_of_n_pubkey).output_key(),
+        Network::Testnet,
+    )
 }
 
 impl AssertTransaction {
