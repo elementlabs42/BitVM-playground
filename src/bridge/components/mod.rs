@@ -8,6 +8,8 @@ pub mod connector_z;
 pub mod disprove;
 pub mod helper;
 pub mod kick_off;
+pub mod peg_in_init;
+pub mod peg_in_refund;
 pub mod peg_in;
 pub mod peg_out;
 pub mod take1;
