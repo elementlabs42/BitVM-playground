@@ -4,8 +4,8 @@ use bitcoin::{
 use lazy_static::lazy_static;
 use std::{collections::HashMap, str::FromStr};
 
-use super::context::BridgeContext;
-use super::components::bridge::BridgeTransaction;
+use crate::bridge::context::BridgeContext;
+use crate::bridge::transaction::bridge_transaction::BridgeTransaction;
 
 pub const INITIAL_AMOUNT: u64 = 100_000;
 pub const FEE_AMOUNT: u64 = 1_000;
@@ -53,10 +53,10 @@ pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> Com
 #[cfg(test)]
 mod tests {
 
-    use crate::bridge::{client::BitVMClient, components::connector_c::connector_c_address};
-
-    use super::*;
     use bitcoin::{Amount, secp256k1::{Secp256k1, Keypair}};
+    use crate::bridge::client::BitVMClient;
+    use crate::bridge::connector::connector_c::*;
+    use super::*;
 
     #[tokio::test]
     async fn test_graph_compile_with_client() {

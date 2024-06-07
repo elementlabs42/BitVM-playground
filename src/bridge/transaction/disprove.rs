@@ -9,24 +9,24 @@ use bitcoin::{
     Transaction, TxIn, TxOut, Witness,
 };
 
-use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use crate::bridge::context::BridgeContext;
+use crate::bridge::graph::{FEE_AMOUNT, N_OF_N_SECRET};
 
-use super::connector_b::*;
-use super::bridge::*;
-use super::helper::*;
-pub struct BurnTransaction {
+use crate::bridge::connector::connector_c::*;
+use crate::bridge::transaction::bridge_transaction::BridgeTransaction;
+use crate::bridge::utils::scripts::generate_pre_sign_script;
+pub struct DisproveTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     script_index: u32,
 }
 
-impl BurnTransaction {
+impl DisproveTransaction {
     pub fn new(
         context: &BridgeContext,
-        connector_b: OutPoint,
+        connector_c: OutPoint,
         pre_sign: OutPoint,
-        connector_b_value: Amount,
+        connector_c_value: Amount,
         pre_sign_value: Amount,
         script_index: u32,
     ) -> Self {
@@ -34,16 +34,16 @@ impl BurnTransaction {
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
         let unspendable_pubkey = context
-          .unspendable_pubkey
-          .expect("unspendable_pubkey required in context");
+            .unspendable_pubkey
+            .expect("unspendable_pubkey required in context");
 
         let burn_output = TxOut {
-            value: (connector_b_value - Amount::from_sat(FEE_AMOUNT)) * 100 / 95,
-            script_pubkey: connector_b_address(unspendable_pubkey).script_pubkey(),
+            value: (connector_c_value - Amount::from_sat(FEE_AMOUNT)) / 2,
+            script_pubkey: connector_c_address(unspendable_pubkey).script_pubkey(),
         };
 
-        let connector_b_input = TxIn {
-            previous_output: connector_b,
+        let connector_c_input = TxIn {
+            previous_output: connector_c,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
@@ -56,21 +56,21 @@ impl BurnTransaction {
             witness: Witness::default(),
         };
 
-        BurnTransaction {
+        DisproveTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![pre_sign_input, connector_b_input],
+                input: vec![pre_sign_input, connector_c_input],
                 output: vec![burn_output],
             },
             prev_outs: vec![
                 TxOut {
                     value: pre_sign_value,
-                    script_pubkey: connector_b_pre_sign_address(n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: connector_c_pre_sign_address(n_of_n_pubkey).script_pubkey(),
                 },
                 TxOut {
-                    value: connector_b_value,
-                    script_pubkey: connector_b_address(n_of_n_pubkey).script_pubkey(),
+                    value: connector_c_value,
+                    script_pubkey: connector_c_address(n_of_n_pubkey).script_pubkey(),
                 },
             ],
             script_index,
@@ -78,7 +78,7 @@ impl BurnTransaction {
     }
 }
 
-impl BridgeTransaction for BurnTransaction {
+impl BridgeTransaction for DisproveTransaction {
     //TODO: Real presign
     fn pre_sign(&mut self, context: &BridgeContext) {
         let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
@@ -111,7 +111,7 @@ impl BridgeTransaction for BurnTransaction {
         };
 
         // Fill in the pre_sign/checksig input's witness
-        let spend_info = connector_b_spend_info(n_of_n_pubkey).0;
+        let spend_info = connector_c_spend_info(n_of_n_pubkey).0;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -126,18 +126,18 @@ impl BridgeTransaction for BurnTransaction {
             .expect("n_of_n_pubkey required in context");
 
         let prevout_leaf = (
-            (kickoff_leaf().lock)(self.script_index),
+            (assert_leaf().lock)(self.script_index),
             LeafVersion::TapScript,
         );
-        let spend_info = connector_b_spend_info(n_of_n_pubkey).1;
+        let spend_info = connector_c_spend_info(n_of_n_pubkey).1;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
 
         // Push the unlocking values, script and control_block onto the witness.
         let mut tx = self.tx.clone();
-        // // Unlocking script
-        let mut witness_vec = (kickoff_leaf().unlock)(self.script_index);
+        // Unlocking script
+        let mut witness_vec = (assert_leaf().unlock)(self.script_index);
         // Script and Control block
         witness_vec.extend_from_slice(&[prevout_leaf.0.to_bytes(), control_block.serialize()]);
 
@@ -146,20 +146,26 @@ impl BridgeTransaction for BurnTransaction {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
 
     use bitcoin::{
-        consensus::encode::serialize_hex, key::{Keypair, Secp256k1}, Amount, OutPoint, TxOut
+        key::{Keypair, Secp256k1},
+        Amount, OutPoint,
+        TxOut
     };
 
-    use crate::bridge::{
-        client::BitVMClient, components::{bridge::BridgeTransaction, connector_b::{connector_b_address, connector_b_pre_sign_address}, burn::BurnTransaction}, context::BridgeContext, graph::{DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, UNSPENDABLE_PUBKEY}
-    };
+    use crate::bridge::client::BitVMClient;
+    use crate::bridge::context::BridgeContext;
+    use crate::bridge::graph::{DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, UNSPENDABLE_PUBKEY};
+    use crate::bridge::transaction::bridge_transaction::BridgeTransaction;
+    use crate::bridge::connector::connector_c::*;
+    use super::*;
+
+    use bitcoin::consensus::encode::serialize_hex;
 
     #[tokio::test]
-    async fn test_burn_tx() {
+    async fn test_disprove_tx() {
         let secp = Secp256k1::new();
         let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
         let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
@@ -167,27 +173,27 @@ mod tests {
 
         let funding_utxo_1 = client
             .get_initial_utxo(
-                connector_b_address(n_of_n_key.x_only_public_key().0),
+                connector_c_address(n_of_n_key.x_only_public_key().0),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_b_address(n_of_n_key.x_only_public_key().0),
+                    connector_c_address(n_of_n_key.x_only_public_key().0),
                     INITIAL_AMOUNT
                 );
             });
         let funding_utxo_0 = client
             .get_initial_utxo(
-                connector_b_pre_sign_address(n_of_n_key.x_only_public_key().0),
+                connector_c_pre_sign_address(n_of_n_key.x_only_public_key().0),
                 Amount::from_sat(DUST_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_b_pre_sign_address(n_of_n_key.x_only_public_key().0),
+                    connector_c_pre_sign_address(n_of_n_key.x_only_public_key().0),
                     DUST_AMOUNT
                 );
             });
@@ -201,11 +207,11 @@ mod tests {
         };
         // let prev_tx_out_1 = TxOut {
         //     value: Amount::from_sat(INITIAL_AMOUNT),
-        //     script_pubkey: connector_b_address(n_of_n_key.x_only_public_key().0).script_pubkey(),
+        //     script_pubkey: connector_c_address(n_of_n_key.x_only_public_key().0).script_pubkey(),
         // };
         // let prev_tx_out_0 = TxOut {
         //     value: Amount::from_sat(DUST_AMOUNT),
-        //     script_pubkey: connector_b_pre_sign_address(n_of_n_key.x_only_public_key().0)
+        //     script_pubkey: connector_c_pre_sign_address(n_of_n_key.x_only_public_key().0)
         //         .script_pubkey(),
         // };
         let mut context = BridgeContext::new();
@@ -213,17 +219,17 @@ mod tests {
         context.set_n_of_n_pubkey(n_of_n_key.x_only_public_key().0);
         context.set_unspendable_pubkey(*UNSPENDABLE_PUBKEY);
 
-        let mut burn_tx = BurnTransaction::new(
+        let mut disprove_tx = DisproveTransaction::new(
             &context,
             funding_outpoint_1,
             funding_outpoint_0,
             Amount::from_sat(INITIAL_AMOUNT),
             Amount::from_sat(DUST_AMOUNT),
-            2,
+            1,
         );
 
-        burn_tx.pre_sign(&context);
-        let tx = burn_tx.finalize(&context);
+        disprove_tx.pre_sign(&context);
+        let tx = disprove_tx.finalize(&context);
         println!("Script Path Spend Transaction: {:?}\n", tx);
         let result = client.esplora.broadcast(&tx).await;
         println!("Txid: {:?}", tx.compute_txid());

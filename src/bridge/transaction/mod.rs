@@ -1,12 +1,8 @@
+pub mod bridge_transaction;
 pub mod assert;
-pub mod bridge;
 pub mod burn;
-pub mod connector_a;
-pub mod connector_b;
-pub mod connector_c;
-pub mod connector_z;
+pub mod challenge;
 pub mod disprove;
-pub mod helper;
 pub mod kick_off;
 pub mod peg_in_init;
 pub mod peg_in_refund;

@@ -7,13 +7,14 @@ use bitcoin::{
     XOnlyPublicKey,
 };
 
-use super::helper::*;
+use crate::bridge::utils::scripts::generate_pre_sign_script;
+use crate::bridge::utils::types::*;
 
 // Specialized for assert leaves currently.a
 // TODO: Attach the pubkeys after constructing leaf scripts
-pub type LockScript = fn(u32) -> Script;
+// pub type LockScript = fn(u32) -> Script;
 
-pub type UnlockWitness = fn(u32) -> Vec<Vec<u8>>;
+// pub type UnlockWitness = fn(u32) -> Vec<Vec<u8>>;
 
 pub struct AssertLeaf {
     pub lock: LockScript,
@@ -24,7 +25,7 @@ pub fn assert_leaf() -> AssertLeaf {
   AssertLeaf {
       lock: |index| {
           script! {
-              // TODO: Operator_key?
+              // TODO: n_to_n_key?
               OP_RIPEMD160
               { ripemd160::Hash::hash(format!("SECRET_{}", index).as_bytes()).as_byte_array().to_vec() }
               OP_EQUALVERIFY

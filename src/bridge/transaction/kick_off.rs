@@ -1,5 +1,5 @@
 use bitcoin::{
-    ScriptBuf, XOnlyPublicKey,
+  ScriptBuf, XOnlyPublicKey,
 };
 
 // Currently only connector B.

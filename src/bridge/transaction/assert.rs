@@ -5,11 +5,10 @@ use bitcoin::{
     Transaction, TxIn, TxOut, Witness,
 };
 
-use super::super::context::BridgeContext;
-use super::super::graph::FEE_AMOUNT;
-
-use super::bridge::*;
-use super::connector_c::*;
+use crate::bridge::context::BridgeContext;
+use crate::bridge::graph::FEE_AMOUNT;
+use crate::bridge::connector::connector_c::*;
+use crate::bridge::transaction::bridge_transaction::BridgeTransaction;
 
 pub struct AssertTransaction {
     tx: Transaction,
