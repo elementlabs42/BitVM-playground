@@ -135,7 +135,7 @@ impl BridgeTransaction for DisproveTransaction {
             .expect("n_of_n_pubkey required in context");
 
         let prevout_leaf = (
-            (assert_leaf().lock)(self.script_index),
+            (assert_leaf().lock)(self.script_index, operator_key.x_only_public_key().0),
             LeafVersion::TapScript,
         );
         let spend_info = connector_c_spend_info(operator_key.x_only_public_key().0, n_of_n_pubkey).1;

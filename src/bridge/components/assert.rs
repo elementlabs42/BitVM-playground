@@ -13,7 +13,7 @@ use super::super::context::BridgeContext;
 
 use super::bridge::*;
 use super::connector_b::{connector_b_address, connector_b_pre_sign_address};
-use super::connector_c::{assert_leaf, connector_c_spend_info};
+use super::connector_c::{assert_leaf, connector_c_alt_spend_info, connector_c_spend_info};
 use super::helper::generate_pre_sign_script;
 
 pub struct AssertTransaction {
@@ -140,7 +140,7 @@ impl BridgeTransaction for AssertTransaction {
             .expect("n_of_n_pubkey required in context");
 
         let prevout_leaf = (
-            (assert_leaf().lock)(self.script_index),
+            (assert_leaf().lock)(self.script_index, operator_key.x_only_public_key().0),
             LeafVersion::TapScript,
         );
         let spend_info = connector_c_spend_info(operator_key.x_only_public_key().0, n_of_n_pubkey).1;
