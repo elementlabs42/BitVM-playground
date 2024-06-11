@@ -10,7 +10,6 @@ use super::components::bridge::BridgeTransaction;
 pub const INITIAL_AMOUNT: u64 = 100_000;
 pub const FEE_AMOUNT: u64 = 1_000;
 pub const DUST_AMOUNT: u64 = 10_000;
-pub const ASSERT_AMOUNT: u64 = 20_000;
 
 lazy_static! {
     pub static ref UNSPENDABLE_PUBKEY: XOnlyPublicKey = XOnlyPublicKey::from_str(

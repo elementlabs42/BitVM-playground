@@ -5,6 +5,7 @@ use bitcoin::{
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network,
     XOnlyPublicKey,
+    ScriptBuf,
 };
 
 use super::helper::*;
@@ -48,6 +49,18 @@ pub fn generate_assert_leaves(operator_pubkey: XOnlyPublicKey) -> Vec<Script> {
   leaves
 }
 
+pub fn generate_take2_script(
+  operator_pubkey: XOnlyPublicKey,
+  n_of_n_pubkey: XOnlyPublicKey,
+) -> ScriptBuf {
+  script! {
+    { operator_pubkey }
+    OP_CHECKSIGVERIFY
+    { n_of_n_pubkey }
+    OP_CHECKSIGVERIFY
+  }
+}
+
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
 pub fn connector_c_spend_info(
   operator_pubkey: XOnlyPublicKey,
@@ -56,12 +69,7 @@ pub fn connector_c_spend_info(
   let secp = Secp256k1::new();
 
   // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
-  let take2_script = script! {
-    { operator_pubkey }
-    OP_CHECKSIGVERIFY
-    { n_of_n_pubkey }
-    OP_CHECKSIGVERIFY
-  };
+  let take2_script = generate_take2_script(operator_pubkey, n_of_n_pubkey);
   let leaf0 = TaprootBuilder::new()
     .add_leaf(0, take2_script)
     .expect("Unable to add pre_sign script as leaf")

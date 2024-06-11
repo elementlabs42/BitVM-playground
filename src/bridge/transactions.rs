@@ -8,7 +8,7 @@ mod tests {
     };
 
     use crate::bridge::{
-        client::BitVMClient, components::{assert::AssertTransaction, bridge::BridgeTransaction, connector_b::connector_b_address, connector_c::{connector_c_address, connector_c_pre_sign_address}, disprove::DisproveTransaction}, context::BridgeContext, graph::{ASSERT_AMOUNT, DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, UNSPENDABLE_PUBKEY}
+        client::BitVMClient, components::{assert::AssertTransaction, bridge::BridgeTransaction, connector_b::connector_b_address, connector_c::{connector_c_address, connector_c_pre_sign_address}, disprove::DisproveTransaction}, context::BridgeContext, graph::{DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, UNSPENDABLE_PUBKEY}
     };
 
     use bitcoin::consensus::encode::serialize_hex;
@@ -92,17 +92,18 @@ mod tests {
         let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
         let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
         let client = BitVMClient::new();
+        let input_value = Amount::from_sat(INITIAL_AMOUNT + DUST_AMOUNT * 2);
         let funding_utxo = client
             .get_initial_utxo(
                 connector_b_address(n_of_n_key.x_only_public_key().0, operator_key.x_only_public_key().0),
-                Amount::from_sat(INITIAL_AMOUNT),
+                input_value,
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
                     connector_b_address(n_of_n_key.x_only_public_key().0, operator_key.x_only_public_key().0),
-                    INITIAL_AMOUNT
+                    input_value.to_sat()
                 );
             });
         let funding_outpoint = OutPoint {
@@ -133,7 +134,7 @@ mod tests {
         let mut assert_tx = AssertTransaction::new(
             &context,
             funding_outpoint,
-            Amount::from_sat(ASSERT_AMOUNT),
+            input_value,
             funding_outpoint_pre_sign,
             Amount::from_sat(DUST_AMOUNT),
             1

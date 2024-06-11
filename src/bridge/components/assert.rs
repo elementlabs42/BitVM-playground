@@ -1,5 +1,5 @@
 use crate::bridge::components::helper::NUM_BLOCKS_PER_WEEK;
-use crate::bridge::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use crate::bridge::graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET};
 use crate::treepp::*;
 use bitcoin::key::Keypair;
 use bitcoin::sighash::{Prevouts, SighashCache};
@@ -13,7 +13,7 @@ use super::super::context::BridgeContext;
 
 use super::bridge::*;
 use super::connector_b::{connector_b_address, connector_b_pre_sign_address};
-use super::connector_c::{assert_leaf, connector_c_alt_spend_info, connector_c_spend_info};
+use super::connector_c::{assert_leaf, connector_c_alt_spend_info, connector_c_spend_info, generate_take2_script};
 use super::helper::generate_pre_sign_script;
 
 pub struct AssertTransaction {
@@ -31,7 +31,7 @@ impl AssertTransaction {
             .n_of_n_pubkey
             .expect("n_of_n_pubkey is required in context");
         let connector_c_output = TxOut {
-            value: input_value - Amount::from_sat(FEE_AMOUNT * 2),
+            value: input_value - Amount::from_sat(FEE_AMOUNT),
             // TODO: This has to be KickOff transaction address
             script_pubkey: Address::p2tr_tweaked(
                 connector_c_spend_info(operator_key.x_only_public_key().0, n_of_n_pubkey).0.output_key(),
@@ -40,8 +40,16 @@ impl AssertTransaction {
             .script_pubkey(),
         };
         let operator_output = TxOut {
-            value: Amount::from_sat(0),
+            value: Amount::from_sat(DUST_AMOUNT),
             script_pubkey:  operator_timelock_script(operator_key.x_only_public_key().0),
+        };
+        let commit_output = TxOut {
+            value: Amount::from_sat(DUST_AMOUNT),
+            script_pubkey: Address::p2tr_tweaked(
+                connector_c_spend_info(operator_key.x_only_public_key().0, n_of_n_pubkey).1.output_key(),
+                Network::Testnet,
+            )
+            .script_pubkey(),
         };
         let input = TxIn {
             previous_output: input,
@@ -60,7 +68,7 @@ impl AssertTransaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![pre_sign_input, input],
-                output: vec![operator_output, connector_c_output],
+                output: vec![operator_output, connector_c_output, commit_output],
             },
             prev_outs: vec![
                 TxOut {
@@ -101,7 +109,8 @@ impl BridgeTransaction for AssertTransaction {
         let mut sighash_cache = SighashCache::new(&self.tx);
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
-            generate_pre_sign_script(n_of_n_pubkey),
+            generate_take2_script(operator_key.x_only_public_key().0, n_of_n_pubkey),
+            // generate_pre_sign_script(n_of_n_pubkey),
             LeafVersion::TapScript,
         );
 
