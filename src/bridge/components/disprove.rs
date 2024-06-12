@@ -42,7 +42,7 @@ impl DisproveTransaction {
 
         let burn_output = TxOut {
             value: (connector_c_value - Amount::from_sat(FEE_AMOUNT)) / 2,
-            script_pubkey: connector_c_address(operator_key.x_only_public_key().0, unspendable_pubkey).script_pubkey(),
+            script_pubkey: connector_c_commit_address(operator_key.x_only_public_key().0, unspendable_pubkey).script_pubkey(),
         };
 
         let connector_c_input = TxIn {
@@ -69,11 +69,11 @@ impl DisproveTransaction {
             prev_outs: vec![
                 TxOut {
                     value: pre_sign_value,
-                    script_pubkey: connector_c_pre_sign_address(operator_key.x_only_public_key().0, n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: connector_c_bounty_address(operator_key.x_only_public_key().0, n_of_n_pubkey).script_pubkey(),
                 },
                 TxOut {
                     value: connector_c_value,
-                    script_pubkey: connector_c_address(operator_key.x_only_public_key().0, n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: connector_c_commit_address(operator_key.x_only_public_key().0, n_of_n_pubkey).script_pubkey(),
                 },
             ],
             script_index,

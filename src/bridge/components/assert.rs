@@ -13,8 +13,8 @@ use super::super::context::BridgeContext;
 
 use super::bridge::*;
 use super::connector_b::{connector_b_address, connector_b_pre_sign_address};
-use super::connector_c::{assert_leaf, connector_c_alt_spend_info, connector_c_spend_info, generate_take2_script};
-use super::helper::generate_pre_sign_script;
+use super::connector_c::{connector_c_alt_spend_info, connector_c_bounty_address, connector_c_commit_address, connector_c_spend_info};
+use super::helper::{all_preimages, assert_leaf, generate_commit_script, generate_n_of_n_script, generate_pre_sign_script, operator_timelock_script};
 
 pub struct AssertTransaction {
     tx: Transaction,
@@ -27,31 +27,12 @@ impl AssertTransaction {
         let operator_key = context
             .operator_key
             .expect("operator_key required in context");
+        let operator_pubkey = operator_key.x_only_public_key().0;
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey is required in context");
-        let connector_c_output = TxOut {
-            value: input_value - Amount::from_sat(FEE_AMOUNT),
-            // TODO: This has to be KickOff transaction address
-            script_pubkey: Address::p2tr_tweaked(
-                connector_c_spend_info(operator_key.x_only_public_key().0, n_of_n_pubkey).0.output_key(),
-                Network::Testnet,
-            )
-            .script_pubkey(),
-        };
-        let operator_output = TxOut {
-            value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey:  operator_timelock_script(operator_key.x_only_public_key().0),
-        };
-        let commit_output = TxOut {
-            value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: Address::p2tr_tweaked(
-                connector_c_spend_info(operator_key.x_only_public_key().0, n_of_n_pubkey).1.output_key(),
-                Network::Testnet,
-            )
-            .script_pubkey(),
-        };
-        let input = TxIn {
+
+        let commit_input = TxIn {
             previous_output: input,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
@@ -63,12 +44,25 @@ impl AssertTransaction {
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
+
+        let timeout_output = TxOut {
+            value: Amount::from_sat(DUST_AMOUNT),
+            script_pubkey: operator_timelock_script(operator_pubkey, 2),
+        };
+        let bounty_output = TxOut {
+            value: input_value - Amount::from_sat(FEE_AMOUNT),
+            script_pubkey: connector_c_bounty_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
+        };
+        let commit_output = TxOut {
+            value: Amount::from_sat(DUST_AMOUNT),
+            script_pubkey: connector_c_commit_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
+        };
         AssertTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![pre_sign_input, input],
-                output: vec![operator_output, connector_c_output, commit_output],
+                input: vec![pre_sign_input, commit_input],
+                output: vec![timeout_output, bounty_output, commit_output],
             },
             prev_outs: vec![
                 TxOut {
@@ -85,21 +79,12 @@ impl AssertTransaction {
     }
 }
 
-fn operator_timelock_script(operator_pubkey: XOnlyPublicKey) -> ScriptBuf {
-  script! {
-    { NUM_BLOCKS_PER_WEEK * 2 }
-    OP_CSV
-    OP_DROP
-    { operator_pubkey }
-    OP_CHECKSIGVERIFY
-  }
-}
-
 impl BridgeTransaction for AssertTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         let operator_key = context
             .operator_key
             .expect("operator_key required in context");
+        let operator_pubkey = operator_key.x_only_public_key().0;
         let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
         let n_of_n_pubkey = context
             .n_of_n_pubkey
@@ -109,13 +94,12 @@ impl BridgeTransaction for AssertTransaction {
         let mut sighash_cache = SighashCache::new(&self.tx);
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
-            generate_take2_script(operator_key.x_only_public_key().0, n_of_n_pubkey),
+            generate_n_of_n_script(operator_pubkey, n_of_n_pubkey),
             // generate_pre_sign_script(n_of_n_pubkey),
             LeafVersion::TapScript,
         );
 
-        // Use Single to sign only the burn output with the n_of_n_key
-        let sighash_type = TapSighashType::Single;
+        let sighash_type = TapSighashType::All;
         let leaf_hash =
             TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), LeafVersion::TapScript);
         let sighash = sighash_cache
@@ -144,11 +128,13 @@ impl BridgeTransaction for AssertTransaction {
         let operator_key = context
             .operator_key
             .expect("operator_key required in context");
+        let operator_pubkey = operator_key.x_only_public_key().0;
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
 
         let prevout_leaf = (
+            // generate_commit_script(operator_pubkey, n_of_n_pubkey),
             (assert_leaf().lock)(self.script_index, operator_key.x_only_public_key().0),
             LeafVersion::TapScript,
         );
@@ -157,10 +143,8 @@ impl BridgeTransaction for AssertTransaction {
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
 
-        // Push the unlocking values, script and control_block onto the witness.
         let mut tx = self.tx.clone();
-        // Unlocking script
-        let mut witness_vec = (assert_leaf().unlock)(self.script_index);
+        let mut witness_vec = all_preimages();
         // Script and Control block
         witness_vec.extend_from_slice(&[prevout_leaf.0.to_bytes(), control_block.serialize()]);
 

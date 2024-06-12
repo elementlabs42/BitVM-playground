@@ -10,6 +10,7 @@ use super::components::bridge::BridgeTransaction;
 pub const INITIAL_AMOUNT: u64 = 100_000;
 pub const FEE_AMOUNT: u64 = 1_000;
 pub const DUST_AMOUNT: u64 = 10_000;
+pub const ONE_HUNDRED: u64 = 100_000_000;
 
 lazy_static! {
     pub static ref UNSPENDABLE_PUBKEY: XOnlyPublicKey = XOnlyPublicKey::from_str(
@@ -25,7 +26,7 @@ pub const N_OF_N_SECRET: &str = "a9bd8b8ade888ed12301b21318a3a734292323435870498
 
 pub type CompiledBitVMGraph = HashMap<OutPoint, Vec<Box<dyn BridgeTransaction + 'static>>>;
 
-pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> CompiledBitVMGraph {
+pub fn compile_graph(_context: &BridgeContext, _initial_outpoint: OutPoint) -> CompiledBitVMGraph {
     
     // Currently only Assert -> Disprove
 
@@ -53,7 +54,7 @@ pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> Com
 #[cfg(test)]
 mod tests {
 
-    use crate::bridge::{client::BitVMClient, components::connector_c::connector_c_address};
+    use crate::bridge::{client::BitVMClient, components::connector_c::connector_c_commit_address};
 
     use super::*;
     use bitcoin::{Amount, secp256k1::{Secp256k1, Keypair}};
@@ -71,14 +72,14 @@ mod tests {
         let mut client = BitVMClient::new();
         let funding_utxo = client
             .get_initial_utxo(
-                connector_c_address(operator_key.x_only_public_key().0, n_of_n_key.x_only_public_key().0),
+                connector_c_commit_address(operator_key.x_only_public_key().0, n_of_n_key.x_only_public_key().0),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c_address(operator_key.x_only_public_key().0, n_of_n_key.x_only_public_key().0),
+                    connector_c_commit_address(operator_key.x_only_public_key().0, n_of_n_key.x_only_public_key().0),
                     INITIAL_AMOUNT
                 );
             });

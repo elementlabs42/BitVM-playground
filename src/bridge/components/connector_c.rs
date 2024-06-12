@@ -1,6 +1,6 @@
 use crate::treepp::*;
 use bitcoin::{
-    hashes::{ripemd160, Hash},
+
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network,
@@ -10,57 +10,6 @@ use bitcoin::{
 
 use super::helper::*;
 
-// Specialized for assert leaves currently.a
-// TODO: Attach the pubkeys after constructing leaf scripts
-pub type LockScript = fn(u32, XOnlyPublicKey) -> Script;
-
-pub type UnlockWitness = fn(u32) -> Vec<Vec<u8>>;
-
-pub struct AssertLeaf {
-    pub lock: LockScript,
-    pub unlock: UnlockWitness,
-}
-
-pub fn assert_leaf() -> AssertLeaf {
-  AssertLeaf {
-      lock: |index, operator_pubkey: XOnlyPublicKey| {
-          script! {
-              { operator_pubkey }
-              OP_CHECKSIGVERIFY
-              OP_RIPEMD160
-              { ripemd160::Hash::hash(format!("SECRET_{}", index).as_bytes()).as_byte_array().to_vec() }
-              OP_EQUALVERIFY
-              { index }
-              OP_DROP
-              OP_TRUE
-          }
-      },
-      unlock: |index| vec![format!("SECRET_{}", index).as_bytes().to_vec()],
-  }
-}
-
-pub fn generate_assert_leaves(operator_pubkey: XOnlyPublicKey) -> Vec<Script> {
-  // TODO: Scripts with n_of_n_pubkey and one of the commitments disprove leaves in each leaf (Winternitz signatures)
-  let mut leaves = Vec::with_capacity(1000);
-  let locking_template = assert_leaf().lock;
-  for i in 0..1000 {
-      leaves.push(locking_template(i, operator_pubkey));
-  }
-  leaves
-}
-
-pub fn generate_take2_script(
-  operator_pubkey: XOnlyPublicKey,
-  n_of_n_pubkey: XOnlyPublicKey,
-) -> ScriptBuf {
-  script! {
-    { operator_pubkey }
-    OP_CHECKSIGVERIFY
-    { n_of_n_pubkey }
-    OP_CHECKSIGVERIFY
-  }
-}
-
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
 pub fn connector_c_spend_info(
   operator_pubkey: XOnlyPublicKey,
@@ -69,7 +18,7 @@ pub fn connector_c_spend_info(
   let secp = Secp256k1::new();
 
   // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
-  let take2_script = generate_take2_script(operator_pubkey, n_of_n_pubkey);
+  let take2_script = generate_n_of_n_script(operator_pubkey, n_of_n_pubkey);
   let leaf0 = TaprootBuilder::new()
     .add_leaf(0, take2_script)
     .expect("Unable to add pre_sign script as leaf")
@@ -89,14 +38,14 @@ pub fn connector_c_spend_info(
   (leaf0, leaf1)
 }
 
-pub fn connector_c_address(operator_pubkey: XOnlyPublicKey, n_of_n_pubkey: XOnlyPublicKey) -> Address {
+pub fn connector_c_commit_address(operator_pubkey: XOnlyPublicKey, n_of_n_pubkey: XOnlyPublicKey) -> Address {
   Address::p2tr_tweaked(
       connector_c_spend_info(operator_pubkey, n_of_n_pubkey).1.output_key(),
       Network::Testnet,
   )
 }
 
-pub fn connector_c_pre_sign_address(operator_pubkey: XOnlyPublicKey, n_of_n_pubkey: XOnlyPublicKey) -> Address {
+pub fn connector_c_bounty_address(operator_pubkey: XOnlyPublicKey, n_of_n_pubkey: XOnlyPublicKey) -> Address {
   Address::p2tr_tweaked(
       connector_c_spend_info(operator_pubkey, n_of_n_pubkey).0.output_key(),
       Network::Testnet,

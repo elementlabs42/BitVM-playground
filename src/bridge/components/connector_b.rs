@@ -1,6 +1,10 @@
 use crate::treepp::*;
 use bitcoin::{
-    hashes::{ripemd160, Hash}, key::Secp256k1, opcodes::{all::{OP_CHECKSIGADD, OP_CHECKSIGVERIFY}, OP_TRUE}, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, XOnlyPublicKey
+    hashes::{ripemd160, Hash},
+    key::Secp256k1,
+    opcodes::{all::{OP_CHECKSIGADD, OP_CHECKSIGVERIFY}, OP_TRUE},
+    taproot::{TaprootBuilder, TaprootSpendInfo},
+    Address, Network, XOnlyPublicKey, ScriptBuf,
 };
 
 use super::helper::*;
@@ -13,12 +17,7 @@ pub fn connector_b_spend_info(
   let secp = Secp256k1::new();
 
   // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
-  let take1_script = script! {
-    { operator_pubkey }
-    OP_CHECKSIGVERIFY
-    { n_of_n_pubkey }
-    OP_CHECKSIGVERIFY
-  };
+  let take1_script = generate_n_of_n_script(operator_pubkey, n_of_n_pubkey);
   let leaf0 = TaprootBuilder::new()
     .add_leaf(0, take1_script)
     .expect("Unable to add pre_sign script as leaf")
@@ -26,14 +25,7 @@ pub fn connector_b_spend_info(
     .expect("Unable to finalize OP_CHECKSIG taproot");
 
   // Leaf[1]: spendable by multisig of OPK and VPK[1…N] plus providing witness to the lock script of Assert
-  let assert_script = script! {
-    // TODO commit to intermediate values
-    { operator_pubkey }
-    OP_CHECKSIGVERIFY
-    { n_of_n_pubkey }
-    OP_CHECKSIGVERIFY
-    OP_TRUE
-  };
+  let assert_script = generate_commit_script(operator_pubkey, n_of_n_pubkey);
   let leaf1 = TaprootBuilder::new()
     .add_leaf(0, assert_script)
     .expect("Unable to add pre_sign script as leaf")
