@@ -33,18 +33,10 @@ impl BurnTransaction {
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
-        let unspendable_pubkey = context
-          .unspendable_pubkey
-          .expect("unspendable_pubkey required in context");
 
         let burn_output = TxOut {
-            value: connector_b_value * 19 / 20,
-            script_pubkey: generate_pre_sign_script(*UNSPENDABLE_PUBKEY), // TODO: verifier pubkey
-        };
-
-        let verifier_output = TxOut {
-            value: connector_b_value / 20,
-            script_pubkey: generate_pre_sign_script(*UNSPENDABLE_PUBKEY),
+            value: connector_b_value  - Amount::from_sat(FEE_AMOUNT) * 95 / 100,
+            script_pubkey: generate_pre_sign_script(*UNSPENDABLE_PUBKEY), // TODO： should use op_return script for burning, but esplora does not support maxburnamount parameter
         };
 
         let connector_b_input = TxIn {
@@ -54,13 +46,6 @@ impl BurnTransaction {
             witness: Witness::default(),
         };
 
-        // let pre_sign_input = TxIn {
-        //     previous_output: pre_sign,
-        //     script_sig: Script::new(),
-        //     sequence: Sequence::MAX,
-        //     witness: Witness::default(),
-        // };
-
         BurnTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
@@ -69,10 +54,6 @@ impl BurnTransaction {
                 output: vec![burn_output],
             },
             prev_outs: vec![
-                TxOut {
-                    value: pre_sign_value,
-                    script_pubkey: connector_b_pre_sign_address(n_of_n_pubkey).script_pubkey(),
-                },
                 TxOut {
                     value: connector_b_value,
                     script_pubkey: connector_b_address(n_of_n_pubkey).script_pubkey(),
@@ -116,7 +97,7 @@ impl BridgeTransaction for BurnTransaction {
         };
 
         // Fill in the pre_sign/checksig input's witness
-        let spend_info = connector_b_spend_info(n_of_n_pubkey).0;
+        let spend_info = connector_b_spend_info(n_of_n_pubkey);
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -125,29 +106,30 @@ impl BridgeTransaction for BurnTransaction {
         self.tx.input[0].witness.push(control_block.serialize());
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
+    fn finalize(&self, _context: &BridgeContext) -> Transaction {
+        // let n_of_n_pubkey = context
+        //     .n_of_n_pubkey
+        //     .expect("n_of_n_pubkey required in context");
 
-        let prevout_leaf = (
-            (kickoff_leaf().lock)(self.script_index),
-            LeafVersion::TapScript,
-        );
-        let spend_info = connector_b_spend_info(n_of_n_pubkey).1;
-        let control_block = spend_info
-            .control_block(&prevout_leaf)
-            .expect("Unable to create Control block");
+        // let prevout_leaf = (
+        //     (kick_off_leaf().lock)(self.script_index),
+        //     LeafVersion::TapScript,
+        // );
+        // let spend_info = connector_b_spend_info(n_of_n_pubkey);
+        // let control_block = spend_info
+        //     .control_block(&prevout_leaf)
+        //     .expect("Unable to create Control block");
 
-        // Push the unlocking values, script and control_block onto the witness.
-        let mut tx = self.tx.clone();
-        // // Unlocking script
-        let mut witness_vec = (kickoff_leaf().unlock)(self.script_index);
-        // Script and Control block
-        witness_vec.extend_from_slice(&[prevout_leaf.0.to_bytes(), control_block.serialize()]);
+        // // Push the unlocking values, script and control_block onto the witness.
+        // let mut tx = self.tx.clone();
+        // // // Unlocking script
+        // let mut witness_vec = (kick_off_leaf().unlock)(self.script_index);
+        // // Script and Control block
+        // witness_vec.extend_from_slice(&[prevout_leaf.0.to_bytes(), control_block.serialize()]);
 
-        tx.input[1].witness = Witness::from(witness_vec);
-        tx
+        // tx.input[1].witness = Witness::from(witness_vec);
+        // tx
+        self.tx.clone()
     }
 }
 

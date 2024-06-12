@@ -10,7 +10,7 @@ use bitcoin::{
 };
 
 use crate::bridge::context::BridgeContext;
-use crate::bridge::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use crate::bridge::graph::{FEE_AMOUNT, N_OF_N_SECRET, UNSPENDABLE_PUBKEY};
 
 use crate::bridge::connector::connector_c::*;
 use crate::bridge::transaction::bridge_transaction::BridgeTransaction;
@@ -33,24 +33,21 @@ impl DisproveTransaction {
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
-        let unspendable_pubkey = context
-            .unspendable_pubkey
-            .expect("unspendable_pubkey required in context");
 
         let burn_output = TxOut {
             value: (connector_c_value - Amount::from_sat(FEE_AMOUNT)) / 2,
-            script_pubkey: connector_c_address(unspendable_pubkey).script_pubkey(),
+            script_pubkey: generate_pre_sign_script(*UNSPENDABLE_PUBKEY), // TODO： should use op_return script for burning, but esplora does not support maxburnamount parameter
         };
 
-        let connector_c_input = TxIn {
-            previous_output: connector_c,
+        let pre_sign_input = TxIn {
+            previous_output: pre_sign,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
-        let pre_sign_input = TxIn {
-            previous_output: pre_sign,
+        let connector_c_input = TxIn {
+            previous_output: connector_c,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
@@ -66,7 +63,8 @@ impl DisproveTransaction {
             prev_outs: vec![
                 TxOut {
                     value: pre_sign_value,
-                    script_pubkey: connector_c_pre_sign_address(n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: connector_c_pre_sign_address(n_of_n_pubkey).script_pubkey(), // TODO: should put n_of_n_pubkey alone
+                    // script_pubkey: generate_pre_sign_script(n_of_n_pubkey),
                 },
                 TxOut {
                     value: connector_c_value,
@@ -150,9 +148,7 @@ impl BridgeTransaction for DisproveTransaction {
 mod tests {
 
     use bitcoin::{
-        key::{Keypair, Secp256k1},
-        Amount, OutPoint,
-        TxOut
+        key::{Keypair, Secp256k1}, Address, Amount, Network, OutPoint, TxOut
     };
 
     use crate::bridge::client::BitVMClient;
@@ -165,7 +161,81 @@ mod tests {
     use bitcoin::consensus::encode::serialize_hex;
 
     #[tokio::test]
-    async fn test_disprove_tx() {
+    async fn test_should_be_able_to_submit_disprove_tx_successfully() {
+        let secp = Secp256k1::new();
+        let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
+        let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
+        let client = BitVMClient::new();
+
+        let funding_utxo_1 = client
+            .get_initial_utxo(
+                connector_c_address(n_of_n_key.x_only_public_key().0),
+                Amount::from_sat(INITIAL_AMOUNT),
+            )
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                    connector_c_address(n_of_n_key.x_only_public_key().0),
+                    INITIAL_AMOUNT
+                );
+            });
+        let funding_utxo_0 = client
+            .get_initial_utxo(
+                connector_c_pre_sign_address(n_of_n_key.x_only_public_key().0),  // TODO: should put n_of_n_pubkey alone
+                // Address::from_script(&generate_pre_sign_script(n_of_n_key.x_only_public_key().0), Network::Testnet).unwrap(),
+                Amount::from_sat(DUST_AMOUNT),
+            )
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                    connector_c_pre_sign_address(n_of_n_key.x_only_public_key().0),
+                    DUST_AMOUNT
+                );
+            });
+        let funding_outpoint_0 = OutPoint {
+            txid: funding_utxo_0.txid,
+            vout: funding_utxo_0.vout,
+        };
+        let funding_outpoint_1 = OutPoint {
+            txid: funding_utxo_1.txid,
+            vout: funding_utxo_1.vout,
+        };
+        // let prev_tx_out_1 = TxOut {
+        //     value: Amount::from_sat(INITIAL_AMOUNT),
+        //     script_pubkey: connector_c_address(n_of_n_key.x_only_public_key().0).script_pubkey(),
+        // };
+        // let prev_tx_out_0 = TxOut {
+        //     value: Amount::from_sat(DUST_AMOUNT),
+        //     script_pubkey: connector_c_pre_sign_address(n_of_n_key.x_only_public_key().0)
+        //         .script_pubkey(),
+        // };
+        let mut context = BridgeContext::new();
+        context.set_operator_key(operator_key);
+        context.set_n_of_n_pubkey(n_of_n_key.x_only_public_key().0);
+        context.set_unspendable_pubkey(*UNSPENDABLE_PUBKEY);
+
+        let mut disprove_tx = DisproveTransaction::new(
+            &context,
+            funding_outpoint_1,
+            funding_outpoint_0,
+            Amount::from_sat(INITIAL_AMOUNT),
+            Amount::from_sat(DUST_AMOUNT),
+            1,
+        );
+        disprove_tx.pre_sign(&context);
+        let tx = disprove_tx.finalize(&context);
+        println!("Script Path Spend Transaction: {:?}\n", tx);
+        let result = client.esplora.broadcast(&tx).await;
+        println!("Txid: {:?}", tx.compute_txid());
+        println!("Broadcast result: {:?}\n", result);
+        println!("Transaction hex: \n{}", serialize_hex(&tx));
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_should_be_able_to_submit_disprove_tx_with_verifier_added_to_output_successfully() {
         let secp = Secp256k1::new();
         let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
         let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
@@ -229,7 +299,18 @@ mod tests {
         );
 
         disprove_tx.pre_sign(&context);
-        let tx = disprove_tx.finalize(&context);
+        let mut tx = disprove_tx.finalize(&context);
+
+        let verifier_secret: &str = "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
+        let verifier_key = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();
+
+        let verifier_output = TxOut {
+            value: (Amount::from_sat(INITIAL_AMOUNT) - Amount::from_sat(FEE_AMOUNT)) / 2,
+            script_pubkey: generate_pre_sign_script(verifier_key.x_only_public_key().0),
+        };
+
+        tx.output.push(verifier_output);
+
         println!("Script Path Spend Transaction: {:?}\n", tx);
         let result = client.esplora.broadcast(&tx).await;
         println!("Txid: {:?}", tx.compute_txid());

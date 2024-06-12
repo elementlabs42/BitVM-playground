@@ -17,6 +17,13 @@ pub fn connector_a_spend_info(n_of_n_pubkey: XOnlyPublicKey) -> TaprootSpendInfo
       .expect("Unable to finalize OP_CHECKSIG taproot")
 }
 
+pub fn connector_a_address(n_of_n_pubkey: XOnlyPublicKey) -> Address {
+  Address::p2tr_tweaked(
+      connector_a_spend_info(n_of_n_pubkey).output_key(),
+      Network::Testnet,
+  )
+}
+
 pub fn connector_a_pre_sign_address(n_of_n_pubkey: XOnlyPublicKey) -> Address {
   Address::p2tr_tweaked(
       connector_a_spend_info(n_of_n_pubkey).output_key(),

@@ -1,0 +1,1 @@
+pub const NUM_BLOCKS_PER_WEEK: i64 = 1008;
