@@ -35,7 +35,7 @@ impl BurnTransaction {
             .expect("n_of_n_pubkey required in context");
 
         let burn_output = TxOut {
-            value: connector_b_value  - Amount::from_sat(FEE_AMOUNT) * 95 / 100,
+            value: (connector_b_value  - Amount::from_sat(FEE_AMOUNT)) * 95 / 100,
             script_pubkey: generate_pre_sign_script(*UNSPENDABLE_PUBKEY), // TODO： should use op_return script for burning, but esplora does not support maxburnamount parameter
         };
 
@@ -149,7 +149,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_burn_tx() {
+    async fn test_should_be_able_to_submit_burn_tx_successfully() {
         let secp = Secp256k1::new();
         let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
         let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
@@ -214,6 +214,91 @@ mod tests {
 
         burn_tx.pre_sign(&context);
         let tx = burn_tx.finalize(&context);
+        println!("Script Path Spend Transaction: {:?}\n", tx);
+        let result = client.esplora.broadcast(&tx).await;
+        println!("Txid: {:?}", tx.compute_txid());
+        println!("Broadcast result: {:?}\n", result);
+        println!("Transaction hex: \n{}", serialize_hex(&tx));
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
+        let secp = Secp256k1::new();
+        let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
+        let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
+        let client = BitVMClient::new();
+
+        let funding_utxo_1 = client
+            .get_initial_utxo(
+                connector_b_address(n_of_n_key.x_only_public_key().0),
+                Amount::from_sat(INITIAL_AMOUNT),
+            )
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                    connector_b_address(n_of_n_key.x_only_public_key().0),
+                    INITIAL_AMOUNT
+                );
+            });
+        let funding_utxo_0 = client
+            .get_initial_utxo(
+                connector_b_pre_sign_address(n_of_n_key.x_only_public_key().0),
+                Amount::from_sat(DUST_AMOUNT),
+            )
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                    connector_b_pre_sign_address(n_of_n_key.x_only_public_key().0),
+                    DUST_AMOUNT
+                );
+            });
+        let funding_outpoint_0 = OutPoint {
+            txid: funding_utxo_0.txid,
+            vout: funding_utxo_0.vout,
+        };
+        let funding_outpoint_1 = OutPoint {
+            txid: funding_utxo_1.txid,
+            vout: funding_utxo_1.vout,
+        };
+        // let prev_tx_out_1 = TxOut {
+        //     value: Amount::from_sat(INITIAL_AMOUNT),
+        //     script_pubkey: connector_b_address(n_of_n_key.x_only_public_key().0).script_pubkey(),
+        // };
+        // let prev_tx_out_0 = TxOut {
+        //     value: Amount::from_sat(DUST_AMOUNT),
+        //     script_pubkey: connector_b_pre_sign_address(n_of_n_key.x_only_public_key().0)
+        //         .script_pubkey(),
+        // };
+        let mut context = BridgeContext::new();
+        context.set_operator_key(operator_key);
+        context.set_n_of_n_pubkey(n_of_n_key.x_only_public_key().0);
+        context.set_unspendable_pubkey(*UNSPENDABLE_PUBKEY);
+
+        let mut burn_tx = BurnTransaction::new(
+            &context,
+            funding_outpoint_1,
+            funding_outpoint_0,
+            Amount::from_sat(INITIAL_AMOUNT),
+            Amount::from_sat(DUST_AMOUNT),
+            2,
+        );
+
+        burn_tx.pre_sign(&context);
+        let mut tx = burn_tx.finalize(&context);
+
+        let verifier_secret: &str = "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
+        let verifier_key = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();
+
+        let verifier_output = TxOut {
+            value: (Amount::from_sat(INITIAL_AMOUNT) - Amount::from_sat(FEE_AMOUNT)) * 5 / 100,
+            script_pubkey: generate_pre_sign_script(verifier_key.x_only_public_key().0),
+        };
+
+        tx.output.push(verifier_output);
+
         println!("Script Path Spend Transaction: {:?}\n", tx);
         let result = client.esplora.broadcast(&tx).await;
         println!("Txid: {:?}", tx.compute_txid());
