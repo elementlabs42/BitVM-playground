@@ -6,7 +6,7 @@ use bitcoin::{
 
 use super::{
     super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*,
-    connector::generate_default_tx_in, connector_z::ConnectorZ, helper::*,
+    connector::generate_default_tx_in, connector::*, connector_z::ConnectorZ, helper::*,
 };
 
 pub struct PegInDepositTransaction {
@@ -56,8 +56,8 @@ impl PegInDepositTransaction {
             prev_outs: vec![TxOut {
                 value: input0.amount,
                 script_pubkey: generate_pay_to_pubkey_script_address(
-                    &depositor_public_key,
                     context.network,
+                    &depositor_public_key,
                 )
                 .script_pubkey(),
             }], // TODO
