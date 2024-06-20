@@ -62,8 +62,11 @@ impl ChallengeTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&operator_public_key, context.network)
-                .script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(
+                &operator_public_key,
+                context.network,
+            )
+            .script_pubkey(),
         };
 
         ChallengeTransaction {
