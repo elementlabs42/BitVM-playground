@@ -1,9 +1,11 @@
+use std::str::FromStr;
+
 use crate::treepp::*;
 use bitcoin::{
     absolute,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
+    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut, XOnlyPublicKey,
 };
 use musig2::secp256k1::Message;
 
@@ -12,12 +14,13 @@ use super::{
         context::BridgeContext,
         graph::{DUST_AMOUNT, FEE_AMOUNT},
     },
-    bridge::*,
+    bridge::BridgeTransaction,
     connector_2::Connector2,
     connector_3::Connector3,
     connector_b::ConnectorB,
     connector_c::ConnectorC,
-    helper::*,
+    helper::Input,
+    serialization::Serialization,
 };
 
 pub struct AssertTransaction {
@@ -114,4 +117,22 @@ impl BridgeTransaction for AssertTransaction {
     }
 
     fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
+}
+
+impl Serialization for AssertTransaction {
+    fn deserialize(&self, data: &str) -> Self {
+        //TODO: do real serialization
+        println!("{}", data);
+        AssertTransaction {
+            tx: Transaction {
+                version: bitcoin::transaction::Version(2),
+                lock_time: absolute::LockTime::ZERO,
+                input: vec![],
+                output: vec![],
+            },
+            prev_outs: vec![],
+            prev_scripts: vec![],
+            connector_b: ConnectorB::new(Network::Testnet, &XOnlyPublicKey::from_str("").unwrap()),
+        }
+    }
 }
