@@ -24,9 +24,7 @@ pub struct Input {
     pub amount: Amount,
 }
 
-pub fn generate_burn_script() -> Script {
-    generate_pay_to_pubkey_script(&UNSPENDABLE_PUBLIC_KEY)
-}
+pub fn generate_burn_script() -> Script { generate_pay_to_pubkey_script(&UNSPENDABLE_PUBLIC_KEY) }
 
 pub fn generate_burn_script_address() -> Address {
     Address::p2wsh(&generate_burn_script(), Network::Testnet)
