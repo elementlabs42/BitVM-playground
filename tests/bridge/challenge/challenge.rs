@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount, Network, OutPoint, TxOut};
+use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint, TxOut};
 
 use bitvm::{
     self,
@@ -18,8 +18,9 @@ use super::super::setup::setup_test;
 #[tokio::test]
 async fn test_challenge_tx() {
     let (client, context) = setup_test();
+
     let connector_a = ConnectorA::new(
-        Network::Testnet,
+        context.network,
         &context.operator_taproot_public_key.unwrap(),
         &context.n_of_n_taproot_public_key.unwrap(),
     );
@@ -40,14 +41,20 @@ async fn test_challenge_tx() {
 
     let funding_utxo_crowdfunding = client
         .get_initial_utxo(
-            generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap()),
+            generate_pay_to_pubkey_script_address(
+                context.network,
+                &context.depositor_public_key.unwrap(),
+            ),
             Amount::from_sat(INITIAL_AMOUNT),
         )
         .await
         .unwrap_or_else(|| {
             panic!(
                 "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap()),
+                generate_pay_to_pubkey_script_address(
+                    context.network,
+                    &context.depositor_public_key.unwrap()
+                ),
                 INITIAL_AMOUNT
             );
         });

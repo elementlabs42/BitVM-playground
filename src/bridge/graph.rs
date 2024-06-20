@@ -57,12 +57,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_graph_compile_with_client() {
-        let mut context = BridgeContext::new();
+        let mut context = BridgeContext::new(Network::Testnet);
         context.initialize_evm_address(EVM_ADDRESS);
         context.initialize_operator(OPERATOR_SECRET);
         context.initialize_n_of_n(N_OF_N_SECRET);
         context.initialize_depositor(DEPOSITOR_SECRET);
         context.initialize_withdrawer(WITHDRAWER_SECRET);
+
+        let connector_c =
+            ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
 
         let mut client = BitVMClient::new();
 

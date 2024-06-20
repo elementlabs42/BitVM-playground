@@ -2,7 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount, Network, OutPoint};
 
 use bitvm::bridge::{
     components::{
-        bridge::BridgeTransaction, connector_z::ConnectorZ, helper::Input,
+        bridge::BridgeTransaction, connector_z::ConnectorZ, helper::*,
         peg_in_refund::PegInRefundTransaction,
     },
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
@@ -14,8 +14,9 @@ use super::super::setup::setup_test;
 async fn test_peg_in_refund_tx() {
     let (client, context) = setup_test();
     let evm_address = String::from("evm address");
+
     let connector_z = ConnectorZ::new(
-        Network::Testnet,
+        context.network,
         &evm_address,
         &context.depositor_taproot_public_key.unwrap(),
         &context.n_of_n_taproot_public_key.unwrap(),
