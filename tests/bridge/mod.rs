@@ -5,5 +5,6 @@ pub mod disprove;
 pub mod helper;
 pub mod kick_off;
 pub mod peg_in;
+pub mod serialization;
 pub mod setup;
 pub mod take1;
