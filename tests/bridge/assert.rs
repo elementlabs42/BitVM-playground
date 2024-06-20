@@ -2,7 +2,7 @@ use super::setup::setup_test;
 use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 use bitvm::bridge::{
     components::{
-        assert::AssertTransaction, bridge::BridgeTransaction, connector_b, helper::Input,
+        assert::AssertTransaction, bridge::BridgeTransaction, connector_b::{self, ConnectorB}, helper::Input,
     },
     graph::ONE_HUNDRED,
 };
@@ -10,18 +10,20 @@ use bitvm::bridge::{
 #[tokio::test]
 async fn test_assert_tx() {
     let (client, context) = setup_test();
+    let num_blocks_timelock = 120; // 1 hour on mutinynet
+    let connector_b = ConnectorB::new(&context.n_of_n_taproot_public_key.unwrap(), num_blocks_timelock);
 
     let input_value = Amount::from_sat(ONE_HUNDRED * 2 / 100);
     let funding_utxo = client
         .get_initial_utxo(
-            connector_b::generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
+            connector_b.generate_taproot_address(),
             input_value,
         )
         .await
         .unwrap_or_else(|| {
             panic!(
                 "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                connector_b::generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
+                connector_b.generate_taproot_address(),
                 input_value.to_sat()
             );
         });
