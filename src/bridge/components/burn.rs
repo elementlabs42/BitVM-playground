@@ -65,11 +65,7 @@ impl BurnTransaction {
         }
     }
 
-    fn pre_sign_input0(
-        &mut self,
-        context: &BridgeContext,
-        n_of_n_keypair: &Keypair,
-    ) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 0;
 
         let prevouts = Prevouts::All(&self.prev_outs);
@@ -119,7 +115,5 @@ impl BridgeTransaction for BurnTransaction {
         self.pre_sign_input0(context, &n_of_n_keypair);
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
 }

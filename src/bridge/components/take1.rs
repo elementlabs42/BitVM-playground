@@ -9,8 +9,8 @@ use bitcoin::{
     XOnlyPublicKey,
 };
 
-use super::{super::context::BridgeContext, connector_b::ConnectorB};
 use super::super::graph::FEE_AMOUNT;
+use super::{super::context::BridgeContext, connector_b::ConnectorB};
 
 use super::bridge::*;
 use super::helper::*;
@@ -233,11 +233,7 @@ impl Take1Transaction {
             .push(control_block.serialize());
     }
 
-    fn pre_sign_input3(
-        &mut self,
-        context: &BridgeContext,
-        n_of_n_keypair: &Keypair,
-    ) {
+    fn pre_sign_input3(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 3;
 
         let prevouts = Prevouts::All(&self.prev_outs);
@@ -304,13 +300,8 @@ impl BridgeTransaction for Take1Transaction {
             &operator_taproot_public_key,
             &n_of_n_taproot_public_key,
         );
-        self.pre_sign_input3(
-            context,
-            &n_of_n_keypair,
-        );
+        self.pre_sign_input3(context, &n_of_n_keypair);
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
 }

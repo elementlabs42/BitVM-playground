@@ -2,7 +2,8 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 use bitvm::bridge::{
     components::{
         bridge::BridgeTransaction,
-        connector_a, connector_b::{self, ConnectorB},
+        connector_a,
+        connector_b::{self, ConnectorB},
         helper::{generate_pay_to_pubkey_script_address, generate_timelock_script_address, Input},
         take1::Take1Transaction,
     },
@@ -17,7 +18,10 @@ use super::setup::setup_test;
 async fn test_take1_tx() {
     let (client, context) = setup_test();
     let num_blocks_timelock = 120; // 1 hour on mutinynet
-    let connector_b = ConnectorB::new(&context.n_of_n_taproot_public_key.unwrap(), num_blocks_timelock);
+    let connector_b = ConnectorB::new(
+        &context.n_of_n_taproot_public_key.unwrap(),
+        num_blocks_timelock,
+    );
 
     let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let funding_utxo_address0 =
@@ -40,8 +44,7 @@ async fn test_take1_tx() {
         generate_stub_outpoint(&client, &funding_utxo_address2, input_value2).await;
 
     let input_value3 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
-    let funding_utxo_address3 =
-        connector_b.generate_taproot_address();
+    let funding_utxo_address3 = connector_b.generate_taproot_address();
     let funding_outpoint3 =
         generate_stub_outpoint(&client, &funding_utxo_address3, input_value3).await;
 

@@ -4,8 +4,8 @@ use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
 use super::super::context::BridgeContext;
 use super::super::graph::{DUST_AMOUNT, FEE_AMOUNT};
 
-use super::connector_b::ConnectorB;
 use super::bridge::*;
+use super::connector_b::ConnectorB;
 use super::helper::*;
 
 pub struct KickOffTransaction {
@@ -88,7 +88,5 @@ impl BridgeTransaction for KickOffTransaction {
         todo!();
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        todo!()
-    }
+    fn finalize(&self, context: &BridgeContext) -> Transaction { todo!() }
 }
