@@ -68,11 +68,6 @@ mod tests {
             ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
 
         let mut client = BitVMClient::new();
-
-        let connector_c = ConnectorC::new(
-            Network::Testnet,
-            &context.n_of_n_taproot_public_key.unwrap(),
-        );
         let funding_utxo = client
             .get_initial_utxo(
                 connector_c.generate_taproot_address(),

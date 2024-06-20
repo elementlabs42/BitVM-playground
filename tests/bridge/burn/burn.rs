@@ -65,10 +65,12 @@ mod tests {
     #[tokio::test]
     async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
         let (client, context) = setup_test();
+
         let connector_b = ConnectorB::new(
             Network::Testnet,
             &context.n_of_n_taproot_public_key.unwrap(),
         );
+
         let funding_utxo_0 = client
             .get_initial_utxo(
                 connector_b.generate_taproot_address(),

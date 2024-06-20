@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount, Network, OutPoint};
+use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
     components::{
@@ -13,13 +13,8 @@ use super::super::setup::setup_test;
 #[tokio::test]
 async fn test_peg_in_confirm_tx() {
     let (client, context) = setup_test();
+
     let evm_address = String::from("evm address");
-    let connector_z = ConnectorZ::new(
-        Network::Testnet,
-        &evm_address,
-        &context.depositor_taproot_public_key.unwrap(),
-        &context.n_of_n_taproot_public_key.unwrap(),
-    );
 
     let connector_z = ConnectorZ::new(
         context.network,
