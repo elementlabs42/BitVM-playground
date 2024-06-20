@@ -1,5 +1,5 @@
 use bitcoin::{
-  consensus::encode::serialize_hex, Amount, OutPoint, TxOut
+  consensus::encode::serialize_hex, Amount, Network, OutPoint, TxOut
 };
 
 use bitvm::{
@@ -35,14 +35,14 @@ async fn test_challenge_tx() {
 
     let funding_utxo_crowdfunding = client
       .get_initial_utxo(
-        generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap()),
+        generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap(), Network::Testnet),
         Amount::from_sat(INITIAL_AMOUNT),
       )
       .await
       .unwrap_or_else(|| {
           panic!(
               "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-              generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap()),
+              generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap(), Network::Testnet),
               INITIAL_AMOUNT
           );
       });
