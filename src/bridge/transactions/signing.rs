@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use bitcoin::{
     key::Keypair,
     secp256k1::Message,
@@ -6,7 +7,6 @@ use bitcoin::{
     Amount, EcdsaSighashType, PublicKey, Script, ScriptBuf, TapLeafHash, TapSighashType,
     Transaction, TxOut,
 };
-use std::borrow::Borrow;
 
 use super::super::{context::BridgeContext, scripts::generate_p2wpkh_address};
 
