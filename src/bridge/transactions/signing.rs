@@ -266,3 +266,54 @@ pub fn populate_taproot_input_witness<T: Borrow<TxOut>>(
         ScriptBuf::from(script),
     );
 }
+
+pub trait TransactionBase {
+    fn tx(&mut self) -> &mut Transaction;
+    fn prev_outs(&self) -> &Vec<TxOut>;
+    fn prev_scripts(&self) -> Vec<ScriptBuf>;
+}
+
+pub fn pre_sign_p2wsh_input<T: TransactionBase>(
+    tx: &mut T,
+    context: &BridgeContext,
+    index: usize,
+    sighash_type: EcdsaSighashType,
+    keypair: &Keypair,
+) {
+    let script = &tx.prev_scripts()[index];
+    let value = tx.prev_outs()[index].value;
+
+    populate_p2wsh_witness(
+        context,
+        tx.tx(),
+        index,
+        sighash_type,
+        script,
+        value,
+        &vec![keypair],
+    );
+}
+
+pub fn pre_sign_taproot_input<T: TransactionBase>(
+    tx: &mut T,
+    context: &BridgeContext,
+    index: usize,
+    sighash_type: TapSighashType,
+    taproot_spend_info: TaprootSpendInfo,
+    operator_keypair: &Keypair,
+) {
+    let prevouts_copy = tx.prev_outs().clone(); // To avoid immutable borrows, since we have to mutably borrow tx in this function.
+    let prevouts = Prevouts::All(&prevouts_copy);
+    let script = &tx.prev_scripts()[index];
+
+    populate_taproot_input_witness(
+        context,
+        tx.tx(),
+        &prevouts,
+        index,
+        sighash_type,
+        &taproot_spend_info,
+        script,
+        &vec![&operator_keypair],
+    );
+}
