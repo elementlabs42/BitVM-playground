@@ -8,3 +8,4 @@ pub mod kick_off;
 pub mod peg_in;
 pub mod setup;
 pub mod take1;
+pub mod integration;

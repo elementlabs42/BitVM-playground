@@ -3,12 +3,15 @@ use std::time::Duration;
 use bitcoin::{Amount, OutPoint};
 
 use bitvm::bridge::{
-    components::{
-        bridge::BridgeTransaction, connector::P2wshConnector, connector_0::Connector0, helper::*,
-        peg_in_confirm::PegInConfirmTransaction, peg_in_deposit::PegInDepositTransaction,
+    connectors::{connector::P2wshConnector, connector_0::Connector0},
+    graph::{FEE_AMOUNT, INITIAL_AMOUNT},
+    scripts::generate_pay_to_pubkey_script_address,
+    transactions::{
+        bridge::{BridgeTransaction, Input},
+        peg_in_confirm::PegInConfirmTransaction,
+        peg_in_deposit::PegInDepositTransaction,
         peg_in_refund::PegInRefundTransaction,
     },
-    graph::{FEE_AMOUNT, INITIAL_AMOUNT},
 };
 use esplora_client::Error;
 use tokio::time::sleep;
@@ -17,7 +20,7 @@ use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_in_success() {
-    let (client, context) = setup_test();
+    let (client, context, _, _, _, _, _, _) = setup_test();
 
     let evm_address = String::from("evm address");
 
@@ -88,7 +91,7 @@ async fn test_peg_in_success() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_not_surpassed() {
-    let (client, context) = setup_test();
+    let (client, context, _, _, _, _, _, _) = setup_test();
 
     let evm_address = String::from("evm address");
 
@@ -146,7 +149,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_surpassed() {
-    let (client, context) = setup_test();
+    let (client, context, _, _, _, _, _, _) = setup_test();
 
     let evm_address = String::from("evm address");
 
