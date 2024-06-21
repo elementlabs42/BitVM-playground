@@ -4,10 +4,12 @@ use bitcoin::{
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network, TxIn, XOnlyPublicKey,
 };
+use serde::{Deserialize, Serialize};
 
 use super::connector::*;
 use super::helper::*;
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct ConnectorA {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,

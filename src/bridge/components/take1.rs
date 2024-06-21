@@ -7,12 +7,14 @@ use bitcoin::{
     taproot::LeafVersion,
     Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_0::Connector0,
     connector_1::Connector1, connector_a::ConnectorA, connector_b::ConnectorB, helper::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct Take1Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,

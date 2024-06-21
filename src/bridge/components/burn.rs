@@ -8,6 +8,7 @@ use bitcoin::{
     Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
     XOnlyPublicKey,
 };
+use serde::{Deserialize, Serialize};
 
 use super::super::context::BridgeContext;
 use super::super::graph::FEE_AMOUNT;
@@ -15,6 +16,8 @@ use super::super::graph::FEE_AMOUNT;
 use super::bridge::*;
 use super::connector_b::ConnectorB;
 use super::helper::*;
+
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct BurnTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,

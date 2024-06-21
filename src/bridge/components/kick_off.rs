@@ -1,5 +1,6 @@
 use crate::treepp::*;
 use bitcoin::{absolute, Amount, Network, Sequence, Transaction, TxIn, TxOut, Witness};
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::context::BridgeContext,
@@ -11,6 +12,7 @@ use super::{
     helper::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct KickOffTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,

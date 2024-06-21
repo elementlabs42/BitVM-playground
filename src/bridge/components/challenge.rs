@@ -8,6 +8,7 @@ use bitcoin::{
     Amount, Network, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut,
     Witness, XOnlyPublicKey,
 };
+use serde::{Deserialize, Serialize};
 
 use super::super::context::BridgeContext;
 use super::super::graph::FEE_AMOUNT;
@@ -16,6 +17,7 @@ use super::bridge::*;
 use super::connector_a::ConnectorA;
 use super::helper::*;
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct ChallengeTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,

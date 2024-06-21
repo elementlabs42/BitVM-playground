@@ -5,6 +5,7 @@ use bitcoin::{
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network, TxIn, XOnlyPublicKey,
 };
+use serde::{Deserialize, Serialize};
 
 use super::connector::*;
 use super::helper::*;
@@ -19,6 +20,7 @@ pub struct AssertLeaf {
     pub unlock: UnlockWitness,
 }
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct ConnectorC {
     pub network: Network,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,

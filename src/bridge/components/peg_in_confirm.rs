@@ -7,12 +7,14 @@ use bitcoin::{
     taproot::LeafVersion,
     Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_0::Connector0,
     connector_z::ConnectorZ, helper::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct PegInConfirmTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,

@@ -3,12 +3,14 @@ use bitcoin::{
     absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Network,
     Transaction, TxOut,
 };
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*,
     connector::generate_default_tx_in, connector_z::ConnectorZ, helper::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct PegInDepositTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,

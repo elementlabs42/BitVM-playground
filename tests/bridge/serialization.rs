@@ -4,11 +4,14 @@ use super::setup::setup_test;
 use bitcoin::{Amount, Network};
 use bitvm::bridge::{
     components::{
-        assert::AssertTransaction, bridge::BridgeTransaction, connector_b::ConnectorB,
+        assert::AssertTransaction,
+        bridge::{deserialize, serialize, BridgeTransaction},
+        connector_b::ConnectorB,
         helper::Input,
     },
     graph::ONE_HUNDRED,
 };
+use serde::Serialize;
 
 #[tokio::test]
 async fn test_txn_serialization() {
@@ -37,11 +40,11 @@ async fn test_txn_serialization() {
 
     assert_tx.pre_sign(&context);
 
-    let json = serde_json::to_string(&assert_tx).unwrap();
+    let json = serialize(&assert_tx);
     assert!(json.len() > 0);
     assert!(json.contains(funding_outpoint.txid.to_string().as_str()));
     assert!(json.contains(funding_outpoint.vout.to_string().as_str()));
 
-    let deserialized_assert_tx: AssertTransaction = serde_json::from_str(&json).unwrap();
+    let deserialized_assert_tx = deserialize::<AssertTransaction>(&json);
     assert!(assert_tx == deserialized_assert_tx);
 }

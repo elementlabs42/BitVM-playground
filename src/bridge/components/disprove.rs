@@ -3,12 +3,14 @@ use bitcoin::{
     absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, taproot::LeafVersion,
     Amount, Network, Transaction, TxOut, Witness,
 };
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_3::Connector3,
     connector_c::ConnectorC, helper::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct DisproveTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
