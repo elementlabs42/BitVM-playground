@@ -7,12 +7,11 @@ use bitcoin::{
 };
 use num_traits::ToPrimitive;
 
-use super::connector::*;
-use super::helper::*;
+use super::{super::transactions::bridge::Input, connector::*};
 
 // Specialized for assert leaves currently.
 pub type LockScript = fn(index: u32) -> Script;
-pub type UnlockWitnessData = Vec<Vec<u8>>;
+pub type UnlockWitnessData = Vec<u8>;
 pub type UnlockWitness = fn(index: u32) -> UnlockWitnessData;
 
 pub struct AssertLeaf {
@@ -97,7 +96,7 @@ fn assert_leaf() -> AssertLeaf {
                 OP_TRUE
             }
         },
-        unlock: |index| vec![format!("SECRET_{}", index).as_bytes().to_vec()],
+        unlock: |index| format!("SECRET_{}", index).as_bytes().to_vec(),
     }
 }
 

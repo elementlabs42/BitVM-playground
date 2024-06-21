@@ -1,25 +1,19 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute,
-    key::Keypair,
-    sighash::{Prevouts, SighashCache},
-    taproot::LeafVersion,
-    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
+    absolute, key::Keypair, sighash::Prevouts, Amount, TapSighashType, Transaction, TxOut,
 };
-use musig2::secp256k1::Message;
 
 use super::{
     super::{
+        connectors::{
+            connector::*, connector_2::Connector2, connector_3::Connector3,
+            connector_b::ConnectorB, connector_c::ConnectorC,
+        },
         context::BridgeContext,
         graph::{DUST_AMOUNT, FEE_AMOUNT},
     },
     bridge::*,
-    connector::*,
-    connector_2::Connector2,
-    connector_3::Connector3,
-    connector_b::ConnectorB,
-    connector_c::ConnectorC,
-    helper::*,
+    signing::*,
 };
 
 pub struct AssertTransaction {
@@ -31,6 +25,10 @@ pub struct AssertTransaction {
 
 impl AssertTransaction {
     pub fn new(context: &BridgeContext, input0: Input) -> Self {
+        let operator_public_key = context
+            .operator_public_key
+            .expect("operator_public_key is required in context");
+
         let n_of_n_public_key = context
             .n_of_n_public_key
             .expect("n_of_n_public_key is required in context");
@@ -39,7 +37,7 @@ impl AssertTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_2 = Connector2::new(context.network, &n_of_n_public_key);
+        let connector_2 = Connector2::new(context.network, &operator_public_key);
         let connector_3 = Connector3::new(context.network, &n_of_n_public_key);
         let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
         let connector_c = ConnectorC::new(context.network, &n_of_n_taproot_public_key);
@@ -80,33 +78,22 @@ impl AssertTransaction {
     }
 
     fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
-        let mut sighash_cache = SighashCache::new(&self.tx);
+        let input_index = 0;
         let prevouts = Prevouts::All(&self.prev_outs);
-        let prevout_leaf = (self.prev_scripts[0].clone(), LeafVersion::TapScript);
-
         let sighash_type = TapSighashType::All;
-        let leaf_hash =
-            TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), LeafVersion::TapScript);
-        let sighash = sighash_cache
-            .taproot_script_spend_signature_hash(0, &prevouts, leaf_hash, sighash_type)
-            .expect("Failed to construct sighash");
+        let script = &self.prev_scripts[input_index];
+        let taproot_spend_info = self.connector_b.generate_taproot_spend_info();
 
-        let msg = Message::from(sighash);
-        let signature = context.secp.sign_schnorr_no_aux_rand(&msg, &n_of_n_keypair);
-
-        let signature_with_type = bitcoin::taproot::Signature {
-            signature,
+        populate_taproot_input_witness(
+            context,
+            &mut self.tx,
+            &prevouts,
+            input_index,
             sighash_type,
-        };
-
-        // Fill in the pre_sign/checksig input's witness
-        let spend_info = self.connector_b.generate_taproot_spend_info();
-        let control_block = spend_info
-            .control_block(&prevout_leaf)
-            .expect("Unable to create Control block");
-        self.tx.input[0].witness.push(signature_with_type.to_vec());
-        self.tx.input[0].witness.push(prevout_leaf.0.to_bytes());
-        self.tx.input[0].witness.push(control_block.serialize());
+            &taproot_spend_info,
+            script,
+            &vec![&n_of_n_keypair],
+        );
     }
 }
 

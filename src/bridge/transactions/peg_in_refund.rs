@@ -1,23 +1,23 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute,
-    key::Keypair,
-    secp256k1::Message,
-    sighash::{Prevouts, SighashCache},
-    taproot::LeafVersion,
-    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
+    absolute, key::Keypair, sighash::Prevouts, Amount, TapSighashType, Transaction, TxOut,
 };
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
-    connector_z::ConnectorZ, helper::*,
+    super::{
+        connectors::{connector::*, connector_z::ConnectorZ},
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+        scripts::*,
+    },
+    bridge::*,
+    signing::*,
 };
 
 pub struct PegInRefundTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
-    evm_address: String,
     connector_z: ConnectorZ,
 }
 
@@ -67,48 +67,27 @@ impl PegInRefundTransaction {
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_z.generate_taproot_leaf_script(0)],
-            evm_address,
             connector_z,
         }
     }
 
     fn pre_sign_input0(&mut self, context: &BridgeContext, depositor_keypair: &Keypair) {
         let input_index = 0;
-
         let prevouts = Prevouts::All(&self.prev_outs);
-        let prevout_leaf = (
-            self.prev_scripts[input_index].clone(),
-            LeafVersion::TapScript,
-        );
-
         let sighash_type = TapSighashType::All;
-        let leaf_hash = TapLeafHash::from_script(&prevout_leaf.0, prevout_leaf.1);
+        let script = &self.prev_scripts[input_index];
+        let taproot_spend_info = self.connector_z.generate_taproot_spend_info();
 
-        let sighash = SighashCache::new(&self.tx)
-            .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
-            .expect("Failed to construct sighash");
-
-        let signature = context
-            .secp
-            .sign_schnorr_no_aux_rand(&Message::from(sighash), depositor_keypair);
-        self.tx.input[input_index].witness.push(
-            bitcoin::taproot::Signature {
-                signature,
-                sighash_type,
-            }
-            .to_vec(),
+        populate_taproot_input_witness(
+            context,
+            &mut self.tx,
+            &prevouts,
+            input_index,
+            sighash_type,
+            &taproot_spend_info,
+            script,
+            &vec![&depositor_keypair],
         );
-
-        let spend_info = self.connector_z.generate_taproot_spend_info();
-        let control_block = spend_info
-            .control_block(&prevout_leaf)
-            .expect("Unable to create Control block");
-        self.tx.input[input_index]
-            .witness
-            .push(prevout_leaf.0.to_bytes());
-        self.tx.input[input_index]
-            .witness
-            .push(control_block.serialize());
     }
 }
 
