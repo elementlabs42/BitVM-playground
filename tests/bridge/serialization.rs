@@ -1,26 +1,19 @@
-use crate::bridge::helper::generate_stub_outpoint;
+use bitcoin::Amount;
 
-use super::setup::setup_test;
-use bitcoin::{Amount, Network};
 use bitvm::bridge::{
-    components::{
-        assert::AssertTransaction,
-        bridge::{deserialize, serialize, BridgeTransaction},
-        connector_b::ConnectorB,
-        helper::Input,
-    },
+    connectors::connector::TaprootConnector,
     graph::ONE_HUNDRED,
+    transactions::{
+        assert::AssertTransaction,
+        bridge::{BridgeTransaction, Input, deserialize, serialize},
+    },
 };
-use serde::Serialize;
+
+use super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_txn_serialization() {
-    let (client, context) = setup_test();
-
-    let connector_b = ConnectorB::new(
-        Network::Testnet,
-        &context.n_of_n_taproot_public_key.unwrap(),
-    );
+    let (client, context, _, connector_b, _, _, _, _) = setup_test();
 
     let input_value = Amount::from_sat(ONE_HUNDRED * 2 / 100);
     let funding_outpoint = generate_stub_outpoint(

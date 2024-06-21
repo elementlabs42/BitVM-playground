@@ -1,39 +1,27 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount, Network};
+use bitcoin::{consensus::encode::serialize_hex, Amount};
+
 use bitvm::bridge::{
-    components::{
-        bridge::BridgeTransaction, connector_0::Connector0, connector_1::Connector1,
-        connector_a::ConnectorA, connector_b::ConnectorB, helper::Input, take1::Take1Transaction,
-    },
+    connectors::connector::{P2wshConnector, TaprootConnector},
     graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
+    transactions::{
+        bridge::{BridgeTransaction, Input},
+        take1::Take1Transaction,
+    },
 };
 
-use crate::bridge::helper::generate_stub_outpoint;
-
-use super::setup::setup_test;
+use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_take1_tx() {
-    let (client, context) = setup_test();
-
-    let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key.unwrap());
-    let connector_1 = Connector1::new(context.network, &context.operator_public_key.unwrap());
-    let connector_a = ConnectorA::new(
-        Network::Testnet,
-        &context.operator_taproot_public_key.unwrap(),
-        &context.n_of_n_taproot_public_key.unwrap(),
-    );
-    let connector_b = ConnectorB::new(
-        Network::Testnet,
-        &context.n_of_n_taproot_public_key.unwrap(),
-    );
+    let (client, context, connector_a, connector_b, _, _, connector_0, connector_1) = setup_test();
 
     let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let funding_utxo_address0 = connector_0.generate_script_address();
+    let funding_utxo_address0 = connector_0.generate_address();
     let funding_outpoint0 =
         generate_stub_outpoint(&client, &funding_utxo_address0, input_value0).await;
 
     let input_value1 = Amount::from_sat(DUST_AMOUNT);
-    let funding_utxo_address1 = connector_1.generate_script_address();
+    let funding_utxo_address1 = connector_1.generate_address();
     let funding_outpoint1 =
         generate_stub_outpoint(&client, &funding_utxo_address1, input_value1).await;
 

@@ -1,13 +1,12 @@
 use crate::treepp::*;
+use serde::{Deserialize, Serialize};
 use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
-use serde::Deserialize;
-use serde::Serialize;
 
-use super::super::context::BridgeContext;
-use super::super::graph::FEE_AMOUNT;
-
-use super::bridge::*;
-use super::helper::*;
+use super::{
+    super::{context::BridgeContext, graph::FEE_AMOUNT, scripts::*},
+    bridge::*,
+    signing::*,
+};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct PegOutTransaction {

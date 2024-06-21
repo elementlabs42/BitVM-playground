@@ -1,13 +1,16 @@
 use crate::treepp::*;
-use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Network,
-    Transaction, TxOut,
-};
 use serde::{Deserialize, Serialize};
+use bitcoin::{absolute, key::Keypair, Amount, Transaction, TxOut};
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*,
-    connector::generate_default_tx_in, connector_z::ConnectorZ, helper::*,
+    super::{
+        connectors::{connector::*, connector_z::ConnectorZ},
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+        scripts::*,
+    },
+    bridge::*,
+    signing::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -15,7 +18,6 @@ pub struct PegInDepositTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
-    evm_address: String,
 }
 
 impl PegInDepositTransaction {
@@ -33,7 +35,7 @@ impl PegInDepositTransaction {
             .expect("depositor_taproot_public_key is required in context");
 
         let connector_z = ConnectorZ::new(
-            Network::Testnet,
+            context.network,
             &evm_address,
             &depositor_taproot_public_key,
             &n_of_n_taproot_public_key,
@@ -64,37 +66,24 @@ impl PegInDepositTransaction {
                 .script_pubkey(),
             }], // TODO
             prev_scripts: vec![generate_pay_to_pubkey_script(&depositor_public_key)], // TODO
-            evm_address,
         }
     }
 
     fn pre_sign_input0(&mut self, context: &BridgeContext, depositor_keypair: &Keypair) {
         let input_index = 0;
-
         let sighash_type = bitcoin::EcdsaSighashType::All;
-        let mut sighash_cache = SighashCache::new(&self.tx);
-        let sighash = sighash_cache
-            .p2wsh_signature_hash(
-                input_index,
-                &self.prev_scripts[input_index],
-                self.prev_outs[input_index].value,
-                sighash_type,
-            )
-            .expect("Failed to construct sighash");
+        let script = &self.prev_scripts[input_index];
+        let value = self.prev_outs[input_index].value;
 
-        let signature = context
-            .secp
-            .sign_ecdsa(&Message::from(sighash), &depositor_keypair.secret_key());
-        self.tx.input[input_index]
-            .witness
-            .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
-                signature,
-                sighash_type,
-            });
-
-        self.tx.input[input_index]
-            .witness
-            .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
+        populate_p2wsh_witness(
+            context,
+            &mut self.tx,
+            input_index,
+            sighash_type,
+            script,
+            value,
+            &vec![depositor_keypair],
+        );
     }
 }
 

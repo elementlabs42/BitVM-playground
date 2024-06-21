@@ -1,21 +1,20 @@
 use crate::treepp::*;
-use bitcoin::{
-    absolute,
-    key::Keypair,
-    secp256k1::Message,
-    sighash::{Prevouts, SighashCache},
-    taproot::LeafVersion,
-    Amount, Network, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut,
-    Witness, XOnlyPublicKey,
-};
 use serde::{Deserialize, Serialize};
+use bitcoin::{
+    absolute, key::Keypair, sighash::Prevouts, Amount, OutPoint, Sequence, TapSighashType,
+    Transaction, TxIn, TxOut, Witness,
+};
 
-use super::super::context::BridgeContext;
-use super::super::graph::FEE_AMOUNT;
-
-use super::bridge::*;
-use super::connector_a::ConnectorA;
-use super::helper::*;
+use super::{
+    super::{
+        connectors::{connector::*, connector_a::ConnectorA},
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+        scripts::*,
+    },
+    bridge::*,
+    signing::*,
+};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct ChallengeTransaction {
@@ -45,12 +44,12 @@ impl ChallengeTransaction {
             .expect("n_of_n_taproot_public_key is required in context");
 
         let connector_a = ConnectorA::new(
-            Network::Testnet,
+            context.network,
             &operator_taproot_public_key,
             &n_of_n_taproot_public_key,
         );
 
-        let _input0 = connector_a.generate_taproot_leaf1_tx_in(&input0);
+        let _input0 = connector_a.generate_taproot_leaf_tx_in(1, &input0);
 
         let _input1 = TxIn {
             previous_output: OutPoint::default(),
@@ -84,7 +83,7 @@ impl ChallengeTransaction {
                 // TODO add input1
             }],
             prev_scripts: vec![
-                connector_a.generate_taproot_leaf1(), // TODO add input1
+                connector_a.generate_taproot_leaf_script(1), // TODO add input1
                 generate_pay_to_pubkey_script(&depositor_public_key), // This script may not be known until it's actually mined, so it should go in finalize
             ],
             input_amount_crowdfunding,
@@ -94,81 +93,42 @@ impl ChallengeTransaction {
 
     fn pre_sign_input0(&mut self, context: &BridgeContext, operator_keypair: &Keypair) {
         let input_index = 0;
-
         let prevouts = Prevouts::One(input_index, &self.prev_outs[input_index]);
-        let prevout_leaf = (
-            self.prev_scripts[input_index].clone(),
-            LeafVersion::TapScript,
-        );
-
         let sighash_type = TapSighashType::SinglePlusAnyoneCanPay; // TODO: shouldn't be Sighash All + AnyoneCanPay?
-        let leaf_hash =
-            TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
-        let mut sighash_cache = SighashCache::new(&self.tx);
-        let sighash = sighash_cache
-            .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
-            .expect("Failed to construct sighash | presign");
+        let script = &self.prev_scripts[input_index];
+        let taproot_spend_info = self.connector_a.generate_taproot_spend_info();
 
-        let signature = context
-            .secp
-            .sign_schnorr_no_aux_rand(&Message::from(sighash), operator_keypair);
-        self.tx.input[input_index].witness.push(
-            bitcoin::taproot::Signature {
-                signature,
-                sighash_type,
-            }
-            .to_vec(),
+        populate_taproot_input_witness(
+            context,
+            &mut self.tx,
+            &prevouts,
+            input_index,
+            sighash_type,
+            &taproot_spend_info,
+            script,
+            &vec![&operator_keypair],
         );
-
-        let spend_info = self.connector_a.generate_taproot_spend_info();
-        let control_block = spend_info
-            .control_block(&prevout_leaf)
-            .expect("Unable to create Control block");
-        self.tx.input[input_index]
-            .witness
-            .push(prevout_leaf.0.to_bytes());
-        self.tx.input[input_index]
-            .witness
-            .push(control_block.serialize());
     }
 
-    fn pre_sign_input1(
-        &mut self,
-        context: &BridgeContext,
-        operator_keypair: &Keypair,
-        operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_keypair: &Keypair,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
-    ) {
+    fn pre_sign_input1(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 1;
-
         let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;
-        let mut sighash_cache = SighashCache::new(&self.tx);
-        let sighash = sighash_cache
-            .p2wsh_signature_hash(
-                input_index,
-                &self.prev_scripts[input_index], // TODO add script to prev_scripts
-                self.prev_outs[input_index].value,
-                sighash_type,
-            )
-            .expect("Failed to construct sighash");
+        let script = &self.prev_scripts[input_index];
+        let value = self.prev_outs[input_index].value;
 
-        let signature = context
-            .secp
-            .sign_ecdsa(&Message::from(sighash), &n_of_n_keypair.secret_key());
-        self.tx.input[input_index]
-            .witness
-            .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
-                signature,
-                sighash_type,
-            });
-
-        self.tx.input[input_index]
-            .witness
-            .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
+        populate_p2wsh_witness(
+            context,
+            &mut self.tx,
+            input_index,
+            sighash_type,
+            script,
+            value,
+            &vec![n_of_n_keypair],
+        );
     }
 
     pub fn add_input(&mut self, context: &BridgeContext, input: OutPoint) {
+        // TODO: keypair should be refactored and either pre_sign_input1 or add_input should exist but not both
         let depositor_keypair = context
             .depositor_keypair
             .expect("depositor_keypair required in context");
@@ -178,30 +138,18 @@ impl ChallengeTransaction {
         self.tx.input[input_index].previous_output = input;
 
         let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;
-        let mut sighash_cache = SighashCache::new(&self.tx);
-        let sighash = sighash_cache
-            .p2wsh_signature_hash(
-                input_index,
-                &self.prev_scripts[input_index],
-                self.input_amount_crowdfunding,
-                sighash_type,
-            )
-            .expect("Failed to construct sighash | add input");
+        let script = &self.prev_scripts[input_index];
+        let value = self.input_amount_crowdfunding;
 
-        let signature = context
-            .secp
-            .sign_ecdsa(&Message::from(sighash), &depositor_keypair.secret_key());
-
-        self.tx.input[input_index]
-            .witness
-            .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
-                signature,
-                sighash_type,
-            });
-
-        self.tx.input[input_index]
-            .witness
-            .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
+        populate_p2wsh_witness(
+            context,
+            &mut self.tx,
+            input_index,
+            sighash_type,
+            script,
+            value,
+            &vec![&depositor_keypair],
+        );
     }
 }
 

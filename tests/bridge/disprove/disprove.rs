@@ -7,25 +7,20 @@ mod tests {
     };
 
     use bitvm::bridge::{
-        components::{
-            bridge::BridgeTransaction,
-            connector_3::Connector3,
-            connector_c::ConnectorC,
-            disprove::*,
-            helper::{generate_pay_to_pubkey_script, Input},
-        },
+        connectors::connector::TaprootConnector,
         graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
+        scripts::generate_pay_to_pubkey_script,
+        transactions::{
+            bridge::{BridgeTransaction, Input},
+            disprove::DisproveTransaction,
+        },
     };
 
-    use crate::bridge::setup::setup_test;
+    use super::super::super::setup::setup_test;
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_tx_successfully() {
-        let (client, context) = setup_test();
-
-        let connector_3 = Connector3::new(context.network, &context.n_of_n_public_key.unwrap());
-        let connector_c =
-            ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
+        let (client, context, _, _, connector_c, _, _, _) = setup_test();
 
         let funding_utxo_1 = client
             .get_initial_utxo(
@@ -46,14 +41,14 @@ mod tests {
 
         let funding_utxo_0 = client
             .get_initial_utxo(
-                connector_3.generate_script_address(),
+                connector_c.generate_taproot_address(),
                 Amount::from_sat(DUST_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_3.generate_script_address(),
+                    connector_c.generate_taproot_address(),
                     DUST_AMOUNT
                 );
             });
@@ -62,6 +57,7 @@ mod tests {
             txid: funding_utxo_0.txid,
             vout: funding_utxo_0.vout,
         };
+
         let funding_outpoint_1 = OutPoint {
             txid: funding_utxo_1.txid,
             vout: funding_utxo_1.vout,
@@ -93,12 +89,7 @@ mod tests {
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_tx_with_verifier_added_to_output_successfully()
     {
-        let (client, context) = setup_test();
-
-        let connector_3 = Connector3::new(context.network, &context.n_of_n_public_key.unwrap());
-        let connector_c =
-            ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
-
+        let (client, context, _, _, connector_c, _, _, _) = setup_test();
         let funding_utxo_1 = client
             .get_initial_utxo(
                 connector_c.generate_taproot_address(),
@@ -112,21 +103,19 @@ mod tests {
                     INITIAL_AMOUNT
                 );
             });
-
         let funding_utxo_0 = client
             .get_initial_utxo(
-                connector_3.generate_script_address(),
+                connector_c.generate_taproot_address(),
                 Amount::from_sat(DUST_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_3.generate_script_address(),
+                    connector_c.generate_taproot_address(),
                     DUST_AMOUNT
                 );
             });
-
         let funding_outpoint_0 = OutPoint {
             txid: funding_utxo_0.txid,
             vout: funding_utxo_0.vout,
