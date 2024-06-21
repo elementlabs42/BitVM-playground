@@ -1,5 +1,4 @@
 use crate::treepp::*;
-use serde::{Deserialize, Serialize};
 use bitcoin::{
     hashes::{ripemd160, Hash},
     key::Secp256k1,
@@ -7,6 +6,7 @@ use bitcoin::{
     Address, Network, TxIn, XOnlyPublicKey,
 };
 use num_traits::ToPrimitive;
+use serde::{Deserialize, Serialize};
 
 use super::{super::transactions::bridge::Input, connector::*};
 

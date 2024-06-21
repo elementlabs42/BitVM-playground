@@ -1,6 +1,6 @@
 use crate::treepp::*;
-use serde::{Deserialize, Serialize};
 use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::{context::BridgeContext, graph::FEE_AMOUNT, scripts::*},
