@@ -35,9 +35,6 @@ async fn test_txn_serialization() {
 
     let json = serialize(&assert_tx);
     assert!(json.len() > 0);
-    assert!(json.contains(funding_outpoint.txid.to_string().as_str()));
-    assert!(json.contains(funding_outpoint.vout.to_string().as_str()));
-
     let deserialized_assert_tx = deserialize::<AssertTransaction>(&json);
     assert!(assert_tx == deserialized_assert_tx);
 }
