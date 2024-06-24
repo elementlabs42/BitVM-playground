@@ -1,5 +1,6 @@
 use crate::treepp::*;
 use bitcoin::{absolute, Amount, EcdsaSighashType, TapSighashType, Transaction, TxOut};
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
@@ -15,6 +16,7 @@ use super::{
     signing::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct Take1Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
@@ -72,11 +74,11 @@ impl Take1Transaction {
 
         let _input3 = connector_b.generate_taproot_leaf_tx_in(0, &input3);
 
-        let total_input_amount = input0.amount + input1.amount + input2.amount + input3.amount
+        let total_output_amount = input0.amount + input1.amount + input2.amount + input3.amount
             - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
-            value: total_input_amount,
+            value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
                 &operator_public_key,

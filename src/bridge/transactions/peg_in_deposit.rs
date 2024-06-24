@@ -1,5 +1,6 @@
 use crate::treepp::*;
-use bitcoin::{absolute, key::Keypair, Amount, Transaction, TxOut};
+use bitcoin::{absolute, consensus, key::Keypair, Amount, Transaction, TxOut};
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
@@ -12,8 +13,11 @@ use super::{
     signing::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct PegInDepositTransaction {
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
 }
@@ -41,10 +45,10 @@ impl PegInDepositTransaction {
 
         let _input0 = generate_default_tx_in(&input0);
 
-        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
-            value: total_input_amount,
+            value: total_output_amount,
             script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
         };
 

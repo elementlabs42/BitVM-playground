@@ -1,5 +1,6 @@
 use crate::treepp::*;
 use bitcoin::{absolute, key::Keypair, Amount, Transaction, TxOut};
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
@@ -14,6 +15,7 @@ use super::{
     signing::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct Take2Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
@@ -40,11 +42,11 @@ impl Take2Transaction {
 
         let _input2 = connector_3.generate_tx_in(&input2);
 
-        let total_input_amount =
+        let total_output_amount =
             input0.amount + input1.amount + input2.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
-            value: total_input_amount,
+            value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
                 &operator_public_key,
@@ -98,7 +100,7 @@ impl Take2Transaction {
         );
     }
 
-    fn pre_sign_input1(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
+    fn pre_sign_input1(&mut self, context: &BridgeContext, operator_keypair: &Keypair) {
         let input_index = 1;
         let sighash_type = bitcoin::EcdsaSighashType::All;
         let script = &self.prev_scripts[input_index];
@@ -111,7 +113,7 @@ impl Take2Transaction {
             sighash_type,
             script,
             value,
-            &vec![n_of_n_keypair],
+            &vec![operator_keypair],
         );
     }
 

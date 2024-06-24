@@ -1,13 +1,18 @@
 use crate::treepp::*;
-use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
+use bitcoin::{absolute, consensus, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::{context::BridgeContext, graph::FEE_AMOUNT, scripts::*},
     bridge::*,
     signing::*,
 };
+
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct PegOutTransaction {
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
 }
 
@@ -32,10 +37,10 @@ impl PegOutTransaction {
             witness: Witness::default(),
         };
 
-        let total_input_amount = input0.amount + input1.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input0.amount + input1.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
-            value: total_input_amount,
+            value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
                 &withdrawer_public_key,

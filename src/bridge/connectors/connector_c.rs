@@ -6,6 +6,7 @@ use bitcoin::{
     Address, Network, TxIn, XOnlyPublicKey,
 };
 use num_traits::ToPrimitive;
+use serde::{Deserialize, Serialize};
 
 use super::{super::transactions::bridge::Input, connector::*};
 
@@ -19,6 +20,7 @@ pub struct AssertLeaf {
     pub unlock: UnlockWitness,
 }
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct ConnectorC {
     pub network: Network,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
