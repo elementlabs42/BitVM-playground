@@ -141,8 +141,12 @@ impl BridgeTransaction for Take2Transaction {
             .n_of_n_keypair
             .expect("n_of_n_keypair is required in context");
 
+        let operator_keypair = context
+            .operator_keypair
+            .expect("operator_keypair required in context");
+
         self.pre_sign_input0(context, &n_of_n_keypair);
-        self.pre_sign_input1(context, &n_of_n_keypair);
+        self.pre_sign_input1(context, &operator_keypair);
         self.pre_sign_input2(context, &n_of_n_keypair);
     }
 

@@ -200,7 +200,7 @@ impl BridgeTransaction for Take1Transaction {
             .expect("operator_keypair required in context");
 
         self.pre_sign_input0(context, &n_of_n_keypair);
-        self.pre_sign_input1(context, &n_of_n_keypair);
+        self.pre_sign_input1(context, &operator_keypair);
         self.pre_sign_input2(context, &operator_keypair);
         self.pre_sign_input3(context, &n_of_n_keypair);
     }
