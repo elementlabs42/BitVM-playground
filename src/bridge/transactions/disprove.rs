@@ -1,6 +1,6 @@
 use crate::treepp::*;
 use serde::{Deserialize, Serialize};
-use bitcoin::{absolute, key::Keypair, Amount, Transaction, TxOut, consensus};
+use bitcoin::{absolute, key::Keypair, Amount, ScriptBuf, Transaction, TxOut, consensus};
 
 use super::{
     super::{
@@ -20,8 +20,8 @@ pub struct DisproveTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
-    script_index: u32,
     connector_c: ConnectorC,
+    reward_output_amount: Amount,
 }
 
 impl DisproveTransaction {
@@ -46,11 +46,11 @@ impl DisproveTransaction {
 
         let _input1 = connector_c.generate_taproot_leaf_tx_in(script_index, &connector_c_input);
 
-        let total_input_amount =
+        let total_output_amount =
             pre_sign_input.amount + connector_c_input.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
-            value: total_input_amount / 2,
+            value: total_output_amount / 2,
             script_pubkey: generate_burn_script_address(context.network).script_pubkey(),
         };
 
@@ -72,14 +72,14 @@ impl DisproveTransaction {
                 },
             ],
             prev_scripts: vec![connector_3.generate_script()],
-            script_index,
             connector_c,
+            reward_output_amount: total_output_amount - (total_output_amount / 2),
         }
     }
 
     fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 0;
-        let sighash_type = bitcoin::EcdsaSighashType::All;
+        let sighash_type = bitcoin::EcdsaSighashType::Single;
         let script = &self.prev_scripts[input_index];
         let value = self.prev_outs[input_index].value;
 
@@ -91,6 +91,38 @@ impl DisproveTransaction {
             script,
             value,
             &vec![n_of_n_keypair],
+        );
+    }
+
+    pub fn add_input_output(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {
+        let output_index = 1;
+
+        // Add output
+        self.tx.output[output_index] = TxOut {
+            value: self.reward_output_amount,
+            script_pubkey: output_script_pubkey,
+        };
+
+        let input_index = 1;
+
+        // TODO: Doesn't this needs to be signed sighash_single or sighash_all? Shouln't leave these input/outputs unsigned
+
+        // Push the unlocking witness
+        let unlock_witness = self
+            .connector_c
+            .generate_taproot_leaf_script_witness(input_script_index);
+        self.tx.input[input_index].witness.push(unlock_witness);
+
+        // Push script + control block
+        let script = self
+            .connector_c
+            .generate_taproot_leaf_script(input_script_index);
+        let taproot_spend_info = self.connector_c.generate_taproot_spend_info();
+        push_taproot_leaf_script_and_control_block_to_witness(
+            &mut self.tx,
+            input_index,
+            &taproot_spend_info,
+            script,
         );
     }
 }
@@ -105,28 +137,10 @@ impl BridgeTransaction for DisproveTransaction {
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
-        let mut tx = self.tx.clone();
+        if (self.tx.input.len() < 2 || self.tx.output.len() < 2) {
+            panic!("Missing input or output. Call add_input_output before finalizing");
+        }
 
-        let input_index = 1;
-
-        // Push the unlocking witness
-        let unlock_witness = self
-            .connector_c
-            .generate_taproot_leaf_script_witness(self.script_index);
-        tx.input[input_index].witness.push(unlock_witness);
-
-        // Push script + control block
-        let script = self
-            .connector_c
-            .generate_taproot_leaf_script(self.script_index);
-        let taproot_spend_info = self.connector_c.generate_taproot_spend_info();
-        push_taproot_leaf_script_and_control_block_to_witness(
-            &mut tx,
-            input_index,
-            &taproot_spend_info,
-            script,
-        );
-
-        tx
+        self.tx.clone()
     }
 }
