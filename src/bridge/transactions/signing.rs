@@ -322,18 +322,33 @@ pub fn pre_sign_taproot_input<T: TransactionBase>(
     taproot_spend_info: TaprootSpendInfo,
     keypairs: &Vec<&Keypair>,
 ) {
-    let prevouts_copy = tx.prev_outs().clone(); // To avoid immutable borrows, since we have to mutably borrow tx in this function.
-    let prevouts = Prevouts::All(&prevouts_copy);
     let script = &tx.prev_scripts()[input_index];
 
-    populate_taproot_input_witness(
-        context,
-        tx.tx(),
-        &prevouts,
-        input_index,
-        sighash_type,
-        &taproot_spend_info,
-        script,
-        keypairs,
-    );
+    let prevouts_copy = tx.prev_outs().clone(); // To avoid immutable borrows, since we have to mutably borrow tx in this function.
+
+    if sighash_type == TapSighashType::Single
+        || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
+    {
+        populate_taproot_input_witness(
+            context,
+            tx.tx(),
+            &Prevouts::One(input_index, &prevouts_copy[input_index]),
+            input_index,
+            sighash_type,
+            &taproot_spend_info,
+            script,
+            keypairs,
+        );
+    } else {
+        populate_taproot_input_witness(
+            context,
+            tx.tx(),
+            &Prevouts::All(&prevouts_copy),
+            input_index,
+            sighash_type,
+            &taproot_spend_info,
+            script,
+            keypairs,
+        );
+    }
 }
