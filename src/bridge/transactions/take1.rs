@@ -1,5 +1,5 @@
 use crate::treepp::*;
-use bitcoin::{absolute, Amount, EcdsaSighashType, TapSighashType, Transaction, TxOut};
+use bitcoin::{absolute, Amount, EcdsaSighashType, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -26,11 +26,11 @@ pub struct Take1Transaction {
 }
 
 impl TransactionBase for Take1Transaction {
-    fn tx(&mut self) -> &mut bitcoin::Transaction { &mut self.tx }
+    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<bitcoin::ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
 }
 
 impl Take1Transaction {
@@ -133,23 +133,38 @@ impl BridgeTransaction for Take1Transaction {
             .operator_keypair
             .expect("operator_keypair required in context");
 
-        pre_sign_p2wsh_input(self, context, 0, EcdsaSighashType::All, &n_of_n_keypair);
-        pre_sign_p2wsh_input(self, context, 1, EcdsaSighashType::All, &operator_keypair);
+        pre_sign_p2wsh_input(
+            self,
+            context,
+            0,
+            EcdsaSighashType::All,
+            &vec![&n_of_n_keypair],
+        );
+
+        pre_sign_p2wsh_input(
+            self,
+            context,
+            1,
+            EcdsaSighashType::All,
+            &vec![&operator_keypair],
+        );
+
         pre_sign_taproot_input(
             self,
             context,
             2,
             TapSighashType::All,
             self.connector_a.generate_taproot_spend_info(),
-            &operator_keypair,
+            &vec![&operator_keypair],
         );
+
         pre_sign_taproot_input(
             self,
             context,
             3,
             TapSighashType::All,
             self.connector_b.generate_taproot_spend_info(),
-            &n_of_n_keypair,
+            &vec![&n_of_n_keypair],
         );
     }
 

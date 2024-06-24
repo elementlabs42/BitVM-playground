@@ -1,5 +1,7 @@
 use crate::treepp::*;
-use bitcoin::{absolute, consensus, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
+use bitcoin::{
+    absolute, consensus, Amount, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -22,6 +24,14 @@ pub struct KickOffTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
+}
+
+impl TransactionBase for KickOffTransaction {
+    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+
+    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
 }
 
 impl KickOffTransaction {
