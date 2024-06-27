@@ -1,7 +1,6 @@
 use crate::treepp::*;
-use bitcoin::{
-    absolute, key::Keypair, sighash::Prevouts, Amount, TapSighashType, Transaction, TxOut,
-};
+use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
@@ -16,11 +15,22 @@ use super::{
     signing::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct AssertTransaction {
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
     connector_b: ConnectorB,
+}
+
+impl TransactionBase for AssertTransaction {
+    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+
+    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
 }
 
 impl AssertTransaction {
@@ -44,7 +54,7 @@ impl AssertTransaction {
 
         let _input0 = connector_b.generate_taproot_leaf_tx_in(1, &input0);
 
-        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
@@ -52,7 +62,7 @@ impl AssertTransaction {
         };
 
         let _output1 = TxOut {
-            value: total_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
+            value: total_output_amount - Amount::from_sat(DUST_AMOUNT) * 2,
             script_pubkey: connector_3.generate_address().script_pubkey(),
         };
 
@@ -76,25 +86,6 @@ impl AssertTransaction {
             connector_b,
         }
     }
-
-    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
-        let input_index = 0;
-        let prevouts = Prevouts::All(&self.prev_outs);
-        let sighash_type = TapSighashType::All;
-        let script = &self.prev_scripts[input_index];
-        let taproot_spend_info = self.connector_b.generate_taproot_spend_info();
-
-        populate_taproot_input_witness(
-            context,
-            &mut self.tx,
-            &prevouts,
-            input_index,
-            sighash_type,
-            &taproot_spend_info,
-            script,
-            &vec![&n_of_n_keypair],
-        );
-    }
 }
 
 impl BridgeTransaction for AssertTransaction {
@@ -103,7 +94,14 @@ impl BridgeTransaction for AssertTransaction {
             .n_of_n_keypair
             .expect("n_of_n_keypair required in context");
 
-        self.pre_sign_input0(context, &n_of_n_keypair);
+        pre_sign_taproot_input(
+            self,
+            context,
+            0,
+            TapSighashType::All,
+            self.connector_b.generate_taproot_spend_info(),
+            &vec![&n_of_n_keypair],
+        );
     }
 
     fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }

@@ -1,8 +1,9 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, key::Keypair, sighash::Prevouts, Amount, OutPoint, Sequence, TapSighashType,
+    absolute, consensus, key::Keypair, Amount, OutPoint, ScriptBuf, Sequence, TapSighashType,
     Transaction, TxIn, TxOut, Witness,
 };
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
@@ -15,12 +16,23 @@ use super::{
     signing::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct ChallengeTransaction {
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
     input_amount_crowdfunding: Amount,
     connector_a: ConnectorA,
+}
+
+impl TransactionBase for ChallengeTransaction {
+    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+
+    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
 }
 
 impl ChallengeTransaction {
@@ -56,11 +68,11 @@ impl ChallengeTransaction {
             witness: Witness::default(),
         };
 
-        let total_input_amount =
+        let total_output_amount =
             input0.amount + input_amount_crowdfunding - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
-            value: total_input_amount,
+            value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
                 &operator_public_key,
@@ -75,68 +87,35 @@ impl ChallengeTransaction {
                 input: vec![_input0, _input1],
                 output: vec![_output0],
             },
-            prev_outs: vec![TxOut {
-                value: input0.amount,
-                script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
-                // TODO add input1
-            }],
+            prev_outs: vec![
+                TxOut {
+                    value: input0.amount,
+                    script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
+                },
+                // input1 will be added later
+            ],
             prev_scripts: vec![
-                connector_a.generate_taproot_leaf_script(1), // TODO add input1
-                generate_pay_to_pubkey_script(&depositor_public_key), // This script may not be known until it's actually mined, so it should go in finalize
+                connector_a.generate_taproot_leaf_script(1),
+                // input1's script will be added later
             ],
             input_amount_crowdfunding,
             connector_a,
         }
     }
 
-    fn pre_sign_input0(&mut self, context: &BridgeContext, operator_keypair: &Keypair) {
-        let input_index = 0;
-        let prevouts = Prevouts::One(input_index, &self.prev_outs[input_index]);
-        let sighash_type = TapSighashType::SinglePlusAnyoneCanPay; // TODO: shouldn't be Sighash All + AnyoneCanPay?
-        let script = &self.prev_scripts[input_index];
-        let taproot_spend_info = self.connector_a.generate_taproot_spend_info();
-
-        populate_taproot_input_witness(
-            context,
-            &mut self.tx,
-            &prevouts,
-            input_index,
-            sighash_type,
-            &taproot_spend_info,
-            script,
-            &vec![&operator_keypair],
-        );
-    }
-
-    fn pre_sign_input1(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
-        let input_index = 1;
-        let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;
-        let script = &self.prev_scripts[input_index];
-        let value = self.prev_outs[input_index].value;
-
-        populate_p2wsh_witness(
-            context,
-            &mut self.tx,
-            input_index,
-            sighash_type,
-            script,
-            value,
-            &vec![n_of_n_keypair],
-        );
-    }
-
-    pub fn add_input(&mut self, context: &BridgeContext, input: OutPoint) {
-        // TODO: keypair should be refactored and either pre_sign_input1 or add_input should exist but not both
-        let depositor_keypair = context
-            .depositor_keypair
-            .expect("depositor_keypair required in context");
-
+    // TODO allow for aggregating multiple inputs and refund outputs
+    pub fn add_input(
+        &mut self,
+        context: &BridgeContext,
+        input: OutPoint,
+        script: &Script,
+        keypair: &Keypair,
+    ) {
         let input_index = 1;
 
         self.tx.input[input_index].previous_output = input;
 
         let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;
-        let script = &self.prev_scripts[input_index];
         let value = self.input_amount_crowdfunding;
 
         populate_p2wsh_witness(
@@ -146,7 +125,7 @@ impl ChallengeTransaction {
             sighash_type,
             script,
             value,
-            &vec![&depositor_keypair],
+            &vec![&keypair],
         );
     }
 }
@@ -157,17 +136,21 @@ impl BridgeTransaction for ChallengeTransaction {
             .operator_keypair
             .expect("operator_keypair is required in context");
 
-        self.pre_sign_input0(context, &operator_keypair);
-
-        // QUESTION How do we pre-sign input1?
-        // self.pre_sign_input1(
-        //     context,
-        //     &operator_keypair,
-        //     &operator_taproot_public_key,
-        //     &n_of_n_keypair,
-        //     &n_of_n_taproot_public_key,
-        // );
+        pre_sign_taproot_input(
+            self,
+            context,
+            0,
+            TapSighashType::SinglePlusAnyoneCanPay,
+            self.connector_a.generate_taproot_spend_info(),
+            &vec![&operator_keypair],
+        );
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
+    fn finalize(&self, context: &BridgeContext) -> Transaction {
+        if (self.tx.input.len() < 2) {
+            panic!("Missing input. Call add_input before finalizing");
+        }
+
+        self.tx.clone()
+    }
 }

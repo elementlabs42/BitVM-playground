@@ -1,7 +1,6 @@
 use crate::treepp::*;
-use bitcoin::{
-    absolute, key::Keypair, sighash::Prevouts, Amount, TapSighashType, Transaction, TxOut,
-};
+use bitcoin::{absolute, Amount, EcdsaSighashType, ScriptBuf, TapSighashType, Transaction, TxOut};
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
@@ -17,12 +16,21 @@ use super::{
     signing::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct Take1Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
     connector_a: ConnectorA,
     connector_b: ConnectorB,
+}
+
+impl TransactionBase for Take1Transaction {
+    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+
+    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
 }
 
 impl Take1Transaction {
@@ -66,11 +74,11 @@ impl Take1Transaction {
 
         let _input3 = connector_b.generate_taproot_leaf_tx_in(0, &input3);
 
-        let total_input_amount = input0.amount + input1.amount + input2.amount + input3.amount
+        let total_output_amount = input0.amount + input1.amount + input2.amount + input3.amount
             - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
-            value: total_input_amount,
+            value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
                 &operator_public_key,
@@ -113,78 +121,6 @@ impl Take1Transaction {
             connector_b,
         }
     }
-
-    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
-        let input_index = 0;
-        let sighash_type = bitcoin::EcdsaSighashType::All;
-        let script = &self.prev_scripts[input_index];
-        let value = self.prev_outs[input_index].value;
-
-        populate_p2wsh_witness(
-            context,
-            &mut self.tx,
-            input_index,
-            sighash_type,
-            script,
-            value,
-            &vec![n_of_n_keypair],
-        );
-    }
-
-    fn pre_sign_input1(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
-        let input_index = 1;
-        let sighash_type = bitcoin::EcdsaSighashType::All;
-        let script = &self.prev_scripts[input_index];
-        let value = self.prev_outs[input_index].value;
-
-        populate_p2wsh_witness(
-            context,
-            &mut self.tx,
-            input_index,
-            sighash_type,
-            script,
-            value,
-            &vec![n_of_n_keypair],
-        );
-    }
-
-    fn pre_sign_input2(&mut self, context: &BridgeContext, operator_keypair: &Keypair) {
-        let input_index = 2;
-        let prevouts = Prevouts::All(&self.prev_outs);
-        let sighash_type = TapSighashType::All;
-        let script = &self.prev_scripts[input_index];
-        let taproot_spend_info = self.connector_a.generate_taproot_spend_info();
-
-        populate_taproot_input_witness(
-            context,
-            &mut self.tx,
-            &prevouts,
-            input_index,
-            sighash_type,
-            &taproot_spend_info,
-            script,
-            &vec![&operator_keypair],
-        );
-    }
-
-    fn pre_sign_input3(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
-        let input_index = 3;
-        let prevouts = Prevouts::All(&self.prev_outs);
-        let sighash_type = TapSighashType::All;
-        let script = &self.prev_scripts[input_index];
-        let taproot_spend_info = self.connector_b.generate_taproot_spend_info();
-
-        populate_taproot_input_witness(
-            context,
-            &mut self.tx,
-            &prevouts,
-            input_index,
-            sighash_type,
-            &taproot_spend_info,
-            script,
-            &vec![&n_of_n_keypair],
-        );
-    }
 }
 
 impl BridgeTransaction for Take1Transaction {
@@ -197,10 +133,39 @@ impl BridgeTransaction for Take1Transaction {
             .operator_keypair
             .expect("operator_keypair required in context");
 
-        self.pre_sign_input0(context, &n_of_n_keypair);
-        self.pre_sign_input1(context, &n_of_n_keypair);
-        self.pre_sign_input2(context, &operator_keypair);
-        self.pre_sign_input3(context, &n_of_n_keypair);
+        pre_sign_p2wsh_input(
+            self,
+            context,
+            0,
+            EcdsaSighashType::All,
+            &vec![&n_of_n_keypair],
+        );
+
+        pre_sign_p2wsh_input(
+            self,
+            context,
+            1,
+            EcdsaSighashType::All,
+            &vec![&operator_keypair],
+        );
+
+        pre_sign_taproot_input(
+            self,
+            context,
+            2,
+            TapSighashType::All,
+            self.connector_a.generate_taproot_spend_info(),
+            &vec![&operator_keypair],
+        );
+
+        pre_sign_taproot_input(
+            self,
+            context,
+            3,
+            TapSighashType::All,
+            self.connector_b.generate_taproot_spend_info(),
+            &vec![&n_of_n_keypair],
+        );
     }
 
     fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
