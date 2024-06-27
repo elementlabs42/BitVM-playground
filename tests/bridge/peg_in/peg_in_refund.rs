@@ -42,7 +42,7 @@ async fn test_peg_in_refund_tx() {
         amount: input_amount,
     };
 
-    let peg_in_refund_tx = PegInRefundTransaction::new(&depositor_context, input, evm_address);
+    let peg_in_refund_tx = PegInRefundTransaction::new(&depositor_context, input);
 
     let tx = peg_in_refund_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);

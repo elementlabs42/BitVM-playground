@@ -32,11 +32,11 @@ impl PreSignedTransaction for PegInConfirmTransaction {
 }
 
 impl PegInConfirmTransaction {
-    pub fn new(context: &DepositorContext, input0: Input, evm_address: String) -> Self {
+    pub fn new(context: &DepositorContext, input0: Input) -> Self {
         let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key);
         let connector_z = ConnectorZ::new(
             context.network,
-            &evm_address,
+            &context.evm_address,
             &context.depositor_taproot_public_key,
             &context.n_of_n_taproot_public_key,
         );

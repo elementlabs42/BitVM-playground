@@ -31,10 +31,10 @@ impl PreSignedTransaction for PegInDepositTransaction {
 }
 
 impl PegInDepositTransaction {
-    pub fn new(context: &DepositorContext, input0: Input, evm_address: String) -> Self {
+    pub fn new(context: &DepositorContext, input0: Input) -> Self {
         let connector_z = ConnectorZ::new(
             context.network,
-            &evm_address,
+            &context.evm_address,
             &context.depositor_taproot_public_key,
             &context.n_of_n_taproot_public_key,
         );
