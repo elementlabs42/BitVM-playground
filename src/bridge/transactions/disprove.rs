@@ -91,7 +91,6 @@ impl DisproveTransaction {
             script_pubkey: output_script_pubkey,
         });
 
-
         let input_index = 1;
 
         // TODO: Doesn't this needs to be signed sighash_single or sighash_all? Shouln't leave these input/outputs unsigned

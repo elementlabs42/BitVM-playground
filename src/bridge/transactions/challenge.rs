@@ -111,10 +111,10 @@ impl ChallengeTransaction {
         let input_index = 1;
 
         let _input = TxIn {
-          previous_output: input,
-          script_sig: Script::new(),
-          sequence: Sequence::MAX,
-          witness: Witness::default(),
+            previous_output: input,
+            script_sig: Script::new(),
+            sequence: Sequence::MAX,
+            witness: Witness::default(),
         };
 
         self.tx.input.push(_input);

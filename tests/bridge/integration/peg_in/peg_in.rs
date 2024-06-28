@@ -7,7 +7,7 @@ use bitvm::bridge::{
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
-        bridge::{BridgeTransaction, Input},
+        base::{BaseTransaction, Input},
         peg_in_confirm::PegInConfirmTransaction,
         peg_in_deposit::PegInDepositTransaction,
         peg_in_refund::PegInRefundTransaction,
@@ -20,7 +20,7 @@ use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_in_success() {
-    let (client, context, _, _, _, _, _, _) = setup_test();
+    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _) = setup_test();
 
     let evm_address = String::from("evm address");
 
@@ -29,8 +29,8 @@ async fn test_peg_in_success() {
 
     // peg-in deposit
     let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        context.network,
-        &context.depositor_public_key.unwrap(),
+        depositor_context.network,
+        &depositor_context.depositor_public_key,
     );
     let deposit_funding_outpoint =
         generate_stub_outpoint(&client, &deposit_funding_utxo_address, deposit_input_amount).await;
@@ -39,10 +39,10 @@ async fn test_peg_in_success() {
         amount: deposit_input_amount,
     };
 
-    let mut peg_in_deposit =
-        PegInDepositTransaction::new(&context, deposit_input, evm_address.clone());
-    peg_in_deposit.pre_sign(&context);
-    let peg_in_deposit_tx = peg_in_deposit.finalize(&context);
+    let peg_in_deposit =
+        PegInDepositTransaction::new(&depositor_context, deposit_input, evm_address.clone());
+
+    let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_tx_id = peg_in_deposit_tx.compute_txid();
 
     // mine peg-in deposit
@@ -58,10 +58,9 @@ async fn test_peg_in_success() {
         outpoint: confirm_funding_outpoint,
         amount: peg_in_deposit_tx.output[0].value,
     };
-    let mut peg_in_confirm =
-        PegInConfirmTransaction::new(&context, confirm_input, evm_address.clone());
-    peg_in_confirm.pre_sign(&context);
-    let peg_in_confirm_tx = peg_in_confirm.finalize(&context);
+    let peg_in_confirm =
+        PegInConfirmTransaction::new(&depositor_context, confirm_input, evm_address.clone());
+    let peg_in_confirm_tx = peg_in_confirm.finalize();
     let confirm_tx_id = peg_in_confirm_tx.compute_txid();
 
     // mine peg-in confirm
@@ -69,7 +68,10 @@ async fn test_peg_in_success() {
     assert!(confirm_result.is_ok());
 
     // multi-sig balance
-    let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key.unwrap());
+    let connector_0 = Connector0::new(
+        depositor_context.network,
+        &depositor_context.n_of_n_public_key,
+    );
     let multi_sig_address = connector_0.generate_address();
     let multi_sig_utxos = client
         .esplora
@@ -91,7 +93,7 @@ async fn test_peg_in_success() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_not_surpassed() {
-    let (client, context, _, _, _, _, _, _) = setup_test();
+    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _) = setup_test();
 
     let evm_address = String::from("evm address");
 
@@ -100,8 +102,8 @@ async fn test_peg_in_time_lock_not_surpassed() {
 
     // peg-in deposit
     let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        context.network,
-        &context.depositor_public_key.unwrap(),
+        depositor_context.network,
+        &depositor_context.depositor_public_key,
     );
     let deposit_funding_outpoint =
         generate_stub_outpoint(&client, &deposit_funding_utxo_address, deposit_input_amount).await;
@@ -110,10 +112,9 @@ async fn test_peg_in_time_lock_not_surpassed() {
         amount: deposit_input_amount,
     };
 
-    let mut peg_in_deposit =
-        PegInDepositTransaction::new(&context, deposit_input, evm_address.clone());
-    peg_in_deposit.pre_sign(&context);
-    let peg_in_deposit_tx = peg_in_deposit.finalize(&context);
+    let peg_in_deposit =
+        PegInDepositTransaction::new(&depositor_context, deposit_input, evm_address.clone());
+    let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_tx_id = peg_in_deposit_tx.compute_txid();
 
     // mine peg-in deposit
@@ -129,10 +130,9 @@ async fn test_peg_in_time_lock_not_surpassed() {
         outpoint: refund_funding_outpoint,
         amount: peg_in_deposit_tx.output[0].value,
     };
-    let mut peg_in_refund =
-        PegInRefundTransaction::new(&context, refund_input, evm_address.clone());
-    peg_in_refund.pre_sign(&context);
-    let peg_in_refund_tx = peg_in_refund.finalize(&context);
+    let peg_in_refund =
+        PegInRefundTransaction::new(&depositor_context, refund_input, evm_address.clone());
+    let peg_in_refund_tx = peg_in_refund.finalize();
 
     // mine peg-in refund
     let refund_result = client.esplora.broadcast(&peg_in_refund_tx).await;
@@ -149,7 +149,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_surpassed() {
-    let (client, context, _, _, _, _, _, _) = setup_test();
+    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _) = setup_test();
 
     let evm_address = String::from("evm address");
 
@@ -158,8 +158,8 @@ async fn test_peg_in_time_lock_surpassed() {
 
     // peg-in deposit
     let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        context.network,
-        &context.depositor_public_key.unwrap(),
+        depositor_context.network,
+        &depositor_context.depositor_public_key,
     );
     let deposit_funding_outpoint =
         generate_stub_outpoint(&client, &deposit_funding_utxo_address, deposit_input_amount).await;
@@ -168,10 +168,9 @@ async fn test_peg_in_time_lock_surpassed() {
         amount: deposit_input_amount,
     };
 
-    let mut peg_in_deposit =
-        PegInDepositTransaction::new(&context, deposit_input, evm_address.clone());
-    peg_in_deposit.pre_sign(&context);
-    let peg_in_deposit_tx = peg_in_deposit.finalize(&context);
+    let peg_in_deposit =
+        PegInDepositTransaction::new(&depositor_context, deposit_input, evm_address.clone());
+    let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_tx_id = peg_in_deposit_tx.compute_txid();
 
     // mine peg-in deposit
@@ -187,10 +186,9 @@ async fn test_peg_in_time_lock_surpassed() {
         outpoint: refund_funding_outpoint,
         amount: peg_in_deposit_tx.output[0].value,
     };
-    let mut peg_in_refund =
-        PegInRefundTransaction::new(&context, refund_input, evm_address.clone());
-    peg_in_refund.pre_sign(&context);
-    let peg_in_refund_tx = peg_in_refund.finalize(&context);
+    let peg_in_refund =
+        PegInRefundTransaction::new(&depositor_context, refund_input, evm_address.clone());
+    let peg_in_refund_tx = peg_in_refund.finalize();
     let refund_tx_id = peg_in_refund_tx.compute_txid();
 
     // mine peg-in refund
@@ -201,8 +199,8 @@ async fn test_peg_in_time_lock_surpassed() {
 
     // depositor balance
     let depositor_address = generate_pay_to_pubkey_script_address(
-        context.network,
-        &context.depositor_public_key.unwrap(),
+        depositor_context.network,
+        &depositor_context.depositor_public_key,
     );
     let depositor_utxos = client
         .esplora
