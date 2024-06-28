@@ -50,13 +50,6 @@ impl ChallengeTransaction {
 
         let _input0 = connector_a.generate_taproot_leaf_tx_in(1, &input0);
 
-        let _input1 = TxIn {
-            previous_output: OutPoint::default(),
-            script_sig: Script::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::default(),
-        };
-
         let total_output_amount =
             input0.amount + input_amount_crowdfunding - Amount::from_sat(FEE_AMOUNT);
 
@@ -73,7 +66,7 @@ impl ChallengeTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![_input0, _input1],
+                input: vec![_input0],
                 output: vec![_output0],
             },
             prev_outs: vec![
@@ -117,7 +110,14 @@ impl ChallengeTransaction {
     ) {
         let input_index = 1;
 
-        self.tx.input[input_index].previous_output = input;
+        let _input = TxIn {
+          previous_output: input,
+          script_sig: Script::new(),
+          sequence: Sequence::MAX,
+          witness: Witness::default(),
+        };
+
+        self.tx.input.push(_input);
 
         let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;
         let value = self.input_amount_crowdfunding;
