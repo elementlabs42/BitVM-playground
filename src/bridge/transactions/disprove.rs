@@ -85,13 +85,12 @@ impl DisproveTransaction {
     pub fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
 
     pub fn add_input_output(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {
-        let output_index = 1;
-
         // Add output
-        self.tx.output[output_index] = TxOut {
+        self.tx.output.push(TxOut {
             value: self.reward_output_amount,
             script_pubkey: output_script_pubkey,
-        };
+        });
+
 
         let input_index = 1;
 
