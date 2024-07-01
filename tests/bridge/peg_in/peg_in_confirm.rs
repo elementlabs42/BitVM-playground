@@ -42,8 +42,11 @@ async fn test_peg_in_confirm_tx() {
         amount: input_amount,
     };
 
-    let mut peg_in_confirm_tx =
-        PegInConfirmTransaction::new(&depositor_context, input, evm_address);
+    let mut peg_in_confirm_tx = PegInConfirmTransaction::new(
+        &depositor_context,
+        input,
+        depositor_context.evm_address.clone(),
+    );
 
     peg_in_confirm_tx.pre_sign(&verifier_context);
     let tx = peg_in_confirm_tx.finalize();

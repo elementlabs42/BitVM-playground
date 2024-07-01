@@ -20,7 +20,7 @@ use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_in_success() {
-    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _) = setup_test();
+    let (client, depositor_context, _, verifier_context, _, _, _, _, _, _, _, _, _) = setup_test();
 
     let evm_address = String::from("evm address");
 
@@ -58,8 +58,9 @@ async fn test_peg_in_success() {
         outpoint: confirm_funding_outpoint,
         amount: peg_in_deposit_tx.output[0].value,
     };
-    let peg_in_confirm =
+    let mut peg_in_confirm =
         PegInConfirmTransaction::new(&depositor_context, confirm_input, evm_address.clone());
+    peg_in_confirm.pre_sign(&verifier_context);
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let confirm_tx_id = peg_in_confirm_tx.compute_txid();
 
@@ -95,8 +96,6 @@ async fn test_peg_in_success() {
 async fn test_peg_in_time_lock_not_surpassed() {
     let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _) = setup_test();
 
-    let evm_address = String::from("evm address");
-
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);
 
@@ -112,8 +111,11 @@ async fn test_peg_in_time_lock_not_surpassed() {
         amount: deposit_input_amount,
     };
 
-    let peg_in_deposit =
-        PegInDepositTransaction::new(&depositor_context, deposit_input, evm_address.clone());
+    let peg_in_deposit = PegInDepositTransaction::new(
+        &depositor_context,
+        deposit_input,
+        depositor_context.evm_address.clone(),
+    );
     let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_tx_id = peg_in_deposit_tx.compute_txid();
 
@@ -130,8 +132,11 @@ async fn test_peg_in_time_lock_not_surpassed() {
         outpoint: refund_funding_outpoint,
         amount: peg_in_deposit_tx.output[0].value,
     };
-    let peg_in_refund =
-        PegInRefundTransaction::new(&depositor_context, refund_input, evm_address.clone());
+    let peg_in_refund = PegInRefundTransaction::new(
+        &depositor_context,
+        refund_input,
+        depositor_context.evm_address.clone(),
+    );
     let peg_in_refund_tx = peg_in_refund.finalize();
 
     // mine peg-in refund
@@ -195,7 +200,6 @@ async fn test_peg_in_time_lock_surpassed() {
     sleep(Duration::from_secs(60)).await; // TODO: check if this can be refactored to drop waiting
     let refund_result = client.esplora.broadcast(&peg_in_refund_tx).await;
     assert!(refund_result.is_ok());
-    println!("Broadcast result: {:?}\n", refund_result);
 
     // depositor balance
     let depositor_address = generate_pay_to_pubkey_script_address(

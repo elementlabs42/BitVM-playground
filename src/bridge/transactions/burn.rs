@@ -77,11 +77,10 @@ impl BurnTransaction {
     pub fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
 
     pub fn add_output(&mut self, output_script_pubkey: ScriptBuf) {
-        let output_index = 1;
-        self.tx.output[output_index] = TxOut {
+        self.tx.output.push(TxOut {
             value: self.reward_output_amount,
             script_pubkey: output_script_pubkey,
-        };
+        });
     }
 }
 
