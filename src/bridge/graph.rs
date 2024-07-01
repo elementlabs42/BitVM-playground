@@ -20,10 +20,7 @@ use super::{
     },
 };
 
-pub const INITIAL_AMOUNT: u64 = 100_000;
-pub const FEE_AMOUNT: u64 = 1_000;
-pub const DUST_AMOUNT: u64 = 10_000;
-pub const ONE_HUNDRED: u64 = 100_000_000;
+
 
 // TODO delete
 // DEMO SECRETS
@@ -37,9 +34,11 @@ pub const WITHDRAWER_SECRET: &str =
 
 pub const EVM_ADDRESS: &str = "0x0000000000000000000000000000000000000000";
 
-pub type CompiledBitVMGraph = HashMap<OutPoint, Vec<Box<dyn BaseTransaction + 'static>>>;
+// pub type CompiledBitVMGraph = HashMap<OutPoint, Vec<Box<dyn BaseTransaction + 'static>>>;
 
-pub fn compile_peg_in_graph(context: &DepositorContext, input: Input) -> CompiledBitVMGraph {
+
+
+pub fn compile_peg_in_graph(context: &DepositorContext, input: Input) -> () {
     let peg_in_deposit = PegInDepositTransaction::new(context, input);
     let peg_in_deposit_txid = peg_in_deposit.tx().compute_txid();
 

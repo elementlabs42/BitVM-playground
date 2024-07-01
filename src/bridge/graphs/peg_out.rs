@@ -24,6 +24,8 @@ use super::{
 
 
 pub struct PegOutGraph {
+  // state: State,
+  // n_of_n_pre_signing_state: PreSigningState,
   peg_in_confirm_transaction: PegInConfirmTransaction,
   kick_off_transaction: KickOffTransaction,
   take1_transaction: Take1Transaction,
@@ -200,23 +202,28 @@ impl PegOutGraph {
     self.take2_transaction.pre_sign(context);
   }
 
-  // pub fn challenge(&mut self,
-  //   context: &dyn BaseContext,
-  //   input: OutPoint,
-  //   script: &Script,
-  //   keypair: &Keypair,
-  // ) {
-  //   todo!()
-  // }
+  pub fn challenge(&mut self,
+    context: &dyn BaseContext,
+    input: OutPoint,
+    script: &Script,
+    keypair: &Keypair,
+  ) {
+    todo!()
+  }
 
-  // pub fn assert(&mut self) {
-  //   todo!()
-  // }
+  pub fn assert(&mut self) {
+    todo!()
+  }
 
-  // pub fn disprove(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {
-  // }    
+  pub fn disprove(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {
+  }    
 
-  // pub fn burn(&mut self, output_script_pubkey: ScriptBuf) {
-  //   todo!()
-  // }
+  pub fn burn(&mut self, output_script_pubkey: ScriptBuf) {
+    if (!correct state) {
+      panic()
+    }
+
+
+    todo!()
+  }
 }
