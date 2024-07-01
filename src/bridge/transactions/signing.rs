@@ -203,7 +203,7 @@ pub fn push_taproot_leaf_signature_to_witness(
     script: &Script,
     keypair: &Keypair,
 ) {
-    if sighash_type == TapSighashType::Single
+    if sighash_type == TapSighashType::AllPlusAnyoneCanPay // TODO: verify SighashType that should use Prevouts::One
         || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
     {
         let signature = generate_taproot_leaf_signature(
