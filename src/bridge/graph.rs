@@ -55,7 +55,7 @@ pub fn compile_peg_in_graph(context: &DepositorContext, input: Input) -> Compile
         },
     );
 
-    let peg_in_confirm_vout0: usize = 1;
+    let peg_in_confirm_vout0: usize = 0;
     let peg_in_confirm = PegInConfirmTransaction::new(
         context,
         Input {
@@ -77,7 +77,7 @@ pub fn compile_graph(
         context,
         Input {
             outpoint: initial_outpoint,
-            amount: DUST_AMOUNT,
+            amount: Amount::from_sat(DUST_AMOUNT),
         },
     );
     let kick_off_txid = kick_off.tx().compute_txid();
