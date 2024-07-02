@@ -13,10 +13,11 @@ use super::{
             pre_signed::PreSignedTransaction, take1::Take1Transaction, take2::Take2Transaction,
         },
     },
-    base::{BaseGraph, DUST_AMOUNT},
+    base::{BaseGraph, DUST_AMOUNT, GRAPH_VERSION},
 };
 
 pub struct PegOutGraph {
+    version: String,
     // state: State,
     // n_of_n_pre_signing_state: PreSigningState,
     peg_in_confirm_transaction: PegInConfirmTransaction,
@@ -173,6 +174,7 @@ impl PegOutGraph {
         );
 
         PegOutGraph {
+            version: GRAPH_VERSION.to_string(),
             peg_in_confirm_transaction,
             kick_off_transaction,
             take1_transaction,

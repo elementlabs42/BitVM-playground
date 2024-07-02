@@ -2,7 +2,7 @@ use bitcoin::Amount;
 
 use bitvm::bridge::{
     connectors::connector::TaprootConnector,
-    graph::ONE_HUNDRED,
+    graphs::base::ONE_HUNDRED,
     transactions::{
         assert::AssertTransaction,
         base::{deserialize, serialize, Input},

@@ -1,3 +1,5 @@
+pub const GRAPH_VERSION: &str = "0.1";
+
 pub const INITIAL_AMOUNT: u64 = 100_000;
 pub const FEE_AMOUNT: u64 = 1_000;
 pub const DUST_AMOUNT: u64 = 10_000;

@@ -11,7 +11,9 @@ use bitvm::bridge::{
         base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
         verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
-    graph::{DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET},
+    graphs::base::{
+        DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET,
+    },
 };
 
 pub fn setup_test() -> (

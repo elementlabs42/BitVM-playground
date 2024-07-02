@@ -2,7 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
     connectors::connector::TaprootConnector,
-    graph::{DUST_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::{DUST_AMOUNT, INITIAL_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
         base::{BaseTransaction, Input},

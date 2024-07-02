@@ -2,7 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
     connectors::connector::TaprootConnector,
-    graph::ONE_HUNDRED,
+    graphs::base::ONE_HUNDRED,
     transactions::{
         assert::AssertTransaction,
         base::{BaseTransaction, Input},

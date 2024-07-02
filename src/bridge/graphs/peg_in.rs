@@ -10,10 +10,11 @@ use super::{
             pre_signed::PreSignedTransaction,
         },
     },
-    base::BaseGraph,
+    base::{BaseGraph, GRAPH_VERSION},
 };
 
 pub struct PegInGraph {
+    version: String,
     peg_in_deposit_transaction: PegInDepositTransaction,
     peg_in_refund_transaction: PegInRefundTransaction,
     peg_in_confirm_transaction: PegInConfirmTransaction,
@@ -51,6 +52,7 @@ impl PegInGraph {
         );
 
         PegInGraph {
+            version: GRAPH_VERSION.to_string(),
             peg_in_deposit_transaction,
             peg_in_refund_transaction,
             peg_in_confirm_transaction,

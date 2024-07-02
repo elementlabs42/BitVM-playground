@@ -6,7 +6,7 @@ use bitcoin::{
 
 use bitvm::bridge::{
     connectors::connector::P2wshConnector,
-    graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script,
     transactions::{
         base::{BaseTransaction, Input},
