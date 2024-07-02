@@ -4,7 +4,7 @@ use bitvm::bridge::{
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, InputWithScript},
         challenge::ChallengeTransaction,
     },
 };
@@ -34,14 +34,20 @@ async fn test_challenge_success() {
         challenge_input_amount,
     )
     .await;
+    let challenge_crowdfunding_input = InputWithScript {
+        outpoint: challenge_funding_outpoint,
+        amount: challenge_input_amount,
+        script: &generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
+    };
 
+    let kick_off_output_index = 1; // connectorA
     let challenge_kick_off_outpoint = OutPoint {
         txid: kick_off_tx_id,
-        vout: 1, // connectorA
+        vout: kick_off_output_index,
     };
     let challenge_kick_off_input = Input {
         outpoint: challenge_kick_off_outpoint,
-        amount: kick_off_tx.output[1].value,
+        amount: kick_off_tx.output[kick_off_output_index as usize].value,
     };
 
     let mut challenge = ChallengeTransaction::new(
@@ -49,11 +55,11 @@ async fn test_challenge_success() {
         challenge_kick_off_input,
         challenge_input_amount,
     );
-    challenge.add_input(
+    challenge.add_inputs_and_output(
         &depositor_context,
-        challenge_funding_outpoint,
-        &generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
+        &vec![challenge_crowdfunding_input],
         &depositor_context.depositor_keypair,
+        generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
     ); // add crowdfunding input
     let challenge_tx = challenge.finalize();
     let challenge_tx_id = challenge_tx.compute_txid();

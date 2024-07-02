@@ -1,7 +1,7 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, consensus, key::Keypair, Amount, OutPoint, ScriptBuf, Sequence, TapSighashType,
-    Transaction, TxIn, TxOut, Witness,
+    absolute, consensus, key::Keypair, Amount, ScriptBuf, Sequence, TapSighashType, Transaction,
+    TxIn, TxOut, Witness,
 };
 use serde::{Deserialize, Serialize};
 
@@ -97,39 +97,6 @@ impl ChallengeTransaction {
             TapSighashType::SinglePlusAnyoneCanPay,
             self.connector_a.generate_taproot_spend_info(),
             &vec![&context.operator_keypair],
-        );
-    }
-
-    // TODO allow for aggregating multiple inputs and refund outputs
-    pub fn add_input(
-        &mut self,
-        context: &dyn BaseContext,
-        input: OutPoint,
-        script: &Script,
-        keypair: &Keypair,
-    ) {
-        let input_index = 1;
-
-        let _input = TxIn {
-            previous_output: input,
-            script_sig: Script::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::default(),
-        };
-
-        self.tx.input.push(_input);
-
-        let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;
-        let value = self.input_amount_crowdfunding;
-
-        populate_p2wsh_witness(
-            context,
-            &mut self.tx,
-            input_index,
-            sighash_type,
-            script,
-            value,
-            &vec![&keypair],
         );
     }
 
