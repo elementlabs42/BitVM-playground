@@ -141,23 +141,11 @@ impl ChallengeTransaction {
         keypair: &Keypair,
         output_script_pubkey: ScriptBuf,
     ) {
-        // add crowdfunding inputs
-        let first_input_index = self.tx.input.len();
-        let mut input_index = first_input_index;
+        // check total input amount
         let mut total_input_amount = Amount::from_sat(0);
         for input in inputs {
-            let _input = TxIn {
-                previous_output: input.outpoint,
-                script_sig: Script::new(),
-                sequence: Sequence::MAX,
-                witness: Witness::default(),
-            };
-            self.tx.input.push(_input);
-
-            input_index += 1;
             total_input_amount += input.amount;
         }
-
         if total_input_amount < self.input_amount_crowdfunding {
             panic!("Total input amount too low. Add additional input.");
         } else if total_input_amount > self.input_amount_crowdfunding {
@@ -169,10 +157,19 @@ impl ChallengeTransaction {
             self.tx.output.push(_output);
         }
 
-        // add witness
+        // add crowdfunding inputs
         let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;
-        input_index = first_input_index;
+        let mut input_index = self.tx.input.len();
         for input in inputs {
+            let _input = TxIn {
+                previous_output: input.outpoint,
+                script_sig: Script::new(),
+                sequence: Sequence::MAX,
+                witness: Witness::default(),
+            };
+            self.tx.input.push(_input);
+
+            // add witness
             populate_p2wsh_witness(
                 context,
                 &mut self.tx,
