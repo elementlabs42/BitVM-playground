@@ -1,4 +1,4 @@
-use bitcoin::{key::Keypair, Amount, OutPoint, Script, ScriptBuf};
+use bitcoin::{key::Keypair, Amount, Network, OutPoint, PublicKey, XOnlyPublicKey, Script, ScriptBuf};
 use num_traits::ToPrimitive;
 
 use crate::bridge::contexts::{base::BaseContext, verifier::VerifierContext};
@@ -18,6 +18,8 @@ use super::{
 
 pub struct PegOutGraph {
     version: String,
+    network: Network,
+
     // state: State,
     // n_of_n_pre_signing_state: PreSigningState,
     peg_in_confirm_transaction: PegInConfirmTransaction,
@@ -28,9 +30,21 @@ pub struct PegOutGraph {
     take2_transaction: Take2Transaction,
     disprove_transaction: DisproveTransaction,
     burn_transaction: BurnTransaction,
+
+    withdrawer_public_key: Option<PublicKey>,
+    withdrawer_taproot_public_key: Option<XOnlyPublicKey>,
+    withdrawer_evm_address: Option<String>,
 }
 
-impl BaseGraph for PegOutGraph {}
+impl BaseGraph for PegOutGraph {
+    fn network(&self) -> Network {
+        self.network
+    }
+
+    fn id(&self) -> String {
+        self.peg_in_confirm_transaction.tx().compute_txid().to_string()
+    }
+}
 
 impl PegOutGraph {
     pub fn new(
@@ -175,6 +189,7 @@ impl PegOutGraph {
 
         PegOutGraph {
             version: GRAPH_VERSION.to_string(),
+            network: context.network,
             peg_in_confirm_transaction,
             kick_off_transaction,
             take1_transaction,
@@ -183,6 +198,9 @@ impl PegOutGraph {
             take2_transaction,
             disprove_transaction,
             burn_transaction,
+            withdrawer_public_key: None,
+            withdrawer_taproot_public_key: None,
+            withdrawer_evm_address: None,
         }
     }
 

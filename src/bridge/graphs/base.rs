@@ -1,3 +1,5 @@
+use bitcoin::Network;
+
 pub const GRAPH_VERSION: &str = "0.1";
 
 pub const INITIAL_AMOUNT: u64 = 100_000;
@@ -17,4 +19,7 @@ pub const WITHDRAWER_SECRET: &str =
 
 pub const EVM_ADDRESS: &str = "0x0000000000000000000000000000000000000000";
 
-pub trait BaseGraph {}
+pub trait BaseGraph {
+    fn network(&self) -> Network;
+    fn id(&self) -> String;
+}

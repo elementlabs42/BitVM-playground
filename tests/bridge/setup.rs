@@ -43,32 +43,24 @@ pub fn setup_test() -> (
         DEPOSITOR_SECRET,
         &verifier_keys.2,
         &verifier_keys.3,
-        EVM_ADDRESS,
     );
     let operator_context = OperatorContext::new(
         network,
         OPERATOR_SECRET,
         &verifier_keys.2,
         &verifier_keys.3,
-        EVM_ADDRESS,
     );
     let verifier_context = VerifierContext::new(
         network,
         N_OF_N_SECRET,
         &operator_keys.2,
         &operator_keys.3,
-        &depositor_keys.2,
-        &depositor_keys.3,
-        &withdrawer_keys.2,
-        &withdrawer_keys.3,
-        EVM_ADDRESS,
     );
     let withdrawer_context = WithdrawerContext::new(
         network,
         WITHDRAWER_SECRET,
         &verifier_keys.2,
         &verifier_keys.3,
-        EVM_ADDRESS,
     );
 
     let client = BitVMClient::new();

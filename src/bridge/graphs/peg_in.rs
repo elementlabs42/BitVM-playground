@@ -1,4 +1,4 @@
-use bitcoin::OutPoint;
+use bitcoin::{Network, OutPoint, PublicKey, XOnlyPublicKey};
 use num_traits::ToPrimitive;
 
 use super::{
@@ -15,15 +15,29 @@ use super::{
 
 pub struct PegInGraph {
     version: String,
+    network: Network,
+
     peg_in_deposit_transaction: PegInDepositTransaction,
     peg_in_refund_transaction: PegInRefundTransaction,
     peg_in_confirm_transaction: PegInConfirmTransaction,
+
+    pub depositor_public_key: PublicKey,
+    depositor_taproot_public_key: XOnlyPublicKey,
+    depositor_evm_address: String,
 }
 
-impl BaseGraph for PegInGraph {}
+impl BaseGraph for PegInGraph {
+    fn network(&self) -> Network {
+        self.network
+    }
+
+    fn id(&self) -> String {
+        self.peg_in_deposit_transaction.tx().compute_txid().to_string()
+    }
+}
 
 impl PegInGraph {
-    pub fn new(context: &DepositorContext, input: Input) -> Self {
+    pub fn new(context: &DepositorContext, input: Input, evm_address: &str) -> Self {
         let mut peg_in_deposit_transaction = PegInDepositTransaction::new(context, input);
         let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();
 
@@ -53,9 +67,13 @@ impl PegInGraph {
 
         PegInGraph {
             version: GRAPH_VERSION.to_string(),
+            network: context.network,
             peg_in_deposit_transaction,
             peg_in_refund_transaction,
             peg_in_confirm_transaction,
+            depositor_public_key: context.depositor_public_key,
+            depositor_taproot_public_key: context.depositor_taproot_public_key,
+            depositor_evm_address: evm_address.to_string(),
         }
     }
 }
