@@ -6,7 +6,7 @@ use super::{
     super::{
         connectors::{connector::*, connector_b::ConnectorB},
         contexts::operator::OperatorContext,
-        graph::FEE_AMOUNT,
+        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,

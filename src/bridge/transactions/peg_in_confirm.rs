@@ -6,7 +6,7 @@ use super::{
     super::{
         connectors::{connector::*, connector_0::Connector0, connector_z::ConnectorZ},
         contexts::depositor::DepositorContext,
-        graph::FEE_AMOUNT,
+        graphs::base::FEE_AMOUNT,
     },
     base::*,
     pre_signed::*,

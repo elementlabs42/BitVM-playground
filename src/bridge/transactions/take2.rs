@@ -8,7 +8,7 @@ use super::{
             connector::*, connector_0::Connector0, connector_2::Connector2, connector_3::Connector3,
         },
         contexts::operator::OperatorContext,
-        graph::FEE_AMOUNT,
+        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,

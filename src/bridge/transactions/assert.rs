@@ -9,7 +9,7 @@ use super::{
             connector_b::ConnectorB, connector_c::ConnectorC,
         },
         contexts::operator::OperatorContext,
-        graph::{DUST_AMOUNT, FEE_AMOUNT},
+        graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
     },
     base::*,
     pre_signed::*,

@@ -20,8 +20,6 @@ use super::{
     },
 };
 
-
-
 // TODO delete
 // DEMO SECRETS
 pub const OPERATOR_SECRET: &str =
@@ -35,8 +33,6 @@ pub const WITHDRAWER_SECRET: &str =
 pub const EVM_ADDRESS: &str = "0x0000000000000000000000000000000000000000";
 
 // pub type CompiledBitVMGraph = HashMap<OutPoint, Vec<Box<dyn BaseTransaction + 'static>>>;
-
-
 
 pub fn compile_peg_in_graph(context: &DepositorContext, input: Input) -> () {
     let peg_in_deposit = PegInDepositTransaction::new(context, input);

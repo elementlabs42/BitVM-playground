@@ -11,7 +11,7 @@ use super::{
             connector::*, connector_1::Connector1, connector_a::ConnectorA, connector_b::ConnectorB,
         },
         contexts::operator::OperatorContext,
-        graph::{DUST_AMOUNT, FEE_AMOUNT},
+        graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
         scripts::*,
     },
     base::*,

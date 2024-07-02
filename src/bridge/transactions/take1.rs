@@ -9,7 +9,7 @@ use super::{
             connector_a::ConnectorA, connector_b::ConnectorB,
         },
         contexts::operator::OperatorContext,
-        graph::FEE_AMOUNT,
+        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,

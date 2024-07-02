@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         contexts::{operator::OperatorContext, withdrawer::WithdrawerContext},
-        graph::FEE_AMOUNT,
+        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
