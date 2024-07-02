@@ -22,9 +22,7 @@ use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
 async fn test_peg_in_success() {
     let (client, depositor_context, _, verifier_context, _, _, _, _, _, _, _, _, _) = setup_test();
 
-    let evm_address = String::from("evm address");
-
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
+    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);
 
     // peg-in deposit
@@ -39,8 +37,11 @@ async fn test_peg_in_success() {
         amount: deposit_input_amount,
     };
 
-    let peg_in_deposit =
-        PegInDepositTransaction::new(&depositor_context, deposit_input, evm_address.clone());
+    let peg_in_deposit = PegInDepositTransaction::new(
+        &depositor_context,
+        deposit_input,
+        depositor_context.evm_address.clone(),
+    );
 
     let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_tx_id = peg_in_deposit_tx.compute_txid();
@@ -50,16 +51,20 @@ async fn test_peg_in_success() {
     assert!(deposit_result.is_ok());
 
     // peg-in confirm
+    let output_index = 0;
     let confirm_funding_outpoint = OutPoint {
         txid: deposit_tx_id,
-        vout: 0,
+        vout: output_index,
     };
     let confirm_input = Input {
         outpoint: confirm_funding_outpoint,
-        amount: peg_in_deposit_tx.output[0].value,
+        amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
-    let mut peg_in_confirm =
-        PegInConfirmTransaction::new(&depositor_context, confirm_input, evm_address.clone());
+    let mut peg_in_confirm = PegInConfirmTransaction::new(
+        &depositor_context,
+        confirm_input,
+        depositor_context.evm_address.clone(),
+    );
     peg_in_confirm.pre_sign(&verifier_context);
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let confirm_tx_id = peg_in_confirm_tx.compute_txid();
@@ -88,7 +93,11 @@ async fn test_peg_in_success() {
     assert!(multi_sig_utxo.is_some());
     assert_eq!(
         multi_sig_utxo.unwrap().value,
-        peg_in_confirm_tx.output[0].value
+        peg_in_confirm_tx.output[0].value,
+    );
+    assert_eq!(
+        peg_in_confirm_tx.output[0].value,
+        Amount::from_sat(INITIAL_AMOUNT),
     );
 }
 
@@ -96,7 +105,7 @@ async fn test_peg_in_success() {
 async fn test_peg_in_time_lock_not_surpassed() {
     let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _) = setup_test();
 
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
+    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);
 
     // peg-in deposit
@@ -124,13 +133,14 @@ async fn test_peg_in_time_lock_not_surpassed() {
     assert!(deposit_result.is_ok());
 
     // peg-in refund
+    let output_index = 0;
     let refund_funding_outpoint = OutPoint {
         txid: deposit_tx_id,
-        vout: 0,
+        vout: output_index,
     };
     let refund_input = Input {
         outpoint: refund_funding_outpoint,
-        amount: peg_in_deposit_tx.output[0].value,
+        amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
     let peg_in_refund = PegInRefundTransaction::new(
         &depositor_context,
@@ -156,9 +166,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
 async fn test_peg_in_time_lock_surpassed() {
     let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _) = setup_test();
 
-    let evm_address = String::from("evm address");
-
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
+    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);
 
     // peg-in deposit
@@ -173,8 +181,11 @@ async fn test_peg_in_time_lock_surpassed() {
         amount: deposit_input_amount,
     };
 
-    let peg_in_deposit =
-        PegInDepositTransaction::new(&depositor_context, deposit_input, evm_address.clone());
+    let peg_in_deposit = PegInDepositTransaction::new(
+        &depositor_context,
+        deposit_input,
+        depositor_context.evm_address.clone(),
+    );
     let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_tx_id = peg_in_deposit_tx.compute_txid();
 
@@ -183,16 +194,20 @@ async fn test_peg_in_time_lock_surpassed() {
     assert!(deposit_result.is_ok());
 
     // peg-in refund
+    let output_index = 0;
     let refund_funding_outpoint = OutPoint {
         txid: deposit_tx_id,
-        vout: 0,
+        vout: output_index,
     };
     let refund_input = Input {
         outpoint: refund_funding_outpoint,
-        amount: peg_in_deposit_tx.output[0].value,
+        amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
-    let peg_in_refund =
-        PegInRefundTransaction::new(&depositor_context, refund_input, evm_address.clone());
+    let peg_in_refund = PegInRefundTransaction::new(
+        &depositor_context,
+        refund_input,
+        depositor_context.evm_address.clone(),
+    );
     let peg_in_refund_tx = peg_in_refund.finalize();
     let refund_tx_id = peg_in_refund_tx.compute_txid();
 
@@ -221,5 +236,9 @@ async fn test_peg_in_time_lock_surpassed() {
     assert_eq!(
         depositor_utxo.unwrap().value,
         peg_in_refund_tx.output[0].value
+    );
+    assert_eq!(
+        peg_in_refund_tx.output[0].value,
+        Amount::from_sat(INITIAL_AMOUNT),
     );
 }
