@@ -28,9 +28,7 @@ pub struct KickOffTransaction {
 }
 
 impl PreSignedTransaction for KickOffTransaction {
-    fn tx(&self) -> &Transaction {
-        &self.tx
-    }
+    fn tx(&self) -> &Transaction { &self.tx }
 
     fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 

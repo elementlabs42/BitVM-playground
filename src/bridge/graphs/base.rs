@@ -21,5 +21,5 @@ pub const EVM_ADDRESS: &str = "0x0000000000000000000000000000000000000000";
 
 pub trait BaseGraph {
     fn network(&self) -> Network;
-    fn id(&self) -> String;
+    fn id(&self) -> &String;
 }

@@ -1,5 +1,10 @@
-use bitcoin::{key::Keypair, Amount, Network, OutPoint, PublicKey, XOnlyPublicKey, Script, ScriptBuf};
+use bitcoin::{
+    hex::{Case::Upper, DisplayHex},
+    key::Keypair,
+    Amount, Network, OutPoint, PublicKey, Script, ScriptBuf, XOnlyPublicKey,
+};
 use num_traits::ToPrimitive;
+use sha2::{Digest, Sha256};
 
 use crate::bridge::contexts::{base::BaseContext, verifier::VerifierContext};
 
@@ -10,15 +15,18 @@ use super::{
             assert::AssertTransaction, base::Input, burn::BurnTransaction,
             challenge::ChallengeTransaction, disprove::DisproveTransaction,
             kick_off::KickOffTransaction, peg_in_confirm::PegInConfirmTransaction,
-            pre_signed::PreSignedTransaction, take1::Take1Transaction, take2::Take2Transaction,
+            peg_out::PegOutTransaction, pre_signed::PreSignedTransaction, take1::Take1Transaction,
+            take2::Take2Transaction,
         },
     },
     base::{BaseGraph, DUST_AMOUNT, GRAPH_VERSION},
+    peg_in::PegInGraph,
 };
 
 pub struct PegOutGraph {
     version: String,
     network: Network,
+    id: String,
 
     // state: State,
     // n_of_n_pre_signing_state: PreSigningState,
@@ -31,25 +39,26 @@ pub struct PegOutGraph {
     disprove_transaction: DisproveTransaction,
     burn_transaction: BurnTransaction,
 
+    operator_public_key: PublicKey,
+    operator_taproot_public_key: XOnlyPublicKey,
+
     withdrawer_public_key: Option<PublicKey>,
     withdrawer_taproot_public_key: Option<XOnlyPublicKey>,
     withdrawer_evm_address: Option<String>,
+
+    peg_out_transaction: Option<PegOutTransaction>,
 }
 
 impl BaseGraph for PegOutGraph {
-    fn network(&self) -> Network {
-        self.network
-    }
+    fn network(&self) -> Network { self.network }
 
-    fn id(&self) -> String {
-        self.peg_in_confirm_transaction.tx().compute_txid().to_string()
-    }
+    fn id(&self) -> &String { &self.id }
 }
 
 impl PegOutGraph {
     pub fn new(
         context: &OperatorContext,
-        mut peg_in_confirm_transaction: PegInConfirmTransaction,
+        peg_in_graph: &PegInGraph,
         initial_outpoint: OutPoint,
     ) -> Self {
         let mut kick_off_transaction = KickOffTransaction::new(
@@ -61,6 +70,7 @@ impl PegOutGraph {
         );
         let kick_off_txid = kick_off_transaction.tx().compute_txid();
 
+        let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
         let take1_vout0 = 0;
         let take1_vout1 = 0;
@@ -190,6 +200,7 @@ impl PegOutGraph {
         PegOutGraph {
             version: GRAPH_VERSION.to_string(),
             network: context.network,
+            id: generate_id(&peg_in_confirm_transaction, &context.operator_public_key),
             peg_in_confirm_transaction,
             kick_off_transaction,
             take1_transaction,
@@ -198,9 +209,12 @@ impl PegOutGraph {
             take2_transaction,
             disprove_transaction,
             burn_transaction,
+            operator_public_key: context.operator_public_key,
+            operator_taproot_public_key: context.operator_taproot_public_key,
             withdrawer_public_key: None,
             withdrawer_taproot_public_key: None,
             withdrawer_evm_address: None,
+            peg_out_transaction: None,
         }
     }
 
@@ -234,4 +248,18 @@ impl PegOutGraph {
 
         todo!()
     }
+}
+
+pub fn generate_id(
+    peg_in_confirm_transaction: &PegInConfirmTransaction,
+    operator_public_key: &PublicKey,
+) -> String {
+    let mut hasher = Sha256::new();
+
+    hasher.update(
+        peg_in_confirm_transaction.tx().compute_txid().to_string()
+            + &operator_public_key.to_string(),
+    );
+
+    hasher.finalize().to_hex_string(Upper)
 }

@@ -23,9 +23,7 @@ pub struct Take2Transaction {
 }
 
 impl PreSignedTransaction for Take2Transaction {
-    fn tx(&self) -> &Transaction {
-        &self.tx
-    }
+    fn tx(&self) -> &Transaction { &self.tx }
 
     fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 

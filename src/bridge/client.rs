@@ -11,7 +11,14 @@ use super::{
         verifier::VerifierContext,
         withdrawer::WithdrawerContext,
     },
-    graphs::{base::{BaseGraph, DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET}, peg_in::PegInGraph, peg_out::PegOutGraph},
+    graphs::{
+        base::{
+            BaseGraph, DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET,
+            WITHDRAWER_SECRET,
+        },
+        peg_in::PegInGraph,
+        peg_out::{generate_id, PegOutGraph},
+    },
     transactions::base::Input,
 };
 
@@ -35,8 +42,13 @@ pub struct BitVMClient {
 }
 
 impl BitVMClient {
-    pub fn new(network: Network, depositor_secret: Option<&str>, operator_secret: Option<&str>, n_of_n_secret: Option<&str>, withdrawer_secret: Option<&str>) -> Self {
-
+    pub fn new(
+        network: Network,
+        depositor_secret: Option<&str>,
+        operator_secret: Option<&str>,
+        n_of_n_secret: Option<&str>,
+        withdrawer_secret: Option<&str>,
+    ) -> Self {
         // TODO these values should be hardcoded
         let depositor_keys = generate_keys_from_secret(network, DEPOSITOR_SECRET);
         let operator_keys = generate_keys_from_secret(network, OPERATOR_SECRET);
@@ -45,22 +57,42 @@ impl BitVMClient {
 
         let mut depositor_context = None;
         if depositor_secret.is_some() {
-            depositor_context = Some(DepositorContext::new(network, depositor_secret.unwrap(), &verifier_keys.2, &verifier_keys.3));
+            depositor_context = Some(DepositorContext::new(
+                network,
+                depositor_secret.unwrap(),
+                &verifier_keys.2,
+                &verifier_keys.3,
+            ));
         }
 
         let mut operator_context = None;
         if operator_secret.is_some() {
-            operator_context = Some(OperatorContext::new(network, operator_secret.unwrap(), &verifier_keys.2, &verifier_keys.3));
+            operator_context = Some(OperatorContext::new(
+                network,
+                operator_secret.unwrap(),
+                &verifier_keys.2,
+                &verifier_keys.3,
+            ));
         }
-        
+
         let mut verifier_context = None;
         if n_of_n_secret.is_some() {
-            verifier_context = Some(VerifierContext::new(network, n_of_n_secret.unwrap(), &operator_keys.2, &operator_keys.3));
+            verifier_context = Some(VerifierContext::new(
+                network,
+                n_of_n_secret.unwrap(),
+                &operator_keys.2,
+                &operator_keys.3,
+            ));
         }
 
         let mut withdrawer_context = None;
         if withdrawer_secret.is_some() {
-            withdrawer_context = Some(WithdrawerContext::new(network, withdrawer_secret.unwrap(), &verifier_keys.2, &verifier_keys.3));
+            withdrawer_context = Some(WithdrawerContext::new(
+                network,
+                withdrawer_secret.unwrap(),
+                &verifier_keys.2,
+                &verifier_keys.3,
+            ));
         }
 
         Self {
@@ -80,14 +112,12 @@ impl BitVMClient {
         }
     }
 
-    pub fn sync(&mut self) { 
+    pub fn sync(&mut self) {
         self.read();
         self.save();
     }
 
-    fn read(&mut self) {
-
-    }
+    fn read(&mut self) {}
 
     fn save(&self) {
         // TODO
@@ -122,23 +152,15 @@ impl BitVMClient {
         }
     }
 
-    pub async fn peg_in(&mut self, input: Input, evm_address: &str) {
-        if self.depositor_context.is_none() {
-            panic!("Depositor context must be initialized");
-        }
-
-        let peg_in_graph = PegInGraph::new(self.depositor_context.as_ref().unwrap(), input, evm_address);
-
-        // TODO broadcast peg in txn
-
-        self.peg_in_graphs.push(peg_in_graph);
-
-        self.save();
-    }
-
     pub async fn status(&self) {
         if self.depositor_context.is_some() {
             self.depositor_status();
+        }
+        if self.operator_context.is_some() {
+            self.operator_status();
+        }
+        if self.verifier_context.is_some() {
+            self.verifier_status();
         }
     }
 
@@ -147,13 +169,72 @@ impl BitVMClient {
             panic!("Depositor context must be initialized");
         }
 
-        let depositor_public_key = &self.depositor_context.as_ref().unwrap().depositor_public_key;
+        let depositor_public_key = &self
+            .depositor_context
+            .as_ref()
+            .unwrap()
+            .depositor_public_key;
         for peg_in_graph in self.peg_in_graphs.iter() {
             if peg_in_graph.depositor_public_key.eq(depositor_public_key) {
+                println!(
+                    "Peg in Graph id: {:?} status: {:?}\n",
+                    peg_in_graph.id(),
+                    "todo"
+                );
                 // If peg in is complete, let depositor know
                 // If peg in refund has elapsed, let depositor know
             }
         }
+    }
+
+    async fn operator_status(&self) {
+        if self.operator_context.is_none() {
+            panic!("Operator context must be initialized");
+        }
+
+        let peg_out_graphs_by_id: HashMap<String, &PegOutGraph> = HashMap::new();
+        for peg_out_graph in self.peg_out_graphs.iter() {
+            peg_out_graphs_by_id[peg_out_graph.id()] = peg_out_graph;
+        }
+
+        let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
+        for peg_in_graph in self.peg_in_graphs.iter() {
+            let peg_out_graph_id = generate_id(
+                peg_in_graph.peg_in_confirm_transaction_ref(),
+                operator_public_key,
+            );
+            if !peg_out_graphs_by_id.contains_key(&peg_out_graph_id) {
+                // Create peg out graph
+            }
+        }
+    }
+
+    async fn verifier_status(&self) {
+        if self.verifier_context.is_none() {
+            panic!("Verifier context must be initialized");
+        }
+
+        let n_of_n_public_key = &self.verifier_context.as_ref().unwrap().n_of_n_public_key;
+        for peg_out_graph in self.peg_out_graphs.iter() {
+            // check if pre-signed
+            // check if dispute
+            // check if burn
+        }
+    }
+
+    pub async fn peg_in(&mut self, input: Input, evm_address: &str) {
+        if self.depositor_context.is_none() {
+            panic!("Depositor context must be initialized");
+        }
+
+        let peg_in_graph =
+            PegInGraph::new(self.depositor_context.as_ref().unwrap(), input, evm_address);
+
+        // TODO broadcast peg in txn
+
+        self.peg_in_graphs.push(peg_in_graph);
+
+        self.save();
     }
 
     pub async fn peg_in_refund(&mut self, graph_id: &str) {
