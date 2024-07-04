@@ -1,7 +1,7 @@
 use bitcoin::{Amount, OutPoint};
 
 use bitvm::bridge::{
-    graph::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
         base::{BaseTransaction, Input, InputWithScript},

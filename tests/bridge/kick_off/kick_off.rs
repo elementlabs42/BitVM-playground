@@ -2,7 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
-    scripts::{generate_pay_to_pubkey_script_address},
+    scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
         kick_off::KickOffTransaction,
