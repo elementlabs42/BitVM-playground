@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 
 use super::{
     super::{
-        contexts::depositor::DepositorContext,
+        contexts::{depositor::DepositorContext, verifier::VerifierContext},
         transactions::{
             base::Input, peg_in_confirm::PegInConfirmTransaction,
             peg_in_deposit::PegInDepositTransaction, peg_in_refund::PegInRefundTransaction,
@@ -80,6 +80,10 @@ impl PegInGraph {
             depositor_taproot_public_key: context.depositor_taproot_public_key,
             depositor_evm_address: evm_address.to_string(),
         }
+    }
+
+    pub fn pre_sign(&mut self, context: &VerifierContext) {
+        self.peg_in_confirm_transaction.pre_sign(context);
     }
 
     pub fn peg_in_confirm_transaction_ref(&self) -> &PegInConfirmTransaction {

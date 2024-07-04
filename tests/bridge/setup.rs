@@ -30,6 +30,7 @@ pub fn setup_test() -> (
     Connector1,
     Connector2,
     Connector3,
+    String,
 ) {
     let network = Network::Testnet;
 
@@ -95,5 +96,6 @@ pub fn setup_test() -> (
         connector_1,
         connector_2,
         connector_3,
+        EVM_ADDRESS.to_string(),
     );
 }

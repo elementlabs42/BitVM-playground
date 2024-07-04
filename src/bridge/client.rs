@@ -117,9 +117,12 @@ impl BitVMClient {
         self.save();
     }
 
-    fn read(&mut self) {}
+    fn read(&mut self) {
+        // would fetch all peg in/out graphs from remote database
+    }
 
     fn save(&self) {
+        // would write all new graphs to remote database (append only)
         // TODO
     }
 
@@ -192,17 +195,14 @@ impl BitVMClient {
             panic!("Operator context must be initialized");
         }
 
-        let peg_out_graphs_by_id: HashMap<String, &PegOutGraph> = HashMap::new();
+        let mut peg_out_graphs_by_id: HashMap<&String, &PegOutGraph> = HashMap::new();
         for peg_out_graph in self.peg_out_graphs.iter() {
-            peg_out_graphs_by_id[peg_out_graph.id()] = peg_out_graph;
+            peg_out_graphs_by_id.insert(peg_out_graph.id(), peg_out_graph);
         }
 
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
         for peg_in_graph in self.peg_in_graphs.iter() {
-            let peg_out_graph_id = generate_id(
-                peg_in_graph.peg_in_confirm_transaction_ref(),
-                operator_public_key,
-            );
+            let peg_out_graph_id = generate_id(peg_in_graph, operator_public_key);
             if !peg_out_graphs_by_id.contains_key(&peg_out_graph_id) {
                 // Create peg out graph
             }
@@ -216,6 +216,7 @@ impl BitVMClient {
 
         let n_of_n_public_key = &self.verifier_context.as_ref().unwrap().n_of_n_public_key;
         for peg_out_graph in self.peg_out_graphs.iter() {
+            // verify graph
             // check if pre-signed
             // check if dispute
             // check if burn
@@ -253,6 +254,19 @@ impl BitVMClient {
             .collect::<Vec<_>>();
         if !possible_utxos.is_empty() {
             Some(possible_utxos[0].clone())
+        } else {
+            None
+        }
+    }
+
+    pub async fn get_initial_utxos(&self, address: Address, amount: Amount) -> Option<Vec<Utxo>> {
+        let utxos = self.esplora.get_address_utxo(address).await.unwrap();
+        let possible_utxos = utxos
+            .into_iter()
+            .filter(|utxo| utxo.value == amount)
+            .collect::<Vec<_>>();
+        if !possible_utxos.is_empty() {
+            Some(possible_utxos)
         } else {
             None
         }

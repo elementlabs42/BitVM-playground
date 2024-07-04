@@ -1,9 +1,8 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
-    connectors::connector::P2wshConnector,
-    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
-    scripts::generate_pay_to_pubkey_script,
+    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
         kick_off::KickOffTransaction,
@@ -16,7 +15,7 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_kick_off_tx() {
-    let (client, _, operator_context, _, _, _, _, _, _, _, _, _, _) = setup_test();
+    let (client, _, operator_context, _, _, _, _, _, _, _, _, _, _, _) = setup_test();
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let input_amount = Amount::from_sat(input_amount_raw);
