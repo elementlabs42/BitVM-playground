@@ -43,7 +43,8 @@ async fn test_peg_in_deposit_tx() {
         amount: input_amount,
     };
 
-    let peg_in_deposit_tx = PegInDepositTransaction::new(&depositor_context, input);
+    let peg_in_deposit_tx =
+        PegInDepositTransaction::new(&depositor_context, &evm_address, input);
 
     println!(
         "Depositor public key: {:?}\n",
