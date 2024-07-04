@@ -20,7 +20,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_burn_tx_successfully() {
-        let (client, _, operator_context, verifier_context, _, _, connector_b, _, _, _, _, _, _) =
+        let (client, _, operator_context, verifier_context, _, _, connector_b, _, _, _, _, _, _, _) =
             setup_test();
 
         let funding_utxo_0 = client
@@ -63,7 +63,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
-        let (client, _, operator_context, verifier_context, _, _, connector_b, _, _, _, _, _, _) =
+        let (client, _, operator_context, verifier_context, _, _, connector_b, _, _, _, _, _, _, _) =
             setup_test();
         let funding_utxo_0 = client
             .get_initial_utxo(

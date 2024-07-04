@@ -113,7 +113,7 @@ impl ChallengeTransaction {
         if self.tx.input.len() > 1 {
             panic!("Cannot add any more inputs or outputs.");
         }
-        
+
         // check total input amount
         let mut total_input_amount = Amount::from_sat(0);
         for input in inputs {

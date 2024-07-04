@@ -14,9 +14,8 @@ use super::{
         transactions::{
             assert::AssertTransaction, base::Input, burn::BurnTransaction,
             challenge::ChallengeTransaction, disprove::DisproveTransaction,
-            kick_off::KickOffTransaction, peg_in_confirm::PegInConfirmTransaction,
-            peg_out::PegOutTransaction, pre_signed::PreSignedTransaction, take1::Take1Transaction,
-            take2::Take2Transaction,
+            kick_off::KickOffTransaction, peg_out::PegOutTransaction,
+            pre_signed::PreSignedTransaction, take1::Take1Transaction, take2::Take2Transaction,
         },
     },
     base::{BaseGraph, DUST_AMOUNT, GRAPH_VERSION},
@@ -30,7 +29,7 @@ pub struct PegOutGraph {
 
     // state: State,
     // n_of_n_pre_signing_state: PreSigningState,
-    peg_in_confirm_transaction: PegInConfirmTransaction,
+    peg_in_graph_id: String,
     kick_off_transaction: KickOffTransaction,
     take1_transaction: Take1Transaction,
     challenge_transaction: ChallengeTransaction,
@@ -200,8 +199,8 @@ impl PegOutGraph {
         PegOutGraph {
             version: GRAPH_VERSION.to_string(),
             network: context.network,
-            id: generate_id(&peg_in_confirm_transaction, &context.operator_public_key),
-            peg_in_confirm_transaction,
+            id: generate_id(peg_in_graph, &context.operator_public_key),
+            peg_in_graph_id: peg_in_graph.id().clone(),
             kick_off_transaction,
             take1_transaction,
             challenge_transaction,
@@ -222,7 +221,6 @@ impl PegOutGraph {
         self.assert_transaction.pre_sign(context);
         self.burn_transaction.pre_sign(context);
         self.disprove_transaction.pre_sign(context);
-        self.peg_in_confirm_transaction.pre_sign(context);
         self.take1_transaction.pre_sign(context);
         self.take2_transaction.pre_sign(context);
     }
@@ -250,16 +248,10 @@ impl PegOutGraph {
     }
 }
 
-pub fn generate_id(
-    peg_in_confirm_transaction: &PegInConfirmTransaction,
-    operator_public_key: &PublicKey,
-) -> String {
+pub fn generate_id(peg_in_graph: &PegInGraph, operator_public_key: &PublicKey) -> String {
     let mut hasher = Sha256::new();
 
-    hasher.update(
-        peg_in_confirm_transaction.tx().compute_txid().to_string()
-            + &operator_public_key.to_string(),
-    );
+    hasher.update(peg_in_graph.id().to_string() + &operator_public_key.to_string());
 
     hasher.finalize().to_hex_string(Upper)
 }
