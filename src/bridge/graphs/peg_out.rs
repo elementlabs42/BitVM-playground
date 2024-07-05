@@ -1,7 +1,12 @@
 use bitcoin::{key::Keypair, Amount, OutPoint, Script, ScriptBuf};
+use esplora_client::AsyncClient;
 use num_traits::ToPrimitive;
 
-use crate::bridge::contexts::{base::BaseContext, verifier::VerifierContext};
+use crate::bridge::{
+    constants::NUM_BLOCKS_PER_4_WEEKS,
+    contexts::{base::BaseContext, verifier::VerifierContext},
+    transactions::base::BaseTransaction,
+};
 
 use super::{
     super::{
@@ -209,11 +214,51 @@ impl PegOutGraph {
 
     pub fn disprove(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {}
 
-    pub fn burn(&mut self, output_script_pubkey: ScriptBuf) {
-        // if (!correct state) {
-        //   panic()
-        // }
+    pub async fn burn(&mut self, client: AsyncClient, output_script_pubkey: ScriptBuf) {
+        let burn_txid = self.burn_transaction.tx().compute_txid();
+        let burn_status = client.get_tx_status(&burn_txid).await;
+        if burn_status.is_ok_and(|status| status.confirmed) {
+            panic!("Burn transaction already mined!");
+        }
 
-        todo!()
+        let kick_off_txid = self.kick_off_transaction.tx().compute_txid();
+        let kick_off_status = client.get_tx_status(&kick_off_txid).await;
+
+        let blockchain_height = client.get_height().await;
+        if blockchain_height.is_err() {
+            panic!("Cannot fetch blockchain height!");
+        }
+
+        if kick_off_status
+            .as_ref()
+            .is_ok_and(|status| status.confirmed)
+        {
+            if kick_off_status
+                .as_ref()
+                .unwrap()
+                .block_height
+                .is_some_and(|block_height| {
+                    block_height + NUM_BLOCKS_PER_4_WEEKS <= blockchain_height.unwrap()
+                })
+            {
+                // complete burn tx
+                self.burn_transaction.add_output(output_script_pubkey);
+                let burn_tx = self.burn_transaction.finalize();
+
+                // broadcast burn tx
+                let burn_result = client.broadcast(&burn_tx).await;
+
+                // verify burn result
+                if burn_result.is_ok() {
+                    print!("Burn tx mined successfully.");
+                } else {
+                    panic!("Error occurred {:?}", burn_result);
+                }
+            } else {
+                panic!("Kick-off timelock has not yet elapsed!");
+            }
+        } else {
+            panic!("Kick-off tx is not confirmed!");
+        }
     }
 }
