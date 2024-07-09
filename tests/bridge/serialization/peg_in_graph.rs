@@ -6,7 +6,8 @@ use bitvm::bridge::{
         peg_in::PegInGraph,
     },
     scripts::generate_pay_to_pubkey_script_address,
-    transactions::base::{deserialize, serialize, Input},
+    serialization::{deserialize, serialize},
+    transactions::base::Input,
 };
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};

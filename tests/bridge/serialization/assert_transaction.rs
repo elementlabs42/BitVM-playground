@@ -3,9 +3,10 @@ use bitcoin::Amount;
 use bitvm::bridge::{
     connectors::connector::TaprootConnector,
     graphs::base::ONE_HUNDRED,
+    serialization::{deserialize, serialize},
     transactions::{
         assert::AssertTransaction,
-        base::{deserialize, serialize, Input},
+        base::Input,
     },
 };
 

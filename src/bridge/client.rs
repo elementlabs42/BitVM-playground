@@ -1,4 +1,5 @@
 use std::{collections::HashMap, str::FromStr, thread::sleep, time::Duration};
+use serde::{Deserialize, Serialize};
 
 use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint};
 use esplora_client::{AsyncClient, BlockHash, Builder, Utxo};
@@ -19,12 +20,20 @@ use super::{
         peg_in::PegInGraph,
         peg_out::{generate_id, PegOutGraph},
     },
+    serialization::{deserialize, serialize},
     transactions::base::Input,
 };
 
 const ESPLORA_URL: &str = "https://mutinynet.com/api";
 
 pub type UtxoSet = HashMap<OutPoint, Height>;
+
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
+pub struct BitVMClientData {
+    pub version: u32,
+    pub peg_in_graphs: Vec<PegInGraph>,
+    pub peg_out_graphs: Vec<PegOutGraph>,
+}
 
 pub struct BitVMClient {
     pub esplora: AsyncClient,
@@ -37,8 +46,7 @@ pub struct BitVMClient {
     pub verifier_context: Option<VerifierContext>,
     pub withdrawer_context: Option<WithdrawerContext>,
 
-    pub peg_in_graphs: Vec<PegInGraph>,
-    pub peg_out_graphs: Vec<PegOutGraph>,
+    pub data: BitVMClientData,
 }
 
 impl BitVMClient {
@@ -95,6 +103,17 @@ impl BitVMClient {
             ));
         }
 
+        let mut data = BitVMClientData {
+            version: 1,
+            peg_in_graphs: vec![],
+            peg_out_graphs: vec![],
+        };
+
+        let fetched_data = Self::fetch();
+        if fetched_data.is_some() {
+            data = fetched_data.unwrap();
+        }
+
         Self {
             esplora: Builder::new(ESPLORA_URL)
                 .build_async()
@@ -107,8 +126,7 @@ impl BitVMClient {
             verifier_context,
             withdrawer_context,
 
-            peg_in_graphs: vec![],
-            peg_out_graphs: vec![],
+            data,
         }
     }
 
@@ -118,20 +136,35 @@ impl BitVMClient {
     }
 
     fn read(&mut self) {
-        // would fetch all peg in/out graphs from remote database
+        let data = Self::fetch();
+        if data.is_some() {
+            self.data = data.unwrap();
+        }
+    }
+
+    fn fetch() -> Option<BitVMClientData> {
+        Some(deserialize::<BitVMClientData>(&json))
     }
 
     fn save(&self) {
-        // would write all new graphs to remote database (append only)
-        // TODO
+        let json = serialize(&self.data);
+    }
+
+    fn verify_data(&self, data: &BitVMClientData) {
+        for peg_in_graph in data.peg_in_graphs.iter() {
+            self.verify_peg_in_graph(peg_in_graph);
+        }
+        for peg_out_graph in data.peg_out_graphs.iter() {
+            self.verify_peg_out_graph(peg_out_graph);
+        }
     }
 
     fn verify_peg_in_graph(&self, peg_in_graph: &PegInGraph) {}
 
-    fn verify_peg_out_graph(&self, peg_out_graph: &PegInGraph) {}
+    fn verify_peg_out_graph(&self, peg_out_graph: &PegOutGraph) {}
 
     fn process(&self) {
-        for peg_in_graph in self.peg_in_graphs.iter() {
+        for peg_in_graph in self.data.peg_in_graphs.iter() {
             // match graph.get(outpoint) {
             //     Some(subsequent_txs) => {
             //         for bridge_transaction in subsequent_txs {
@@ -177,7 +210,7 @@ impl BitVMClient {
             .as_ref()
             .unwrap()
             .depositor_public_key;
-        for peg_in_graph in self.peg_in_graphs.iter() {
+        for peg_in_graph in self.data.peg_in_graphs.iter() {
             if peg_in_graph.depositor_public_key.eq(depositor_public_key) {
                 println!("Graph id: {:?} status: {:?}\n", peg_in_graph.id(), "todo");
                 // If peg in is complete, let depositor know
@@ -192,12 +225,12 @@ impl BitVMClient {
         }
 
         let mut peg_out_graphs_by_id: HashMap<&String, &PegOutGraph> = HashMap::new();
-        for peg_out_graph in self.peg_out_graphs.iter() {
+        for peg_out_graph in self.data.peg_out_graphs.iter() {
             peg_out_graphs_by_id.insert(peg_out_graph.id(), peg_out_graph);
         }
 
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
-        for peg_in_graph in self.peg_in_graphs.iter() {
+        for peg_in_graph in self.data.peg_in_graphs.iter() {
             let mut status = "todo";
             let peg_out_graph_id = generate_id(peg_in_graph, operator_public_key);
             if !peg_out_graphs_by_id.contains_key(&peg_out_graph_id) {
@@ -218,7 +251,7 @@ impl BitVMClient {
         }
 
         let n_of_n_public_key = &self.verifier_context.as_ref().unwrap().n_of_n_public_key;
-        for peg_out_graph in self.peg_out_graphs.iter() {
+        for peg_out_graph in self.data.peg_out_graphs.iter() {
             // verify graph
             // check if pre-signed
             // check if dispute
@@ -236,13 +269,13 @@ impl BitVMClient {
 
         // TODO broadcast peg in txn
 
-        self.peg_in_graphs.push(peg_in_graph);
+        self.data.peg_in_graphs.push(peg_in_graph);
 
         self.save();
     }
 
     pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
-        let peg_in_graph = self
+        let peg_in_graph = self.data
             .peg_in_graphs
             .iter()
             .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
@@ -259,7 +292,7 @@ impl BitVMClient {
         }
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
 
-        let peg_in_graph = self
+        let peg_in_graph = self.data
             .peg_in_graphs
             .iter()
             .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
@@ -268,7 +301,7 @@ impl BitVMClient {
         }
 
         let peg_out_graph_id = generate_id(peg_in_graph.unwrap(), operator_public_key);
-        let peg_out_graph = self
+        let peg_out_graph = self.data
             .peg_out_graphs
             .iter()
             .find(|&peg_out_graph| peg_out_graph.id().eq(&peg_out_graph_id));
@@ -284,7 +317,7 @@ impl BitVMClient {
 
         // TODO broadcast kick off txn
 
-        self.peg_out_graphs.push(peg_out_graph);
+        self.data.peg_out_graphs.push(peg_out_graph);
 
         self.save();
     }
