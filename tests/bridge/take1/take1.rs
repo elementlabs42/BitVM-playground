@@ -27,6 +27,7 @@ async fn test_take1_tx() {
         connector_1,
         _,
         _,
+        _,
     ) = setup_test();
 
     let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);

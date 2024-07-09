@@ -1,4 +1,3 @@
-use crate::treepp::*;
 use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
@@ -19,12 +18,14 @@ pub struct PegInRefundTransaction {
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
-    prev_scripts: Vec<Script>,
+    prev_scripts: Vec<ScriptBuf>,
     connector_z: ConnectorZ,
 }
 
 impl PreSignedTransaction for PegInRefundTransaction {
-    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx(&self) -> &Transaction { &self.tx }
+
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
@@ -32,10 +33,10 @@ impl PreSignedTransaction for PegInRefundTransaction {
 }
 
 impl PegInRefundTransaction {
-    pub fn new(context: &DepositorContext, input0: Input) -> Self {
+    pub fn new(context: &DepositorContext, evm_address: &str, input0: Input) -> Self {
         let connector_z = ConnectorZ::new(
             context.network,
-            &context.evm_address,
+            evm_address,
             &context.depositor_taproot_public_key,
             &context.n_of_n_taproot_public_key,
         );

@@ -1,4 +1,3 @@
-use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, Amount, EcdsaSighashType, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +7,7 @@ use super::{
             connector::*, connector_0::Connector0, connector_1::Connector1,
             connector_a::ConnectorA, connector_b::ConnectorB,
         },
-        contexts::operator::OperatorContext,
+        contexts::{operator::OperatorContext, verifier::VerifierContext},
         graphs::base::FEE_AMOUNT,
         scripts::*,
     },
@@ -20,13 +19,15 @@ use super::{
 pub struct Take1Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
-    prev_scripts: Vec<Script>,
+    prev_scripts: Vec<ScriptBuf>,
     connector_a: ConnectorA,
     connector_b: ConnectorB,
 }
 
 impl PreSignedTransaction for Take1Transaction {
-    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx(&self) -> &Transaction { &self.tx }
+
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 

@@ -1,5 +1,6 @@
-use crate::{bridge::constants::NUM_BLOCKS_PER_WEEK, treepp::*};
-use bitcoin::{Address, Network, PublicKey, Sequence, TxIn};
+use bitcoin::{Address, Network, PublicKey, ScriptBuf, Sequence, TxIn};
+
+use crate::bridge::constants::NUM_BLOCKS_PER_WEEK;
 
 use super::{
     super::{scripts::*, transactions::base::Input},
@@ -27,7 +28,7 @@ impl Connector1 {
 }
 
 impl P2wshConnector for Connector1 {
-    fn generate_script(&self) -> Script {
+    fn generate_script(&self) -> ScriptBuf {
         generate_timelock_script(&self.operator_public_key, self.num_blocks_timelock)
     }
 

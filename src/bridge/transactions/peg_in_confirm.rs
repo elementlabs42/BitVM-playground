@@ -1,11 +1,10 @@
-use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
         connectors::{connector::*, connector_0::Connector0, connector_z::ConnectorZ},
-        contexts::depositor::DepositorContext,
+        contexts::{depositor::DepositorContext, verifier::VerifierContext},
         graphs::base::FEE_AMOUNT,
     },
     base::*,
@@ -19,12 +18,14 @@ pub struct PegInConfirmTransaction {
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
-    prev_scripts: Vec<Script>,
+    prev_scripts: Vec<ScriptBuf>,
     connector_z: ConnectorZ,
 }
 
 impl PreSignedTransaction for PegInConfirmTransaction {
-    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx(&self) -> &Transaction { &self.tx }
+
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
@@ -32,11 +33,11 @@ impl PreSignedTransaction for PegInConfirmTransaction {
 }
 
 impl PegInConfirmTransaction {
-    pub fn new(context: &DepositorContext, input0: Input) -> Self {
+    pub fn new(context: &DepositorContext, evm_address: &str, input0: Input) -> Self {
         let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key);
         let connector_z = ConnectorZ::new(
             context.network,
-            &context.evm_address,
+            evm_address,
             &context.depositor_taproot_public_key,
             &context.n_of_n_taproot_public_key,
         );

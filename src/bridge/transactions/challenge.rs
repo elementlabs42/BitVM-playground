@@ -1,4 +1,3 @@
-use crate::treepp::*;
 use bitcoin::{
     absolute, consensus, key::Keypair, Amount, ScriptBuf, Sequence, TapSighashType, Transaction,
     TxIn, TxOut, Witness,
@@ -23,13 +22,15 @@ pub struct ChallengeTransaction {
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
-    prev_scripts: Vec<Script>,
+    prev_scripts: Vec<ScriptBuf>,
     input_amount_crowdfunding: Amount,
     connector_a: ConnectorA,
 }
 
 impl PreSignedTransaction for ChallengeTransaction {
-    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx(&self) -> &Transaction { &self.tx }
+
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
@@ -134,7 +135,7 @@ impl ChallengeTransaction {
         for input in inputs {
             let _input = TxIn {
                 previous_output: input.outpoint,
-                script_sig: Script::new(),
+                script_sig: ScriptBuf::new(),
                 sequence: Sequence::MAX,
                 witness: Witness::default(),
             };
