@@ -5,6 +5,7 @@ use bitcoin::{
 };
 use esplora_client::{AsyncClient, Error, TxStatus};
 use num_traits::ToPrimitive;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::bridge::{
@@ -24,7 +25,7 @@ use super::{
         },
     },
     base::{
-        get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, DUST_AMOUNT,
+        get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph,
         GRAPH_VERSION,
     },
     peg_in::PegInGraph,
@@ -57,6 +58,7 @@ pub enum PegOutOperatorStatus {
     PegOutTake2Available,
 }
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct PegOutGraph {
     version: String,
     network: Network,
@@ -93,18 +95,8 @@ impl BaseGraph for PegOutGraph {
 }
 
 impl PegOutGraph {
-    pub fn new(
-        context: &OperatorContext,
-        peg_in_graph: &PegInGraph,
-        initial_outpoint: OutPoint,
-    ) -> Self {
-        let kick_off_transaction = KickOffTransaction::new(
-            context,
-            Input {
-                outpoint: initial_outpoint,
-                amount: Amount::from_sat(DUST_AMOUNT),
-            },
-        );
+    pub fn new(context: &OperatorContext, peg_in_graph: &PegInGraph, kickoff_input: Input) -> Self {
+        let kick_off_transaction = KickOffTransaction::new(context, kickoff_input);
         let kick_off_txid = kick_off_transaction.tx().compute_txid();
 
         let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
