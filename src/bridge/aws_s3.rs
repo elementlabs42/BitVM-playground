@@ -1,12 +1,21 @@
+use once_cell::sync::Lazy;
+use regex::Regex;
+use std::cmp::Ordering;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use aws_sdk_s3::{
     config::{Credentials, Region},
     error::SdkError,
     operation::put_object::{PutObjectError, PutObjectOutput},
     primitives::ByteStream,
-    types::Error,
     Client, Config,
 };
 use dotenv;
+
+static CLIENT_DATA_SUFFIX: &str = "-bridge-client-data.json";
+static CLIENT_DATA_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(&format!(r"(\d{{13}}){}", CLIENT_DATA_SUFFIX)).unwrap());
+
 pub struct AwsS3 {
     client: Client,
     bucket: String,
@@ -34,16 +43,54 @@ impl AwsS3 {
         }
     }
 
-    // pub async fetch_latest(&self) {
-    //   // TODO
-    //   // use regexp to find all matching files
-    //   // sort by date
-    //   // fetch newest one
-    //   // validate
-    //   // if invalid, go to next one
-    // }
+    pub async fn fetch_latest_data(&self) -> Option<String> {
+        let keys = self.list_objects().await;
+        let mut data_keys: Vec<String> = keys
+            .iter()
+            .filter(|key| CLIENT_DATA_REGEX.is_match(key))
+            .cloned()
+            .collect();
+        data_keys.sort_by(|x, y| {
+            if x < y {
+                return Ordering::Less;
+            }
+            return Ordering::Greater;
+        });
 
-    pub async fn list_objects(&self) -> Result<(), Error> {
+        while let Some(key) = data_keys.pop() {
+            let json = self.get_object(&key).await;
+            if json.is_ok() {
+                println!("Fetched latest data file: {}", key);
+                return Some(json.unwrap());
+            }
+        }
+
+        println!("No data file found");
+        None
+    }
+
+    pub async fn write_data(&self, json: String) -> Result<String, &str> {
+        let time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        println!("Time: {}", time);
+
+        let key = format!("{}{}", time, CLIENT_DATA_SUFFIX);
+        let bytes = json.as_bytes().to_vec();
+        let size = bytes.len();
+        let byte_stream = ByteStream::from(bytes);
+
+        println!("Writing data file to {} ({})", key, size);
+        let response = self.upload_object(&key, byte_stream).await;
+
+        match response {
+            Ok(_) => Ok(key),
+            Err(_) => Err("Failed to save data file"),
+        }
+    }
+
+    async fn list_objects(&self) -> Vec<String> {
         let mut response = self
             .client
             .list_objects_v2()
@@ -52,11 +99,12 @@ impl AwsS3 {
             .into_paginator()
             .send();
 
+        let mut keys: Vec<String> = vec![];
         while let Some(result) = response.next().await {
             match result {
                 Ok(output) => {
                     for object in output.contents() {
-                        println!(" - {}", object.key().unwrap_or("Unknown"));
+                        keys.push(object.key().unwrap_or("Unknown").to_string());
                     }
                 }
                 Err(err) => {
@@ -65,10 +113,10 @@ impl AwsS3 {
             }
         }
 
-        Ok(())
+        keys
     }
 
-    pub async fn get_object(&self, key: &str) -> Result<usize, Error> {
+    async fn get_object(&self, key: &str) -> Result<String, &str> {
         let mut object = self
             .client
             .get_object()
@@ -78,18 +126,19 @@ impl AwsS3 {
             .await
             .unwrap();
 
-        let mut byte_count = 0_usize;
+        let mut buffer: Vec<u8> = vec![];
         while let Some(bytes) = object.body.try_next().await.unwrap() {
-            let bytes_len = bytes.len();
-            // file.write_all(&bytes)?;
-            println!("Intermediate write of {bytes_len}");
-            byte_count += bytes_len;
+            buffer.append(&mut bytes.to_vec());
         }
 
-        Ok(byte_count)
+        let json = String::from_utf8(buffer);
+        match json {
+            Ok(json) => Ok(json),
+            Err(_) => Err("Failed parsing json"),
+        }
     }
 
-    pub async fn upload_object(
+    async fn upload_object(
         &self,
         key: &str,
         data: ByteStream,

@@ -8,3 +8,13 @@ where
 {
     serde_json::from_str::<T>(data).unwrap()
 }
+
+pub fn try_deserialize<'a, T>(data: &'a str) -> Option<T>
+where
+    T: Deserialize<'a>,
+{
+    match serde_json::from_str::<T>(data) {
+        Ok(x) => Some(x),
+        Err(_) => None,
+    }
+}

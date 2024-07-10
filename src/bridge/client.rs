@@ -1,27 +1,21 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, str::FromStr, thread::sleep, time::Duration};
+use std::collections::HashMap;
 
 use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint};
-use esplora_client::{AsyncClient, BlockHash, Builder, Utxo};
+use esplora_client::{AsyncClient, Builder, Utxo};
 
 use super::{
-    aws_s3::{self, AwsS3},
+    aws_s3::AwsS3,
     contexts::{
-        base::{generate_keys_from_secret, BaseContext},
-        depositor::DepositorContext,
-        operator::OperatorContext,
-        verifier::VerifierContext,
-        withdrawer::WithdrawerContext,
+        base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
+        verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
     graphs::{
-        base::{
-            BaseGraph, DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET,
-            WITHDRAWER_SECRET,
-        },
+        base::{BaseGraph, DEPOSITOR_SECRET, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET},
         peg_in::PegInGraph,
         peg_out::{generate_id, PegOutGraph},
     },
-    serialization::{deserialize, serialize},
+    serialization::{serialize, try_deserialize},
     transactions::base::Input,
 };
 
@@ -136,10 +130,9 @@ impl BitVMClient {
         }
     }
 
-    pub async fn sync(&mut self) {
-        self.read().await;
-        self.save().await;
-    }
+    pub async fn sync(&mut self) { self.read().await; }
+
+    pub async fn flush(&mut self) { self.save().await; }
 
     async fn read(&mut self) {
         let data = Self::fetch(&self.aws_s3).await;
@@ -149,13 +142,27 @@ impl BitVMClient {
     }
 
     async fn fetch(aws_s3: &AwsS3) -> Option<BitVMClientData> {
-        aws_s3.list_objects().await;
+        let json = aws_s3.fetch_latest_data().await;
+        if json.is_some() {
+            let data = try_deserialize::<BitVMClientData>(&json.unwrap());
+            if data.is_some() {
+                return data;
+            }
+        }
 
-        let json = "";
-        Some(deserialize::<BitVMClientData>(&json))
+        None
     }
 
-    async fn save(&self) { let json = serialize(&self.data); }
+    async fn save(&mut self) {
+        self.data.version += 1;
+
+        let json = serialize(&self.data);
+        let result = self.aws_s3.write_data(json).await;
+        match result {
+            Ok(key) => println!("Saved successfully to {}", key),
+            Err(err) => println!("Failed to save: {}", err),
+        }
+    }
 
     fn verify_data(&self, data: &BitVMClientData) {
         for peg_in_graph in data.peg_in_graphs.iter() {
@@ -278,7 +285,7 @@ impl BitVMClient {
 
         self.data.peg_in_graphs.push(peg_in_graph);
 
-        self.save();
+        // self.save().await;
     }
 
     pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
@@ -329,7 +336,7 @@ impl BitVMClient {
 
         self.data.peg_out_graphs.push(peg_out_graph);
 
-        self.save();
+        // self.save().await;
     }
 
     pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {
