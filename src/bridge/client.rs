@@ -1,10 +1,11 @@
-use std::{collections::HashMap, str::FromStr, thread::sleep, time::Duration};
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, str::FromStr, thread::sleep, time::Duration};
 
 use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint};
 use esplora_client::{AsyncClient, BlockHash, Builder, Utxo};
 
 use super::{
+    aws_s3::{self, AwsS3},
     contexts::{
         base::{generate_keys_from_secret, BaseContext},
         depositor::DepositorContext,
@@ -39,18 +40,20 @@ pub struct BitVMClient {
     pub esplora: AsyncClient,
 
     // Maps OutPoints to their (potentially unconfirmed) UTXOs.
-    pub utxo_set: UtxoSet,
+    utxo_set: UtxoSet,
 
-    pub depositor_context: Option<DepositorContext>,
-    pub operator_context: Option<OperatorContext>,
-    pub verifier_context: Option<VerifierContext>,
-    pub withdrawer_context: Option<WithdrawerContext>,
+    depositor_context: Option<DepositorContext>,
+    operator_context: Option<OperatorContext>,
+    verifier_context: Option<VerifierContext>,
+    withdrawer_context: Option<WithdrawerContext>,
 
-    pub data: BitVMClientData,
+    data: BitVMClientData,
+
+    aws_s3: AwsS3,
 }
 
 impl BitVMClient {
-    pub fn new(
+    pub async fn new(
         network: Network,
         depositor_secret: Option<&str>,
         operator_secret: Option<&str>,
@@ -109,7 +112,8 @@ impl BitVMClient {
             peg_out_graphs: vec![],
         };
 
-        let fetched_data = Self::fetch();
+        let aws_s3 = AwsS3::new();
+        let fetched_data = Self::fetch(&aws_s3).await;
         if fetched_data.is_some() {
             data = fetched_data.unwrap();
         }
@@ -127,28 +131,31 @@ impl BitVMClient {
             withdrawer_context,
 
             data,
+
+            aws_s3,
         }
     }
 
-    pub fn sync(&mut self) {
-        self.read();
-        self.save();
+    pub async fn sync(&mut self) {
+        self.read().await;
+        self.save().await;
     }
 
-    fn read(&mut self) {
-        let data = Self::fetch();
+    async fn read(&mut self) {
+        let data = Self::fetch(&self.aws_s3).await;
         if data.is_some() {
             self.data = data.unwrap();
         }
     }
 
-    fn fetch() -> Option<BitVMClientData> {
+    async fn fetch(aws_s3: &AwsS3) -> Option<BitVMClientData> {
+        aws_s3.list_objects().await;
+
+        let json = "";
         Some(deserialize::<BitVMClientData>(&json))
     }
 
-    fn save(&self) {
-        let json = serialize(&self.data);
-    }
+    async fn save(&self) { let json = serialize(&self.data); }
 
     fn verify_data(&self, data: &BitVMClientData) {
         for peg_in_graph in data.peg_in_graphs.iter() {
@@ -275,7 +282,8 @@ impl BitVMClient {
     }
 
     pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
-        let peg_in_graph = self.data
+        let peg_in_graph = self
+            .data
             .peg_in_graphs
             .iter()
             .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
@@ -292,7 +300,8 @@ impl BitVMClient {
         }
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
 
-        let peg_in_graph = self.data
+        let peg_in_graph = self
+            .data
             .peg_in_graphs
             .iter()
             .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
@@ -301,7 +310,8 @@ impl BitVMClient {
         }
 
         let peg_out_graph_id = generate_id(peg_in_graph.unwrap(), operator_public_key);
-        let peg_out_graph = self.data
+        let peg_out_graph = self
+            .data
             .peg_out_graphs
             .iter()
             .find(|&peg_out_graph| peg_out_graph.id().eq(&peg_out_graph_id));

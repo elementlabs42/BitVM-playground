@@ -1,3 +1,4 @@
+pub mod aws_s3;
 pub mod client;
 pub mod connectors;
 pub mod constants;
