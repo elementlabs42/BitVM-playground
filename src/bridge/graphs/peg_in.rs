@@ -46,7 +46,6 @@ pub enum PegInVerifierStatus {
     PegInWait,     // no action required, wait
     PegInPresign,  // should presign peg-in confirm
     PegInComplete, // peg-in complete
-    PegOutPresign, // should presign peg-out graph
 }
 
 impl Display for PegInVerifierStatus {
@@ -55,7 +54,6 @@ impl Display for PegInVerifierStatus {
             PegInVerifierStatus::PegInWait => write!(f, "no action required, wait"),
             PegInVerifierStatus::PegInPresign => write!(f, "should presign peg-in confirm"),
             PegInVerifierStatus::PegInComplete => write!(f, "peg-in complete"),
-            PegInVerifierStatus::PegOutPresign => write!(f, "should presign peg-out graph"),
         }
     }
 }
