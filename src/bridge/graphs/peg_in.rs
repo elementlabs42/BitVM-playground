@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter, Result};
 use bitcoin::{
     hex::{Case::Upper, DisplayHex},
     Network, OutPoint, PublicKey, XOnlyPublicKey,
@@ -29,17 +30,50 @@ pub enum PegInDepositorStatus {
     PegInRefundComplete, // peg-in failed, refund complete
 }
 
+impl Display for PegInDepositorStatus {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+       match self {
+        PegInDepositorStatus::PegInDepositWait => write!(f, "peg-in deposit not yet confirmed, wait"),
+        PegInDepositorStatus::PegInConfirmWait => write!(f, "peg-in confirm not yet confirmed, wait for operator to complete peg-in, refund not available yet"),
+        PegInDepositorStatus::PegInConfirmComplete => write!(f, "peg-in complete"),
+        PegInDepositorStatus::PegInRefundAvailable => write!(f, "peg-in refund available"),
+        PegInDepositorStatus::PegInRefundComplete => write!(f, "peg-in failed, refund complete"),
+       }
+    }
+}
+
 pub enum PegInVerifierStatus {
     PegInWait,    // no action required, wait
     PegInPresign, // should presign peg-in confirm
     PegInComplete, // peg-in complete
-                  // PegOutPresign, // should presign peg-out graph
+    PegOutPresign, // should presign peg-out graph
+}
+
+impl Display for PegInVerifierStatus {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+       match self {
+        PegInVerifierStatus::PegInWait => write!(f, "no action required, wait"),
+        PegInVerifierStatus::PegInPresign => write!(f, "should presign peg-in confirm"),
+        PegInVerifierStatus::PegInComplete => write!(f, "peg-in complete"),
+        PegInVerifierStatus::PegOutPresign => write!(f, "should presign peg-out graph"),
+       }
+    }
 }
 
 pub enum PegInOperatorStatus {
     PegInWait,             // peg-in not yet complete, no action required yet, wait
     PegInConfirmAvailable, // should execute peg-in confirm
     PegInComplete,         // peg-in complete
+}
+
+impl Display for PegInOperatorStatus {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+       match self {
+        PegInOperatorStatus::PegInWait => write!(f, "peg-in not yet complete, no action required yet, wait"),
+        PegInOperatorStatus::PegInConfirmAvailable => write!(f, "should execute peg-in confirm"),
+        PegInOperatorStatus::PegInComplete => write!(f, "peg-in complete"),
+       }
+    }
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]

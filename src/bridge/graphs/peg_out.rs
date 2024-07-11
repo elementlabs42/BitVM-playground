@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter, Result};
 use bitcoin::{
     hex::{Case::Upper, DisplayHex},
     key::Keypair,
@@ -34,6 +35,16 @@ pub enum PegOutDepositorStatus {
     PegOutComplete,   // peg-out complete
 }
 
+impl Display for PegOutDepositorStatus {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+       match self {
+        PegOutDepositorStatus::PegOutNotStarted => write!(f, "peg-out transaction not created yet"),
+        PegOutDepositorStatus::PegOutWait => write!(f, "peg-out not confirmed yet, wait"),
+        PegOutDepositorStatus::PegOutComplete => write!(f, "peg-out complete"),
+       }
+    }
+}
+
 pub enum PegOutVerifierStatus {
     PegOutPresign,           // should presign peg-out graph
     PegOutComplete,          // peg-out complete
@@ -42,6 +53,20 @@ pub enum PegOutVerifierStatus {
     PegOutBurnAvailable,
     PegOutDisproveAvailable,
     PegOutFailed, // burn or disprove executed
+}
+
+impl Display for PegOutVerifierStatus {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+       match self {
+        PegOutVerifierStatus::PegOutPresign => write!(f, "peg-out transaction not created yet"),
+        PegOutVerifierStatus::PegOutComplete => write!(f, "peg-out not confirmed yet, wait"),
+        PegOutVerifierStatus::PegOutWait => write!(f, "no action required, wait"),
+        PegOutVerifierStatus::PegOutChallengeAvailabe => write!(f, "can challenge"),
+        PegOutVerifierStatus::PegOutBurnAvailable => write!(f, "can burn"),
+        PegOutVerifierStatus::PegOutDisproveAvailable => write!(f, "can disprove"),
+        PegOutVerifierStatus::PegOutFailed => write!(f, "burn or disprove executed"),
+       }
+    }
 }
 
 pub enum PegOutOperatorStatus {
@@ -53,6 +78,21 @@ pub enum PegOutOperatorStatus {
     PegOutAssertAvailable,
     PegOutTake1Available,
     PegOutTake2Available,
+}
+
+impl Display for PegOutOperatorStatus {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+       match self {
+        PegOutOperatorStatus::PegOutWait => write!(f, "no action required, wait"),
+        PegOutOperatorStatus::PegOutComplete => write!(f, "peg-out complete"),
+        PegOutOperatorStatus::PegOutFailed => write!(f, "burn or disprove executed"),
+        PegOutOperatorStatus::PegOutStartPegOut => write!(f, "should execute peg-out tx"),
+        PegOutOperatorStatus::PegOutKickOffAvailable => write!(f, "can kick off"),
+        PegOutOperatorStatus::PegOutAssertAvailable => write!(f, "can assert"),
+        PegOutOperatorStatus::PegOutTake1Available => write!(f, "can take1"),
+        PegOutOperatorStatus::PegOutTake2Available => write!(f, "can take2"),
+       }
+    }
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
