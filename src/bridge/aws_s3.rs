@@ -16,7 +16,7 @@ static CLIENT_DATA_SUFFIX: &str = "-bridge-client-data.json";
 static CLIENT_DATA_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(&format!(r"(\d{{13}}){}", CLIENT_DATA_SUFFIX)).unwrap());
 
-static CLIENT_MISSING_CREDENTIALS_ERROR: &str = "Missing AWS S3 credentials";
+static CLIENT_MISSING_CREDENTIALS_ERROR: &str = "Bridge client is missing AWS S3 credentials";
 
 pub struct AwsS3 {
     initialized: bool,
