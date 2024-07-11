@@ -142,11 +142,14 @@ impl BitVMClient {
     }
 
     async fn fetch(aws_s3: &AwsS3) -> Option<BitVMClientData> {
-        let json = aws_s3.fetch_latest_data().await;
-        if json.is_some() {
-            let data = try_deserialize::<BitVMClientData>(&json.unwrap());
-            if data.is_some() {
-                return data;
+        let result = aws_s3.fetch_latest_data().await;
+        if result.is_ok() {
+            let json = result.unwrap();
+            if json.is_some() {
+                let data = try_deserialize::<BitVMClientData>(&json.unwrap());
+                if data.is_ok() {
+                    return Some(data.unwrap());
+                }
             }
         }
 

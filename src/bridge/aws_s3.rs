@@ -57,9 +57,9 @@ impl AwsS3 {
         }
     }
 
-    pub async fn fetch_latest_data(&self) -> Option<String> {
+    pub async fn fetch_latest_data(&self) -> Result<Option<String>, &str> {
         if !self.initialized {
-            return None;
+            return Err(CLIENT_MISSING_CREDENTIALS_ERROR);
         }
 
         let keys = self.list_objects().await;
@@ -79,12 +79,12 @@ impl AwsS3 {
             let json = self.get_object(&key).await;
             if json.is_ok() {
                 println!("Fetched latest data file: {}", key);
-                return Some(json.unwrap());
+                return Ok(Some(json.unwrap()));
             }
         }
 
         println!("No data file found");
-        None
+        Ok(None)
     }
 
     pub async fn write_data(&self, json: String) -> Result<String, &str> {
@@ -140,7 +140,7 @@ impl AwsS3 {
         keys
     }
 
-    async fn get_object(&self, key: &str) -> Result<String, &str> {
+    async fn get_object(&self, key: &str) -> Result<String, String> {
         let mut object = self
             .client
             .as_ref()
@@ -160,7 +160,7 @@ impl AwsS3 {
         let json = String::from_utf8(buffer);
         match json {
             Ok(json) => Ok(json),
-            Err(_) => Err("Failed parsing json"),
+            Err(err) => Err(format!("Failed to parse json: {}", err.to_string())),
         }
     }
 
