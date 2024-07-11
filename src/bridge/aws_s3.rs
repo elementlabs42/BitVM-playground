@@ -16,34 +16,52 @@ static CLIENT_DATA_SUFFIX: &str = "-bridge-client-data.json";
 static CLIENT_DATA_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(&format!(r"(\d{{13}}){}", CLIENT_DATA_SUFFIX)).unwrap());
 
+static CLIENT_MISSING_CREDENTIALS_ERROR: &str = "Missing AWS S3 credentials";
+
 pub struct AwsS3 {
-    client: Client,
-    bucket: String,
+    initialized: bool,
+    client: Option<Client>,
+    bucket: Option<String>,
 }
 
 impl AwsS3 {
     pub fn new() -> Self {
         dotenv::dotenv().ok();
-        let access_key = dotenv::var("BRIDGE_AWS_ACCESS_KEY_ID").unwrap();
-        let secret = dotenv::var("BRIDGE_AWS_SECRET_ACCESS_KEY").unwrap();
-        let region = dotenv::var("BRIDGE_AWS_REGION").unwrap();
-        let bucket = dotenv::var("BRIDGE_AWS_BUCKET").unwrap();
+        let access_key = dotenv::var("BRIDGE_AWS_ACCESS_KEY_ID");
+        let secret = dotenv::var("BRIDGE_AWS_SECRET_ACCESS_KEY");
+        let region = dotenv::var("BRIDGE_AWS_REGION");
+        let bucket = dotenv::var("BRIDGE_AWS_BUCKET");
 
-        let credentials = Credentials::new(access_key, secret, None, None, "Bridge");
+        if access_key.is_err() || secret.is_err() || region.is_err() || bucket.is_err() {
+            println!("{}", CLIENT_MISSING_CREDENTIALS_ERROR);
+            return Self {
+                initialized: false,
+                client: None,
+                bucket: None,
+            };
+        }
+
+        let credentials =
+            Credentials::new(access_key.unwrap(), secret.unwrap(), None, None, "Bridge");
 
         let config = Config::builder()
             .credentials_provider(credentials)
-            .region(Region::new(region))
+            .region(Region::new(region.unwrap()))
             .behavior_version_latest()
             .build();
 
         Self {
-            client: Client::from_conf(config),
-            bucket,
+            initialized: true,
+            client: Some(Client::from_conf(config)),
+            bucket: Some(bucket.unwrap()),
         }
     }
 
     pub async fn fetch_latest_data(&self) -> Option<String> {
+        if !self.initialized {
+            return None;
+        }
+
         let keys = self.list_objects().await;
         let mut data_keys: Vec<String> = keys
             .iter()
@@ -70,6 +88,10 @@ impl AwsS3 {
     }
 
     pub async fn write_data(&self, json: String) -> Result<String, &str> {
+        if !self.initialized {
+            return Err(CLIENT_MISSING_CREDENTIALS_ERROR);
+        }
+
         let time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -93,8 +115,10 @@ impl AwsS3 {
     async fn list_objects(&self) -> Vec<String> {
         let mut response = self
             .client
+            .as_ref()
+            .unwrap()
             .list_objects_v2()
-            .bucket(&self.bucket)
+            .bucket(self.bucket.as_ref().unwrap())
             .max_keys(10) // In this example, go 10 at a time.
             .into_paginator()
             .send();
@@ -119,8 +143,10 @@ impl AwsS3 {
     async fn get_object(&self, key: &str) -> Result<String, &str> {
         let mut object = self
             .client
+            .as_ref()
+            .unwrap()
             .get_object()
-            .bucket(&self.bucket)
+            .bucket(self.bucket.as_ref().unwrap())
             .key(key)
             .send()
             .await
@@ -144,8 +170,10 @@ impl AwsS3 {
         data: ByteStream,
     ) -> Result<PutObjectOutput, SdkError<PutObjectError>> {
         self.client
+            .as_ref()
+            .unwrap()
             .put_object()
-            .bucket(&self.bucket)
+            .bucket(self.bucket.as_ref().unwrap())
             .key(key)
             .body(data)
             .send()
