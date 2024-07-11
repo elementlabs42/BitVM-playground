@@ -251,11 +251,7 @@ impl BitVMClient {
             } else {
                 let peg_out_graph = peg_out_graphs_by_id.get(&peg_out_graph_id).unwrap();
                 let status = peg_out_graph.operator_status(&self.esplora).await;
-                println!(
-                    "Graph id: {} status: {}\n",
-                    peg_out_graph.id(),
-                    status
-                );
+                println!("Graph id: {} status: {}\n", peg_out_graph.id(), status);
             }
         }
     }
@@ -267,11 +263,7 @@ impl BitVMClient {
 
         for peg_out_graph in self.data.peg_out_graphs.iter() {
             let status = peg_out_graph.verifier_status(&self.esplora).await;
-            println!(
-                "Graph id: {} status: {}\n",
-                peg_out_graph.id(),
-                status
-            );
+            println!("Graph id: {} status: {}\n", peg_out_graph.id(), status);
         }
     }
 
