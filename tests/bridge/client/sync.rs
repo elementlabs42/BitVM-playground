@@ -25,7 +25,7 @@ async fn test_sync() {
     )
     .await;
 
-    client.create_peg_in_graph(Input { outpoint, amount }, &evm_address);
+    client.create_peg_in_graph(Input { outpoint, amount }, &evm_address).await;
 
     println!("Save to remote");
     client.flush().await;
