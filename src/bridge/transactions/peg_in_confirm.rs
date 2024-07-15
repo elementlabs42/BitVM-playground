@@ -111,6 +111,10 @@ impl PegInConfirmTransaction {
         self.push_n_of_n_signature_input0(context);
         self.finalize_input0();
     }
+
+    pub fn merge(&mut self, peg_in_confirm: &PegInConfirmTransaction) {
+        merge_transactions(&mut self.tx, &peg_in_confirm.tx);
+    }
 }
 
 impl BaseTransaction for PegInConfirmTransaction {
