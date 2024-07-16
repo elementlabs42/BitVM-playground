@@ -37,19 +37,19 @@ impl Display for PegInDepositorStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
             PegInDepositorStatus::PegInDepositWait => {
-                write!(f, "Wait for peg-in deposit transaction to be confirmed.")
+                write!(f, "Peg-in deposit transaction not confirmed yet. Wait...")
             }
             PegInDepositorStatus::PegInConfirmWait => {
-                write!(f, "Wait for peg-in confirm transaction to be confirmed.")
+                write!(f, "Peg-in confirm transaction not confirmed yet. Wait...")
             }
             PegInDepositorStatus::PegInConfirmComplete => {
-                write!(f, "Peg-in complete. Funds deposited.")
+                write!(f, "Peg-in complete. Done.")
             }
             PegInDepositorStatus::PegInRefundAvailable => {
-                write!(f, "Peg-in refund transaction available.")
+                write!(f, "Peg-in timed out. Broadcast refund transaction?")
             }
             PegInDepositorStatus::PegInRefundComplete => {
-                write!(f, "Peg-in refund complete. Funds reclaimed.")
+                write!(f, "Peg-in refund complete, funds reclaimed. Done.")
             }
         }
     }
@@ -64,9 +64,11 @@ pub enum PegInVerifierStatus {
 impl Display for PegInVerifierStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            PegInVerifierStatus::PegInWait => write!(f, "No action available, wait."),
-            PegInVerifierStatus::PegInPresign => write!(f, "Presign peg-in confirm transaction."),
-            PegInVerifierStatus::PegInComplete => write!(f, "Peg-in complete."),
+            PegInVerifierStatus::PegInWait => write!(f, "No action available. Wait..."),
+            PegInVerifierStatus::PegInPresign => {
+                write!(f, "Signature required. Presign peg-in confirm transaction?")
+            }
+            PegInVerifierStatus::PegInComplete => write!(f, "Peg-in complete. Done."),
         }
     }
 }
@@ -81,12 +83,15 @@ impl Display for PegInOperatorStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
             PegInOperatorStatus::PegInWait => {
-                write!(f, "No action available, wait.")
+                write!(f, "No action available. Wait...")
             }
             PegInOperatorStatus::PegInConfirmAvailable => {
-                write!(f, "Peg-in confirm transaction available.")
+                write!(
+                    f,
+                    "Peg-in confirm transaction ready. Broadcast peg-in confirm transaction?"
+                )
             }
-            PegInOperatorStatus::PegInComplete => write!(f, "Peg-in complete."),
+            PegInOperatorStatus::PegInComplete => write!(f, "Peg-in complete. Done."),
         }
     }
 }
