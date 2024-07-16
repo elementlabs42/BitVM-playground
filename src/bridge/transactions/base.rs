@@ -50,3 +50,27 @@ pub fn merge_transactions(
             .push(source_transaction.output[i].clone());
     }
 }
+
+pub fn validate_transaction(
+    transaction: &Transaction,
+    comparison_transaction: &Transaction,
+) -> bool {
+    for i in 0..comparison_transaction.input.len() {
+        if transaction.input[i].previous_output != comparison_transaction.input[i].previous_output
+            || transaction.input[i].script_sig != comparison_transaction.input[i].script_sig
+            || transaction.input[i].sequence != comparison_transaction.input[i].sequence
+        {
+            return false;
+        }
+    }
+
+    for i in 0..comparison_transaction.output.len() {
+        if transaction.output[i].value != comparison_transaction.output[i].value
+            || transaction.output[i].script_pubkey != comparison_transaction.output[i].script_pubkey
+        {
+            return false;
+        }
+    }
+
+    true
+}
