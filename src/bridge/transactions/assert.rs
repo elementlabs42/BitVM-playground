@@ -1,4 +1,7 @@
-use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
+use bitcoin::{
+    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
+    XOnlyPublicKey,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -36,10 +39,26 @@ impl PreSignedTransaction for AssertTransaction {
 
 impl AssertTransaction {
     pub fn new(context: &OperatorContext, input0: Input) -> Self {
-        let connector_2 = Connector2::new(context.network, &context.operator_public_key);
-        let connector_3 = Connector3::new(context.network, &context.n_of_n_public_key);
-        let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key);
-        let connector_c = ConnectorC::new(context.network, &context.n_of_n_taproot_public_key);
+        Self::new_for_validation(
+            context.network,
+            &context.operator_public_key,
+            &context.n_of_n_public_key,
+            &context.n_of_n_taproot_public_key,
+            input0,
+        )
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        operator_public_key: &PublicKey,
+        n_of_n_public_key: &PublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        input0: Input,
+    ) -> Self {
+        let connector_2 = Connector2::new(network, operator_public_key);
+        let connector_3 = Connector3::new(network, n_of_n_public_key);
+        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
+        let connector_c = ConnectorC::new(network, n_of_n_taproot_public_key);
 
         let _input0 = connector_b.generate_taproot_leaf_tx_in(1, &input0);
 

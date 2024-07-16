@@ -1,4 +1,7 @@
-use bitcoin::{absolute, Amount, EcdsaSighashType, ScriptBuf, TapSighashType, Transaction, TxOut};
+use bitcoin::{
+    absolute, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, TapSighashType, Transaction,
+    TxOut, XOnlyPublicKey,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -42,14 +45,43 @@ impl Take1Transaction {
         input2: Input,
         input3: Input,
     ) -> Self {
-        let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key);
-        let connector_1 = Connector1::new(context.network, &context.operator_public_key);
-        let connector_a = ConnectorA::new(
+        let mut this = Self::new_for_validation(
             context.network,
+            &context.operator_public_key,
             &context.operator_taproot_public_key,
+            &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
+            input0,
+            input1,
+            input2,
+            input3,
         );
-        let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key);
+
+        this.sign_input1(context);
+        this.sign_input2(context);
+
+        this
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        operator_public_key: &PublicKey,
+        operator_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_public_key: &PublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        input0: Input,
+        input1: Input,
+        input2: Input,
+        input3: Input,
+    ) -> Self {
+        let connector_0 = Connector0::new(network, n_of_n_public_key);
+        let connector_1 = Connector1::new(network, operator_public_key);
+        let connector_a = ConnectorA::new(
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
+        );
+        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
 
         let _input0 = connector_0.generate_tx_in(&input0);
 
@@ -64,14 +96,11 @@ impl Take1Transaction {
 
         let _output0 = TxOut {
             value: total_output_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(
-                context.network,
-                &context.operator_public_key,
-            )
-            .script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(network, operator_public_key)
+                .script_pubkey(),
         };
 
-        let mut this = Take1Transaction {
+        Take1Transaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -104,12 +133,7 @@ impl Take1Transaction {
             ],
             connector_a,
             connector_b,
-        };
-
-        this.sign_input1(context);
-        this.sign_input2(context);
-
-        this
+        }
     }
 
     fn sign_input0(&mut self, context: &VerifierContext) {

@@ -8,11 +8,11 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use crate::bridge::{constants::NUM_BLOCKS_PER_2_WEEKS, graphs::base::get_block_height};
-
 use super::{
     super::{
+        constants::NUM_BLOCKS_PER_2_WEEKS,
         contexts::{depositor::DepositorContext, verifier::VerifierContext},
+        graphs::base::get_block_height,
         transactions::{
             base::{validate_transaction, Input},
             peg_in_confirm::PegInConfirmTransaction,
@@ -161,8 +161,8 @@ impl PegInGraph {
             &self.n_of_n_taproot_public_key,
             &self.depositor_evm_address,
             Input {
-                outpoint: self.peg_in_deposit_transaction.tx().input[0].previous_output,
-                amount: self.peg_in_deposit_transaction.prev_outs()[0].value,
+                outpoint: self.peg_in_deposit_transaction.tx().input[0].previous_output, // Self-referencing
+                amount: self.peg_in_deposit_transaction.prev_outs()[0].value, // Self-referencing
             },
         );
         let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();

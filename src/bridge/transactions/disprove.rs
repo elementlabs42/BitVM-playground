@@ -1,4 +1,7 @@
-use bitcoin::{absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
+use bitcoin::{
+    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction,
+    TxOut, XOnlyPublicKey,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -36,8 +39,26 @@ impl PreSignedTransaction for DisproveTransaction {
 
 impl DisproveTransaction {
     pub fn new(context: &OperatorContext, input0: Input, input1: Input, script_index: u32) -> Self {
-        let connector_3 = Connector3::new(context.network, &context.n_of_n_public_key);
-        let connector_c = ConnectorC::new(context.network, &context.n_of_n_taproot_public_key);
+        Self::new_for_validation(
+            context.network,
+            &context.n_of_n_public_key,
+            &context.n_of_n_taproot_public_key,
+            input0,
+            input1,
+            script_index,
+        )
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        n_of_n_public_key: &PublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        input0: Input,
+        input1: Input,
+        script_index: u32,
+    ) -> Self {
+        let connector_3 = Connector3::new(network, &n_of_n_public_key);
+        let connector_c = ConnectorC::new(network, &n_of_n_taproot_public_key);
 
         let _input0 = connector_3.generate_tx_in(&input0);
 
@@ -47,7 +68,7 @@ impl DisproveTransaction {
 
         let _output0 = TxOut {
             value: total_output_amount / 2,
-            script_pubkey: generate_burn_script_address(context.network).script_pubkey(),
+            script_pubkey: generate_burn_script_address(network).script_pubkey(),
         };
 
         let reward_output_amount = total_output_amount - (total_output_amount / 2);

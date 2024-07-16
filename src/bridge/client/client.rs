@@ -132,6 +132,9 @@ impl BitVMClient {
         let data = Self::fetch(&self.data_store).await;
         if data.is_some() {
             self.data = data.unwrap();
+
+            // TODO error handling of invalid data
+            self.validate_data(&self.data);
         }
     }
 
@@ -161,18 +164,29 @@ impl BitVMClient {
         }
     }
 
-    // fn verify_data(&self, data: &BitVMClientData) {
-    //     for peg_in_graph in data.peg_in_graphs.iter() {
-    //         self.verify_peg_in_graph(peg_in_graph);
-    //     }
-    //     for peg_out_graph in data.peg_out_graphs.iter() {
-    //         self.verify_peg_out_graph(peg_out_graph);
-    //     }
-    // }
+    fn validate_data(&self, data: &BitVMClientData) -> bool {
+        for peg_in_graph in data.peg_in_graphs.iter() {
+            if !peg_in_graph.validate() {
+                println!(
+                    "Encountered invalid peg in graph (Graph id: {})",
+                    peg_in_graph.id()
+                );
+                return false;
+            }
+        }
+        for peg_out_graph in data.peg_out_graphs.iter() {
+            if !peg_out_graph.validate() {
+                println!(
+                    "Encountered invalid peg out graph (Graph id: {})",
+                    peg_out_graph.id()
+                );
+                return false;
+            }
+        }
 
-    // fn verify_peg_in_graph(&self, peg_in_graph: &PegInGraph) {}
-
-    // fn verify_peg_out_graph(&self, peg_out_graph: &PegOutGraph) {}
+        println!("All graph data is valid");
+        true
+    }
 
     // fn process(&self) {
     //     for peg_in_graph in self.data.peg_in_graphs.iter() {
