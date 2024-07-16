@@ -14,14 +14,14 @@ use super::{
         contexts::{depositor::DepositorContext, verifier::VerifierContext},
         graphs::base::get_block_height,
         transactions::{
-            base::{validate_transaction, Input},
+            base::{BaseTransaction, validate_transaction, Input},
             peg_in_confirm::PegInConfirmTransaction,
             peg_in_deposit::PegInDepositTransaction,
             peg_in_refund::PegInRefundTransaction,
             pre_signed::PreSignedTransaction,
         },
     },
-    base::{BaseGraph, GRAPH_VERSION},
+    base::{verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
 };
 
 pub enum PegInDepositorStatus {
@@ -35,12 +35,22 @@ pub enum PegInDepositorStatus {
 impl Display for PegInDepositorStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-        PegInDepositorStatus::PegInDepositWait => write!(f, "peg-in deposit not yet confirmed, wait"),
-        PegInDepositorStatus::PegInConfirmWait => write!(f, "peg-in confirm not yet confirmed, wait for operator to complete peg-in, refund not available yet"),
-        PegInDepositorStatus::PegInConfirmComplete => write!(f, "peg-in complete"),
-        PegInDepositorStatus::PegInRefundAvailable => write!(f, "peg-in refund available"),
-        PegInDepositorStatus::PegInRefundComplete => write!(f, "peg-in failed, refund complete"),
-       }
+            PegInDepositorStatus::PegInDepositWait => {
+                write!(f, "Peg-in deposit transaction not confirmed yet. Wait...")
+            }
+            PegInDepositorStatus::PegInConfirmWait => {
+                write!(f, "Peg-in confirm transaction not confirmed yet. Wait...")
+            }
+            PegInDepositorStatus::PegInConfirmComplete => {
+                write!(f, "Peg-in complete. Done.")
+            }
+            PegInDepositorStatus::PegInRefundAvailable => {
+                write!(f, "Peg-in timed out. Broadcast refund transaction?")
+            }
+            PegInDepositorStatus::PegInRefundComplete => {
+                write!(f, "Peg-in refund complete, funds reclaimed. Done.")
+            }
+        }
     }
 }
 
@@ -53,9 +63,11 @@ pub enum PegInVerifierStatus {
 impl Display for PegInVerifierStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            PegInVerifierStatus::PegInWait => write!(f, "no action required, wait"),
-            PegInVerifierStatus::PegInPresign => write!(f, "should presign peg-in confirm"),
-            PegInVerifierStatus::PegInComplete => write!(f, "peg-in complete"),
+            PegInVerifierStatus::PegInWait => write!(f, "No action available. Wait..."),
+            PegInVerifierStatus::PegInPresign => {
+                write!(f, "Signature required. Presign peg-in confirm transaction?")
+            }
+            PegInVerifierStatus::PegInComplete => write!(f, "Peg-in complete. Done."),
         }
     }
 }
@@ -70,12 +82,15 @@ impl Display for PegInOperatorStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
             PegInOperatorStatus::PegInWait => {
-                write!(f, "peg-in not yet complete, no action required yet, wait")
+                write!(f, "No action available. Wait...")
             }
             PegInOperatorStatus::PegInConfirmAvailable => {
-                write!(f, "should execute peg-in confirm")
+                write!(
+                    f,
+                    "Peg-in confirm transaction ready. Broadcast peg-in confirm transaction?"
+                )
             }
-            PegInOperatorStatus::PegInComplete => write!(f, "peg-in complete"),
+            PegInOperatorStatus::PegInComplete => write!(f, "Peg-in complete. Done."),
         }
     }
 }
@@ -307,6 +322,61 @@ impl PegInGraph {
         } else {
             // peg-in deposit not confirmed yet, wait
             return PegInDepositorStatus::PegInDepositWait;
+        }
+    }
+
+    pub async fn deposit(&self, client: &AsyncClient) {
+        verify_if_not_mined(client, self.peg_in_deposit_transaction.tx().compute_txid()).await;
+
+        // complete deposit tx
+        let deposit_tx = self.peg_in_deposit_transaction.finalize();
+
+        // broadcast deposit tx
+        let deposit_result = client.broadcast(&deposit_tx).await;
+
+        // verify deposit result
+        verify_tx_result(&deposit_result);
+    }
+
+    pub async fn confirm(&self, client: &AsyncClient) {
+        verify_if_not_mined(client, self.peg_in_confirm_transaction.tx().compute_txid()).await;
+
+        let deposit_status = client
+            .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
+            .await;
+
+        if deposit_status.is_ok_and(|status| status.confirmed) {
+            // complete confirm tx
+            let confirm_tx = self.peg_in_confirm_transaction.finalize();
+
+            // broadcast confirm tx
+            let confirm_result = client.broadcast(&confirm_tx).await;
+
+            // verify confirm result
+            verify_tx_result(&confirm_result);
+        } else {
+            panic!("Deposit tx has not been yet confirmed!");
+        }
+    }
+
+    pub async fn refund(&self, client: &AsyncClient) {
+        verify_if_not_mined(client, self.peg_in_refund_transaction.tx().compute_txid()).await;
+
+        let deposit_status = client
+            .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
+            .await;
+
+        if deposit_status.is_ok_and(|status| status.confirmed) {
+            // complete refund tx
+            let refund_tx = self.peg_in_refund_transaction.finalize();
+
+            // broadcast refund tx
+            let refund_result = client.broadcast(&refund_tx).await;
+
+            // verify refund result
+            verify_tx_result(&refund_result);
+        } else {
+            panic!("Deposit tx has not been yet confirmed!");
         }
     }
 
