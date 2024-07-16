@@ -14,7 +14,7 @@ use super::{
         contexts::{depositor::DepositorContext, verifier::VerifierContext},
         graphs::base::get_block_height,
         transactions::{
-            base::{BaseTransaction, validate_transaction, Input},
+            base::{validate_transaction, BaseTransaction, Input},
             peg_in_confirm::PegInConfirmTransaction,
             peg_in_deposit::PegInDepositTransaction,
             peg_in_refund::PegInRefundTransaction,
