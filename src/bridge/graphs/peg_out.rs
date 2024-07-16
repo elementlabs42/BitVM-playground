@@ -39,10 +39,10 @@ impl Display for PegOutDepositorStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
             PegOutDepositorStatus::PegOutNotStarted => {
-                write!(f, "peg-out transaction not created yet")
+                write!(f, "Peg-out available.")
             }
-            PegOutDepositorStatus::PegOutWait => write!(f, "peg-out not confirmed yet, wait"),
-            PegOutDepositorStatus::PegOutComplete => write!(f, "peg-out complete"),
+            PegOutDepositorStatus::PegOutWait => write!(f, "No action available, wait."),
+            PegOutDepositorStatus::PegOutComplete => write!(f, "Peg-out complete."),
         }
     }
 }
@@ -60,13 +60,21 @@ pub enum PegOutVerifierStatus {
 impl Display for PegOutVerifierStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            PegOutVerifierStatus::PegOutPresign => write!(f, "peg-out transaction not created yet"),
-            PegOutVerifierStatus::PegOutComplete => write!(f, "peg-out not confirmed yet, wait"),
-            PegOutVerifierStatus::PegOutWait => write!(f, "no action required, wait"),
-            PegOutVerifierStatus::PegOutChallengeAvailabe => write!(f, "can challenge"),
-            PegOutVerifierStatus::PegOutBurnAvailable => write!(f, "can burn"),
-            PegOutVerifierStatus::PegOutDisproveAvailable => write!(f, "can disprove"),
-            PegOutVerifierStatus::PegOutFailed => write!(f, "burn or disprove executed"),
+            PegOutVerifierStatus::PegOutPresign => write!(f, "Presign peg-out transactions."),
+            PegOutVerifierStatus::PegOutComplete => {
+                write!(f, "Wait for peg-out transaction to be confirmed.")
+            }
+            PegOutVerifierStatus::PegOutWait => write!(f, "No action available, wait."),
+            PegOutVerifierStatus::PegOutChallengeAvailabe => {
+                write!(f, "Challenge transaction available.")
+            }
+            PegOutVerifierStatus::PegOutBurnAvailable => write!(f, "Burn transaction available"),
+            PegOutVerifierStatus::PegOutDisproveAvailable => {
+                write!(f, "Disprove transaction available.")
+            }
+            PegOutVerifierStatus::PegOutFailed => {
+                write!(f, "Peg-out complete. Reimbursement failed.")
+            }
         }
     }
 }
@@ -85,14 +93,22 @@ pub enum PegOutOperatorStatus {
 impl Display for PegOutOperatorStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            PegOutOperatorStatus::PegOutWait => write!(f, "no action required, wait"),
-            PegOutOperatorStatus::PegOutComplete => write!(f, "peg-out complete"),
-            PegOutOperatorStatus::PegOutFailed => write!(f, "burn or disprove executed"),
-            PegOutOperatorStatus::PegOutStartPegOut => write!(f, "should execute peg-out tx"),
-            PegOutOperatorStatus::PegOutKickOffAvailable => write!(f, "can kick off"),
-            PegOutOperatorStatus::PegOutAssertAvailable => write!(f, "can assert"),
-            PegOutOperatorStatus::PegOutTake1Available => write!(f, "can take1"),
-            PegOutOperatorStatus::PegOutTake2Available => write!(f, "can take2"),
+            PegOutOperatorStatus::PegOutWait => write!(f, "No action available, wait."),
+            PegOutOperatorStatus::PegOutComplete => {
+                write!(f, "Peg-out complete. Reimbursement succeded.")
+            }
+            PegOutOperatorStatus::PegOutFailed => {
+                write!(f, "Peg-out complete. Reimbursement failed.")
+            }
+            PegOutOperatorStatus::PegOutStartPegOut => write!(f, "Peg-out available."),
+            PegOutOperatorStatus::PegOutKickOffAvailable => {
+                write!(f, "Kick-off transaction available.")
+            }
+            PegOutOperatorStatus::PegOutAssertAvailable => {
+                write!(f, "Assert transaction available.")
+            }
+            PegOutOperatorStatus::PegOutTake1Available => write!(f, "Take1 transaction available."),
+            PegOutOperatorStatus::PegOutTake2Available => write!(f, "Take2 transaction available."),
         }
     }
 }
