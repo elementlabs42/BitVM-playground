@@ -135,6 +135,8 @@ impl BitVMClient {
 
             // TODO error handling of invalid data
             self.validate_data(&self.data);
+
+            // TODO if data doesn't validate, then we should fallback and read a file before it (throw out entire data, since none of it can be trusted)
         }
     }
 
