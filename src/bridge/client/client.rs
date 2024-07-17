@@ -262,7 +262,7 @@ impl BitVMClient {
                 println!(
                     "Graph id: {} status: {}\n",
                     peg_in_graph.id(),
-                    "Missing peg out graph"
+                    "Missing peg out graph" // TODO update this to ask the operator to create a new peg out graph
                 );
             } else {
                 let peg_out_graph = peg_out_graphs_by_id.get(&peg_out_graph_id).unwrap();
