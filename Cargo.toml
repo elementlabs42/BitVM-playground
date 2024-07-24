@@ -31,6 +31,7 @@ once_cell = "1.19.0"
 dotenv = "0.15.0"
 aws-sdk-s3 = "1.40.0"
 regex = "1.10.5"
+musig2 = { version = "0.0.11", features = ["serde", "rand"] }
 
 [dev-dependencies]
 num-bigint = { version = "0.4.4", features = ["rand"] }

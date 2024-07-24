@@ -4,10 +4,14 @@ use bitcoin::{
     Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
 };
 use esplora_client::{AsyncClient, Error, TxStatus};
+use musig2::{secp::Point, PubNonce};
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter, Result as FmtResult},
+};
 
 use super::{
     super::{
@@ -154,6 +158,12 @@ pub struct PegOutGraph {
     take2_transaction: Take2Transaction,
     disprove_transaction: DisproveTransaction,
     burn_transaction: BurnTransaction,
+
+    pub verifier_nonces_take1_transaction: HashMap<Point, PubNonce>,
+    pub verifier_nonces_assert_transaction: HashMap<Point, PubNonce>,
+    pub verifier_nonces_take2_transaction: HashMap<Point, PubNonce>,
+    pub verifier_nonces_disprove_transaction: HashMap<Point, PubNonce>,
+    pub verifier_nonces_burn_transaction: HashMap<Point, PubNonce>,
 
     operator_public_key: PublicKey,
     operator_taproot_public_key: XOnlyPublicKey,
@@ -319,6 +329,11 @@ impl PegOutGraph {
             take2_transaction,
             disprove_transaction,
             burn_transaction,
+            verifier_nonces_take1_transaction: HashMap::new(),
+            verifier_nonces_assert_transaction: HashMap::new(),
+            verifier_nonces_take2_transaction: HashMap::new(),
+            verifier_nonces_disprove_transaction: HashMap::new(),
+            verifier_nonces_burn_transaction: HashMap::new(),
             operator_public_key: context.operator_public_key,
             operator_taproot_public_key: context.operator_taproot_public_key,
             withdrawer_public_key: None,
@@ -500,6 +515,11 @@ impl PegOutGraph {
             take2_transaction,
             disprove_transaction,
             burn_transaction,
+            verifier_nonces_take1_transaction: HashMap::new(),
+            verifier_nonces_assert_transaction: HashMap::new(),
+            verifier_nonces_take2_transaction: HashMap::new(),
+            verifier_nonces_disprove_transaction: HashMap::new(),
+            verifier_nonces_burn_transaction: HashMap::new(),
             operator_public_key: self.operator_public_key,
             operator_taproot_public_key: self.operator_taproot_public_key,
             withdrawer_public_key: None,
