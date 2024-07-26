@@ -3,9 +3,14 @@ use regex::Regex;
 use std::cmp::Ordering;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::aws_s3::AwsS3;
+use super::base::DataStoreDriver;
+use super::{
+    aws_s3::AwsS3,
+    ftp::{ftp::Ftp, ftps::Ftps},
+};
 
-static CLIENT_MISSING_CREDENTIALS_ERROR: &str = "Bridge client is missing AWS S3 credentials";
+static CLIENT_MISSING_CREDENTIALS_ERROR: &str =
+    "Bridge client is missing AWS S3, FTP, or FTPS credentials";
 
 static CLIENT_DATA_SUFFIX: &str = "-bridge-client-data.json";
 static CLIENT_DATA_REGEX: Lazy<Regex> =
@@ -13,38 +18,46 @@ static CLIENT_DATA_REGEX: Lazy<Regex> =
 
 pub struct DataStore {
     aws_s3: Option<AwsS3>,
+    ftp: Option<Ftp>,
+    ftps: Option<Ftps>,
 }
 
 impl DataStore {
     pub fn new() -> Self {
         Self {
             aws_s3: AwsS3::new(),
+            ftp: Ftp::new(),
+            ftps: Ftps::new(),
         }
     }
 
     pub async fn fetch_latest_data(&self) -> Result<Option<String>, &str> {
-        if self.aws_s3.is_none() {
+        if self.aws_s3.is_none() && self.ftp.is_none() && self.ftps.is_none() {
             return Err(CLIENT_MISSING_CREDENTIALS_ERROR);
         }
 
         let keys = self.aws_s3.as_ref().unwrap().list_objects().await;
-        let mut data_keys: Vec<String> = keys
-            .iter()
-            .filter(|key| CLIENT_DATA_REGEX.is_match(key))
-            .cloned()
-            .collect();
-        data_keys.sort_by(|x, y| {
-            if x < y {
-                return Ordering::Less;
-            }
-            return Ordering::Greater;
-        });
 
-        while let Some(key) = data_keys.pop() {
-            let json = self.aws_s3.as_ref().unwrap().fetch_json(&key).await;
-            if json.is_ok() {
-                println!("Fetched latest data file: {}", key);
-                return Ok(Some(json.unwrap()));
+        if keys.is_ok() {
+            let mut data_keys: Vec<String> = keys
+                .unwrap()
+                .iter()
+                .filter(|key| CLIENT_DATA_REGEX.is_match(key))
+                .cloned()
+                .collect();
+            data_keys.sort_by(|x, y| {
+                if x < y {
+                    return Ordering::Less;
+                }
+                return Ordering::Greater;
+            });
+
+            while let Some(key) = data_keys.pop() {
+                let json = self.aws_s3.as_ref().unwrap().fetch_json(&key).await;
+                if json.is_ok() {
+                    println!("Fetched latest data file: {}", key);
+                    return Ok(Some(json.unwrap()));
+                }
             }
         }
 
@@ -53,7 +66,7 @@ impl DataStore {
     }
 
     pub async fn write_data(&self, json: String) -> Result<String, &str> {
-        if self.aws_s3.is_none() {
+        if self.aws_s3.is_none() && self.ftp.is_none() && self.ftps.is_none() {
             return Err(CLIENT_MISSING_CREDENTIALS_ERROR);
         }
 
@@ -69,5 +82,18 @@ impl DataStore {
             Ok(_) => Ok(key),
             Err(_) => Err("Failed to save data file"),
         }
+    }
+
+    fn get_driver(&self) -> Box<dyn DataStoreDriver> {
+        if self.aws_s3.is_some() {
+            return Box::new(self.aws_s3.unwrap());
+        } else if self.ftp.is_some() {
+            return Box::new(self.ftp.unwrap());
+        } else if self.ftps.is_some() {
+            return Box::new(self.ftps.unwrap());
+        }
+        // else {
+        //     Err(CLIENT_MISSING_CREDENTIALS_ERROR)
+        // }
     }
 }
