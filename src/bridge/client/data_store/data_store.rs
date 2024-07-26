@@ -31,69 +31,74 @@ impl DataStore {
         }
     }
 
-    pub async fn fetch_latest_data(&self) -> Result<Option<String>, &str> {
-        if self.aws_s3.is_none() && self.ftp.is_none() && self.ftps.is_none() {
-            return Err(CLIENT_MISSING_CREDENTIALS_ERROR);
-        }
+    pub async fn fetch_latest_data(&self) -> Result<Option<String>, String> {
+        match self.get_driver() {
+            Ok(driver) => {
+                let keys = driver.list_objects().await;
 
-        let keys = self.aws_s3.as_ref().unwrap().list_objects().await;
+                if keys.is_ok() {
+                    let mut data_keys: Vec<String> = keys
+                        .unwrap()
+                        .iter()
+                        .filter(|key| CLIENT_DATA_REGEX.is_match(key))
+                        .cloned()
+                        .collect();
+                    data_keys.sort_by(|x, y| {
+                        if x < y {
+                            return Ordering::Less;
+                        }
+                        return Ordering::Greater;
+                    });
 
-        if keys.is_ok() {
-            let mut data_keys: Vec<String> = keys
-                .unwrap()
-                .iter()
-                .filter(|key| CLIENT_DATA_REGEX.is_match(key))
-                .cloned()
-                .collect();
-            data_keys.sort_by(|x, y| {
-                if x < y {
-                    return Ordering::Less;
+                    while let Some(key) = data_keys.pop() {
+                        let json = driver.fetch_json(&key).await;
+                        if json.is_ok() {
+                            println!("Fetched latest data file: {}", key);
+                            return Ok(Some(json.unwrap()));
+                        } else {
+                            eprintln!("Unable to fetch json: {}", json.unwrap_err());
+                        }
+                    }
+                } else {
+                    eprintln!("Unable to list objects: {}", keys.unwrap_err());
                 }
-                return Ordering::Greater;
-            });
 
-            while let Some(key) = data_keys.pop() {
-                let json = self.aws_s3.as_ref().unwrap().fetch_json(&key).await;
-                if json.is_ok() {
-                    println!("Fetched latest data file: {}", key);
-                    return Ok(Some(json.unwrap()));
+                println!("No data file found");
+                Ok(None)
+            }
+            Err(err) => Err(err.to_string()),
+        }
+    }
+
+    pub async fn write_data(&self, json: String) -> Result<String, String> {
+        match self.get_driver() {
+            Ok(driver) => {
+                let time = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis();
+                let key = format!("{}{}", time, CLIENT_DATA_SUFFIX);
+
+                let response = driver.upload_json(&key, json).await;
+
+                match response {
+                    Ok(_) => Ok(key),
+                    Err(err) => Err(format!("Failed to save data file: {}", err)),
                 }
             }
-        }
-
-        println!("No data file found");
-        Ok(None)
-    }
-
-    pub async fn write_data(&self, json: String) -> Result<String, &str> {
-        if self.aws_s3.is_none() && self.ftp.is_none() && self.ftps.is_none() {
-            return Err(CLIENT_MISSING_CREDENTIALS_ERROR);
-        }
-
-        let time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
-        let key = format!("{}{}", time, CLIENT_DATA_SUFFIX);
-
-        let response = self.aws_s3.as_ref().unwrap().upload_json(&key, json).await;
-
-        match response {
-            Ok(_) => Ok(key),
-            Err(_) => Err("Failed to save data file"),
+            Err(err) => Err(err.to_string()),
         }
     }
 
-    fn get_driver(&self) -> Box<dyn DataStoreDriver> {
+    fn get_driver(&self) -> Result<&dyn DataStoreDriver, &str> {
         if self.aws_s3.is_some() {
-            return Box::new(self.aws_s3.unwrap());
+            return Ok(self.aws_s3.as_ref().unwrap());
         } else if self.ftp.is_some() {
-            return Box::new(self.ftp.unwrap());
+            return Ok(self.ftp.as_ref().unwrap());
         } else if self.ftps.is_some() {
-            return Box::new(self.ftps.unwrap());
+            return Ok(self.ftps.as_ref().unwrap());
+        } else {
+            Err(CLIENT_MISSING_CREDENTIALS_ERROR)
         }
-        // else {
-        //     Err(CLIENT_MISSING_CREDENTIALS_ERROR)
-        // }
     }
 }

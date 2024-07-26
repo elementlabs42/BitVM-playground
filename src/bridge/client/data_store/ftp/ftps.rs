@@ -2,6 +2,7 @@ use super::{
     super::base::DataStoreDriver,
     lib::{self, FtpCredentials},
 };
+use async_trait::async_trait;
 use dotenv;
 
 // To use this data store, create a .env file in the base directory with the following values:
@@ -54,6 +55,7 @@ impl Ftps {
     }
 }
 
+#[async_trait]
 impl DataStoreDriver for Ftps {
     async fn list_objects(&self) -> Result<Vec<String>, String> {
         lib::list_objects(&self.credentials).await

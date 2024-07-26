@@ -1,4 +1,5 @@
 use super::base::DataStoreDriver;
+use async_trait::async_trait;
 use aws_sdk_s3::{
     config::{Credentials, Region},
     error::SdkError,
@@ -83,6 +84,7 @@ impl AwsS3 {
     }
 }
 
+#[async_trait]
 impl DataStoreDriver for AwsS3 {
     async fn list_objects(&self) -> Result<Vec<String>, String> {
         let mut response = self
