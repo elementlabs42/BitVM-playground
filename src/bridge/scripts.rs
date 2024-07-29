@@ -35,6 +35,13 @@ pub fn generate_pay_to_pubkey_script(public_key: &PublicKey) -> ScriptBuf {
     .compile()
 }
 
+pub fn generate_p2pkh_address(network: Network, public_key: &PublicKey) -> Address {
+    Address::p2pkh(
+        &CompressedPublicKey::try_from(*public_key).expect("Could not compress public key"),
+        network,
+    )
+}
+
 pub fn generate_p2wpkh_address(network: Network, public_key: &PublicKey) -> Address {
     Address::p2wpkh(
         &CompressedPublicKey::try_from(*public_key).expect("Could not compress public key"),
