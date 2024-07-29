@@ -159,12 +159,6 @@ pub struct PegOutGraph {
     disprove_transaction: DisproveTransaction,
     burn_transaction: BurnTransaction,
 
-    pub verifier_nonces_take1_transaction: HashMap<Point, PubNonce>,
-    pub verifier_nonces_assert_transaction: HashMap<Point, PubNonce>,
-    pub verifier_nonces_take2_transaction: HashMap<Point, PubNonce>,
-    pub verifier_nonces_disprove_transaction: HashMap<Point, PubNonce>,
-    pub verifier_nonces_burn_transaction: HashMap<Point, PubNonce>,
-
     operator_public_key: PublicKey,
     operator_taproot_public_key: XOnlyPublicKey,
 
@@ -329,11 +323,6 @@ impl PegOutGraph {
             take2_transaction,
             disprove_transaction,
             burn_transaction,
-            verifier_nonces_take1_transaction: HashMap::new(),
-            verifier_nonces_assert_transaction: HashMap::new(),
-            verifier_nonces_take2_transaction: HashMap::new(),
-            verifier_nonces_disprove_transaction: HashMap::new(),
-            verifier_nonces_burn_transaction: HashMap::new(),
             operator_public_key: context.operator_public_key,
             operator_taproot_public_key: context.operator_taproot_public_key,
             withdrawer_public_key: None,
@@ -515,11 +504,6 @@ impl PegOutGraph {
             take2_transaction,
             disprove_transaction,
             burn_transaction,
-            verifier_nonces_take1_transaction: HashMap::new(),
-            verifier_nonces_assert_transaction: HashMap::new(),
-            verifier_nonces_take2_transaction: HashMap::new(),
-            verifier_nonces_disprove_transaction: HashMap::new(),
-            verifier_nonces_burn_transaction: HashMap::new(),
             operator_public_key: self.operator_public_key,
             operator_taproot_public_key: self.operator_taproot_public_key,
             withdrawer_public_key: None,
@@ -527,6 +511,10 @@ impl PegOutGraph {
             withdrawer_evm_address: None,
             peg_out_transaction: None,
         }
+    }
+
+    pub fn push_take1_nonce(&mut self, public_key: PublicKey, public_nonce: PubNonce) {
+        self.take1_transaction.push_nonce(public_key, public_nonce)
     }
 
     pub fn pre_sign(&mut self, context: &VerifierContext) {

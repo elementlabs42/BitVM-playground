@@ -3,7 +3,6 @@ use bitcoin::{
     secp256k1::All,
     Network, PublicKey, XOnlyPublicKey,
 };
-use musig2::secp::{Point, Scalar};
 
 use super::base::{generate_keys_from_secret, BaseContext};
 
@@ -11,8 +10,8 @@ pub struct VerifierContext {
     pub network: Network,
     pub secp: Secp256k1<All>,
 
-    priv_key: Scalar,
-    pub public_key: Point,
+    keypair: Keypair,
+    pub public_key: PublicKey,
 
     pub n_of_n_keypair: Keypair,
     pub n_of_n_public_key: PublicKey,
@@ -30,23 +29,24 @@ impl BaseContext for VerifierContext {
 impl VerifierContext {
     pub fn new(
         network: Network,
-        private_key: Scalar,
+        verifier_secret: &str,
         n_of_n_secret: &str,
         operator_public_key: &PublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
     ) -> Self {
-        let (secp, keypair, public_key, taproot_public_key) =
+        let (secp, n_of_n_keypair, n_of_n_public_key, taproot_public_key) =
             generate_keys_from_secret(network, n_of_n_secret);
+        let (_, keypair, public_key, _) = generate_keys_from_secret(network, verifier_secret);
 
         VerifierContext {
             network,
             secp,
 
-            priv_key: private_key,
-            public_key: private_key.base_point_mul(),
+            keypair,
+            public_key,
 
-            n_of_n_keypair: keypair,
-            n_of_n_public_key: public_key,
+            n_of_n_keypair,
+            n_of_n_public_key,
             n_of_n_taproot_public_key: taproot_public_key,
 
             operator_public_key: operator_public_key.clone(),

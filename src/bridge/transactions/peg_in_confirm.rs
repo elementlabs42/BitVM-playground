@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
+use musig2::PubNonce;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -19,6 +22,7 @@ use super::{
 pub struct PegInConfirmTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
+    pub musig2_nonces: HashMap<PublicKey, PubNonce>, // TODO: Consider changing to private and adding read-only access via the PreSignedTransaction trait
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
@@ -83,6 +87,7 @@ impl PegInConfirmTransaction {
                 input: vec![_input0],
                 output: vec![_output0],
             },
+            musig2_nonces: HashMap::new(),
             prev_outs: vec![TxOut {
                 value: input0.amount,
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
@@ -126,6 +131,10 @@ impl PegInConfirmTransaction {
             &self.connector_z.generate_taproot_spend_info(),
             &self.prev_scripts[input_index],
         );
+    }
+
+    pub fn push_nonce(&mut self, public_key: PublicKey, public_nonce: PubNonce) {
+        self.musig2_nonces.insert(public_key, public_nonce);
     }
 
     pub fn pre_sign(&mut self, context: &VerifierContext) {

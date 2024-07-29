@@ -1,6 +1,6 @@
-use musig2::{secp::Scalar, AggNonce, PubNonce, SecNonce};
+use musig2::{AggNonce, SecNonce};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
 use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, ScriptBuf};
 use esplora_client::{AsyncClient, Builder, Utxo};
@@ -82,7 +82,7 @@ impl BitVMClient {
         if n_of_n_secret.is_some() && verifier_secret.is_some() {
             verifier_context = Some(VerifierContext::new(
                 network,
-                Scalar::from_str(verifier_secret.unwrap()).unwrap(),
+                verifier_secret.unwrap(),
                 n_of_n_secret.unwrap(),
                 &operator_keys.2,
                 &operator_keys.3,
@@ -537,13 +537,13 @@ impl BitVMClient {
         }
     }
 
-    pub async fn publish_peg_in_nonces(&self, peg_in_graph_id: &str) {
-        let peg_in_graph = self
+    pub async fn push_peg_in_nonces(&mut self, peg_in_graph_id: &str) {
+        let i = self
             .data
             .peg_in_graphs
             .iter()
-            .find(|&g| g.id().eq(peg_in_graph_id));
-        if peg_in_graph.is_none() {
+            .position(|g| g.id().eq(peg_in_graph_id));
+        if i.is_none() {
             panic!("Invalid graph id");
         }
 
@@ -551,22 +551,23 @@ impl BitVMClient {
 
         // TODO: Save secret nonce to local file system
 
-        peg_in_graph
+        self.data
+            .peg_in_graphs
+            .get_mut(i.unwrap())
             .unwrap()
-            .verifier_nonces_confirm_transaction
-            .insert(
+            .push_peg_in_confirm_nonce(
                 self.verifier_context.as_ref().unwrap().public_key,
                 sec_nonce_confirm_transaction.public_nonce(),
             );
     }
 
-    pub async fn publish_peg_out_nonces(&self, peg_out_graph_id: &str) {
-        let peg_out_graph = self
+    pub async fn push_peg_out_nonces(&mut self, peg_out_graph_id: &str) {
+        let i = self
             .data
             .peg_out_graphs
             .iter()
-            .find(|&g| g.id().eq(peg_out_graph_id));
-        if peg_out_graph.is_none() {
+            .position(|g| g.id().eq(peg_out_graph_id));
+        if i.is_none() {
             panic!("Invalid graph id");
         }
 
@@ -578,13 +579,16 @@ impl BitVMClient {
 
         // TODO: Save secret nonces to local file system
 
-        peg_out_graph
+        self.data
+            .peg_out_graphs
+            .get_mut(i.unwrap())
             .unwrap()
-            .verifier_nonces_take1_transaction
-            .insert(
+            .push_take1_nonce(
                 self.verifier_context.as_ref().unwrap().public_key,
                 sec_nonce_take1_transaction.public_nonce(),
             );
+
+        // TODO: Add remaining nonces
     }
 
     pub async fn get_aggregate_peg_in_confirm_nonce(&self, peg_in_graph_id: &str) -> AggNonce {
@@ -598,10 +602,12 @@ impl BitVMClient {
         }
 
         // TODO: Check that nonces from all verifiers are present.
+
         AggNonce::sum(
             peg_in_graph
                 .unwrap()
-                .verifier_nonces_confirm_transaction
+                .peg_in_confirm_transaction_ref()
+                .musig2_nonces
                 .values(),
         )
     }
@@ -612,9 +618,9 @@ impl BitVMClient {
     pub async fn get_aggregate_peg_out_disprove_nonce(&self, peg_out_graph_id: &str) { todo!() }
     pub async fn get_aggregate_peg_out_burn_nonce(&self, peg_out_graph_id: &str) { todo!() }
 
-    pub async fn publish_peg_in_signatures(&self, peg_in_graph_id: &str) { todo!() }
+    pub async fn push_peg_in_signatures(&self, peg_in_graph_id: &str) { todo!() }
 
-    pub async fn publish_peg_out_signatures(&self, peg_out_graph_id: &str) { todo!() }
+    pub async fn push_peg_out_signatures(&self, peg_out_graph_id: &str) { todo!() }
 
     pub async fn get_aggregate_peg_in_signature(&self, peg_in_graph_id: &str) { todo!() }
 

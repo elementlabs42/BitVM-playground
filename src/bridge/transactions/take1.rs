@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use bitcoin::{
     absolute, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, TapSighashType, Transaction,
     TxOut, XOnlyPublicKey,
 };
+use musig2::PubNonce;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -21,6 +24,7 @@ use super::{
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct Take1Transaction {
     tx: Transaction,
+    musig2_nonces: HashMap<PublicKey, PubNonce>,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     connector_a: ConnectorA,
@@ -107,6 +111,7 @@ impl Take1Transaction {
                 input: vec![_input0, _input1, _input2, _input3],
                 output: vec![_output0],
             },
+            musig2_nonces: HashMap::new(),
             prev_outs: vec![
                 TxOut {
                     value: input0.amount,
@@ -176,6 +181,10 @@ impl Take1Transaction {
             self.connector_b.generate_taproot_spend_info(),
             &vec![&context.n_of_n_keypair],
         );
+    }
+
+    pub fn push_nonce(&mut self, public_key: PublicKey, public_nonce: PubNonce) {
+        self.musig2_nonces.insert(public_key, public_nonce);
     }
 
     pub fn pre_sign(&mut self, context: &VerifierContext) {

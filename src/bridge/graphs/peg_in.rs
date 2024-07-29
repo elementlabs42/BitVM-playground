@@ -3,14 +3,11 @@ use bitcoin::{
     Network, OutPoint, PublicKey, XOnlyPublicKey,
 };
 use esplora_client::{AsyncClient, Error, TxStatus};
-use musig2::{secp::Point, PubNonce};
+use musig2::PubNonce;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{
-    collections::HashMap,
-    fmt::{Display, Formatter, Result as FmtResult},
-};
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use super::{
     super::{
@@ -109,8 +106,6 @@ pub struct PegInGraph {
     peg_in_refund_transaction: PegInRefundTransaction,
     peg_in_confirm_transaction: PegInConfirmTransaction,
 
-    pub verifier_nonces_confirm_transaction: HashMap<Point, PubNonce>,
-
     n_of_n_presigned: bool,
     n_of_n_public_key: PublicKey,
     n_of_n_taproot_public_key: XOnlyPublicKey,
@@ -171,7 +166,6 @@ impl PegInGraph {
             depositor_public_key: context.depositor_public_key,
             depositor_taproot_public_key: context.depositor_taproot_public_key,
             depositor_evm_address: evm_address.to_string(),
-            verifier_nonces_confirm_transaction: HashMap::new(),
         }
     }
 
@@ -234,8 +228,12 @@ impl PegInGraph {
             depositor_public_key: self.depositor_public_key,
             depositor_taproot_public_key: self.depositor_taproot_public_key,
             depositor_evm_address: self.depositor_evm_address.clone(),
-            verifier_nonces_confirm_transaction: HashMap::new(),
         }
+    }
+
+    pub fn push_peg_in_confirm_nonce(&mut self, public_key: PublicKey, public_nonce: PubNonce) {
+        self.peg_in_confirm_transaction
+            .push_nonce(public_key, public_nonce)
     }
 
     pub fn pre_sign(&mut self, context: &VerifierContext) {
