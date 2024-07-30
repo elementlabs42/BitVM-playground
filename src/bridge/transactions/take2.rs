@@ -16,7 +16,7 @@ use super::{
     pre_signed::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Take2Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
@@ -138,6 +138,10 @@ impl Take2Transaction {
     pub fn pre_sign(&mut self, context: &VerifierContext) {
         self.sign_input0(context);
         self.sign_input2(context);
+    }
+
+    pub fn merge(&mut self, take2: &Take2Transaction) {
+        merge_transactions(&mut self.tx, &take2.tx);
     }
 }
 

@@ -15,7 +15,7 @@ use super::{
     pre_signed::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct BurnTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -98,6 +98,8 @@ impl BurnTransaction {
         let output_index = 1;
         self.tx.output[output_index].script_pubkey = output_script_pubkey;
     }
+
+    pub fn merge(&mut self, burn: &BurnTransaction) { merge_transactions(&mut self.tx, &burn.tx); }
 }
 
 impl BaseTransaction for BurnTransaction {

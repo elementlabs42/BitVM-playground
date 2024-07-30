@@ -16,7 +16,7 @@ use super::{
     signing::populate_p2wsh_witness,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ChallengeTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -169,6 +169,10 @@ impl ChallengeTransaction {
 
             input_index += 1;
         }
+    }
+
+    pub fn merge(&mut self, challenge: &ChallengeTransaction) {
+        merge_transactions(&mut self.tx, &challenge.tx);
     }
 }
 

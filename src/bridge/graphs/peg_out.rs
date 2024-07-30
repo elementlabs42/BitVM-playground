@@ -15,8 +15,7 @@ use super::{
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         transactions::{
             assert::AssertTransaction,
-            base::Input,
-            base::{validate_transaction, BaseTransaction, InputWithScript},
+            base::{validate_transaction, BaseTransaction, Input, InputWithScript},
             burn::BurnTransaction,
             challenge::ChallengeTransaction,
             disprove::DisproveTransaction,
@@ -133,7 +132,7 @@ impl Display for PegOutOperatorStatus {
     }
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegOutGraph {
     version: String,
     network: Network,
@@ -145,7 +144,7 @@ pub struct PegOutGraph {
     n_of_n_public_key: PublicKey,
     n_of_n_taproot_public_key: XOnlyPublicKey,
 
-    peg_in_graph_id: String,
+    pub peg_in_graph_id: String,
     peg_in_confirm_txid: Txid,
     kick_off_transaction: KickOffTransaction,
     take1_transaction: Take1Transaction,
@@ -309,7 +308,7 @@ impl PegOutGraph {
             id: generate_id(peg_in_graph, &context.operator_public_key),
             n_of_n_presigned: false,
             n_of_n_public_key: context.n_of_n_public_key,
-            n_of_n_taproot_public_key: context.operator_taproot_public_key,
+            n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
             peg_in_graph_id: peg_in_graph.id().clone(),
             peg_in_confirm_txid,
             kick_off_transaction,
@@ -979,6 +978,21 @@ impl PegOutGraph {
         }
 
         true
+    }
+
+    pub fn merge(&mut self, source_peg_out_graph: &PegOutGraph) {
+        self.challenge_transaction
+            .merge(&source_peg_out_graph.challenge_transaction);
+        self.assert_transaction
+            .merge(&source_peg_out_graph.assert_transaction);
+        self.disprove_transaction
+            .merge(&source_peg_out_graph.disprove_transaction);
+        self.burn_transaction
+            .merge(&source_peg_out_graph.burn_transaction);
+        self.take1_transaction
+            .merge(&source_peg_out_graph.take1_transaction);
+        self.take2_transaction
+            .merge(&source_peg_out_graph.take2_transaction);
     }
 }
 

@@ -95,13 +95,13 @@ impl Display for PegInOperatorStatus {
     }
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegInGraph {
     version: String,
     network: Network,
     id: String,
 
-    peg_in_deposit_transaction: PegInDepositTransaction,
+    pub peg_in_deposit_transaction: PegInDepositTransaction,
     peg_in_refund_transaction: PegInRefundTransaction,
     peg_in_confirm_transaction: PegInConfirmTransaction,
 
@@ -421,6 +421,12 @@ impl PegInGraph {
         }
 
         true
+    }
+
+    pub fn merge(&mut self, source_peg_in_graph: &PegInGraph) {
+        // merge peg_in_confirm tx
+        self.peg_in_confirm_transaction
+            .merge(&source_peg_in_graph.peg_in_confirm_transaction);
     }
 }
 
