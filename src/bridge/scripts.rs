@@ -1,6 +1,9 @@
 use crate::treepp::*;
-use bitcoin::{Address, CompressedPublicKey, Network, PublicKey, ScriptBuf, XOnlyPublicKey};
+use bitcoin::{
+    hashes::Hash, Address, CompressedPublicKey, Network, PublicKey, ScriptBuf, XOnlyPublicKey,
+};
 use lazy_static::lazy_static;
+use sha2::{Digest, Sha256};
 use std::str::FromStr;
 
 lazy_static! {
@@ -35,6 +38,34 @@ pub fn generate_pay_to_pubkey_script(public_key: &PublicKey) -> ScriptBuf {
     .compile()
 }
 
+pub fn generate_pay_to_pubkey_hash_with_inscription_script(
+    public_key: &PublicKey,
+    timestamp: u32,
+    evm_address: &str,
+) -> ScriptBuf {
+    let inscription = [
+        public_key.to_bytes(),
+        timestamp.to_be_bytes().to_vec(),
+        evm_address.as_bytes().to_vec(),
+    ]
+    .concat();
+    let mut inscription_hasher = Sha256::new();
+    inscription_hasher.update(&inscription);
+    let inscription_hash = inscription_hasher.finalize();
+    script! {
+        OP_FALSE
+        OP_IF
+        { inscription_hash.to_vec() }
+        OP_ENDIF
+        OP_DUP
+        OP_HASH160
+        { public_key.pubkey_hash().as_byte_array().to_vec() }
+        OP_EQUALVERIFY
+        OP_CHECKSIG
+    }
+    .compile()
+}
+
 pub fn generate_p2pkh_address(network: Network, public_key: &PublicKey) -> Address {
     Address::p2pkh(
         &CompressedPublicKey::try_from(*public_key).expect("Could not compress public key"),
@@ -51,6 +82,18 @@ pub fn generate_p2wpkh_address(network: Network, public_key: &PublicKey) -> Addr
 
 pub fn generate_pay_to_pubkey_script_address(network: Network, public_key: &PublicKey) -> Address {
     Address::p2wsh(&generate_pay_to_pubkey_script(public_key), network)
+}
+
+pub fn generate_pay_to_pubkey_hash_with_inscription_script_address(
+    network: Network,
+    public_key: &PublicKey,
+    timestamp: u32,
+    evm_address: &str,
+) -> Address {
+    Address::p2wsh(
+        &generate_pay_to_pubkey_hash_with_inscription_script(public_key, timestamp, evm_address),
+        network,
+    )
 }
 
 pub fn generate_pay_to_pubkey_taproot_script(public_key: &XOnlyPublicKey) -> ScriptBuf {

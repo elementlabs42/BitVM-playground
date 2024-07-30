@@ -33,17 +33,10 @@ impl PegOutTransaction {
     pub fn new(
         context: &OperatorContext,
         withdrawer_public_key: &PublicKey,
-        // input0: Input,
+        evm_address: &str,
+        evm_peg_out_ts: u32,
         input1: Input,
     ) -> Self {
-        // TODO QUESTION Why do we need this input from Bob?
-        // let _input0 = TxIn {
-        //     previous_output: input0.outpoint,
-        //     script_sig: ScriptBuf::new(),
-        //     sequence: Sequence::MAX,
-        //     witness: Witness::default(),
-        // };
-
         let _input1 = TxIn {
             previous_output: input1.outpoint,
             script_sig: ScriptBuf::new(),
@@ -51,43 +44,35 @@ impl PegOutTransaction {
             witness: Witness::default(),
         };
 
-        let total_output_amount = /* input0.amount + */ input1.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input1.amount - Amount::from_sat(FEE_AMOUNT);
 
-        let withdrawer_public_key_hash = generate_p2pkh_address(context.network, withdrawer_public_key);
         let _output0 = TxOut {
             value: total_output_amount,
-            script_pubkey: withdrawer_public_key_hash.script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_hash_with_inscription_script_address(
+                context.network,
+                withdrawer_public_key,
+                evm_peg_out_ts,
+                evm_address,
+            )
+            .script_pubkey(),
         };
 
         let mut this = PegOutTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![/*_input0, */_input1],
+                input: vec![_input1],
                 output: vec![_output0],
             },
-            prev_outs: vec![
-                // TxOut {
-                //     value: input0.amount,
-                //     script_pubkey: generate_pay_to_pubkey_script_address(
-                //         context.network,
-                //         &withdrawer_public_key,
-                //     )
-                //     .script_pubkey(),
-                // },
-                TxOut {
-                    value: input1.amount,
-                    script_pubkey: generate_pay_to_pubkey_script_address(
-                        context.network,
-                        &context.operator_public_key,
-                    )
-                    .script_pubkey(),
-                },
-            ],
-            prev_scripts: vec![
-                // generate_pay_to_pubkey_script(&withdrawer_public_key),
-                generate_pay_to_pubkey_script(&context.operator_public_key),
-            ],
+            prev_outs: vec![TxOut {
+                value: input1.amount,
+                script_pubkey: generate_pay_to_pubkey_script_address(
+                    context.network,
+                    &context.operator_public_key,
+                )
+                .script_pubkey(),
+            }],
+            prev_scripts: vec![generate_pay_to_pubkey_script(&context.operator_public_key)],
         };
 
         this.sign_input1(context);
@@ -100,7 +85,6 @@ impl PegOutTransaction {
             self,
             context,
             0,
-            // 1,
             EcdsaSighashType::All,
             &vec![&context.operator_keypair],
         );
