@@ -7,10 +7,11 @@ use super::base::DataStoreDriver;
 use super::{
     aws_s3::AwsS3,
     ftp::{ftp::Ftp, ftps::Ftps},
+    sftp::Sftp,
 };
 
 static CLIENT_MISSING_CREDENTIALS_ERROR: &str =
-    "Bridge client is missing AWS S3, FTP, or FTPS credentials";
+    "Bridge client is missing AWS S3, FTP, FTPS, or SFTP credentials";
 
 static CLIENT_DATA_SUFFIX: &str = "-bridge-client-data.json";
 static CLIENT_DATA_REGEX: Lazy<Regex> =
@@ -20,6 +21,7 @@ pub struct DataStore {
     aws_s3: Option<AwsS3>,
     ftp: Option<Ftp>,
     ftps: Option<Ftps>,
+    sftp: Option<Sftp>,
 }
 
 impl DataStore {
@@ -28,6 +30,7 @@ impl DataStore {
             aws_s3: AwsS3::new(),
             ftp: Ftp::new(),
             ftps: Ftps::new(),
+            sftp: Sftp::new(),
         }
     }
 
@@ -97,6 +100,8 @@ impl DataStore {
             return Ok(self.ftp.as_ref().unwrap());
         } else if self.ftps.is_some() {
             return Ok(self.ftps.as_ref().unwrap());
+        } else if self.sftp.is_some() {
+            return Ok(self.sftp.as_ref().unwrap());
         } else {
             Err(CLIENT_MISSING_CREDENTIALS_ERROR)
         }

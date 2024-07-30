@@ -43,10 +43,10 @@ pub async fn list_objects(credentials: &FtpCredentials) -> Result<Vec<String>, S
                 }
                 Err(err) => {
                     disconnect(None, Some(&mut ftp_stream)).await;
-                    Err(format!("Unable tolist objects: {}", err.to_string()))
+                    Err(format!("Unable to list objects: {}", err.to_string()))
                 }
             },
-            Err(err) => Err(format!("Unable tolist objects: {}", err.to_string())),
+            Err(err) => Err(format!("Unable to list objects: {}", err.to_string())),
         }
     } else {
         match insecure_connect(credentials).await {
@@ -57,10 +57,10 @@ pub async fn list_objects(credentials: &FtpCredentials) -> Result<Vec<String>, S
                 }
                 Err(err) => {
                     disconnect(Some(&mut ftp_stream), None).await;
-                    Err(format!("Unable tolist objects: {}", err.to_string()))
+                    Err(format!("Unable to list objects: {}", err.to_string()))
                 }
             },
-            Err(err) => Err(format!("Unable tolist objects: {}", err.to_string())),
+            Err(err) => Err(format!("Unable to list objects: {}", err.to_string())),
         }
     }
 }
@@ -206,7 +206,10 @@ async fn insecure_connect(credentials: &FtpCredentials) -> Result<AsyncFtpStream
     let result =
         AsyncFtpStream::connect(format!("{}:{}", &credentials.host, &credentials.port)).await;
     if result.is_err() {
-        return Err("Unable to connect to FTP server at address:port".to_string());
+        return Err(format!(
+            "Unable to connect to FTP server at {}:{}",
+            &credentials.host, &credentials.port
+        ));
     }
 
     let mut ftp_stream = result.unwrap();
@@ -220,7 +223,7 @@ async fn insecure_connect(credentials: &FtpCredentials) -> Result<AsyncFtpStream
 
     let result = ftp_stream.cwd(&credentials.base_path).await;
     if result.is_err() {
-        return Err("Invalid base path".to_string());
+        return Err(format!("Invalid base path: {}", &credentials.base_path));
     }
 
     Ok(ftp_stream)
@@ -231,7 +234,10 @@ async fn secure_connect(credentials: &FtpCredentials) -> Result<AsyncNativeTlsFt
         AsyncNativeTlsFtpStream::connect(format!("{}:{}", &credentials.host, &credentials.port))
             .await;
     if result.is_err() {
-        return Err("Unable to connect to FTP server at address:port".to_string());
+        return Err(format!(
+            "Unable to connect to FTP server at {}:{}",
+            &credentials.host, &credentials.port
+        ));
     }
 
     let result = result
@@ -256,7 +262,7 @@ async fn secure_connect(credentials: &FtpCredentials) -> Result<AsyncNativeTlsFt
 
     let result = ftp_stream.cwd(&credentials.base_path).await;
     if result.is_err() {
-        return Err("Invalid base path".to_string());
+        return Err(format!("Invalid base path: {}", &credentials.base_path));
     }
 
     Ok(ftp_stream)
