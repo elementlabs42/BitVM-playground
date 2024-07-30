@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::cmp::Ordering;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use super::base::DataStoreDriver;
 use super::{
@@ -34,14 +34,65 @@ impl DataStore {
         }
     }
 
-    pub async fn fetch_latest_data(&self) -> Result<Option<String>, String> {
+    pub fn get_file_timestamp(file_name: &String) -> Result<u64, String> {
+        if CLIENT_DATA_REGEX.is_match(file_name) {
+            let mut timestamp_string = file_name.clone();
+            timestamp_string.truncate(13);
+            let timestamp = timestamp_string.parse::<u64>();
+            return match timestamp {
+                Ok(_) => Ok(timestamp.unwrap()),
+                Err(_) => Err(String::from("Failed to parse file timestamp")),
+            };
+        }
+
+        Err(String::from("Incorrect file name"))
+    }
+
+    pub async fn get_file_names(&self) -> Result<Vec<String>, String> {
+        match self.get_driver() {
+            Ok(driver) => match driver.list_objects().await {
+                Ok(keys) => {
+                    let mut data_keys: Vec<String> = keys
+                        .iter()
+                        .filter(|key| CLIENT_DATA_REGEX.is_match(key))
+                        .cloned()
+                        .collect();
+                    data_keys.sort_by(|x, y| {
+                        if x < y {
+                            return Ordering::Less;
+                        }
+                        return Ordering::Greater;
+                    });
+
+                    Ok(data_keys)
+                }
+                Err(err) => Err(err.to_string()),
+            },
+            Err(err) => Err(err.to_string()),
+        }
+    }
+
+    pub async fn fetch_data_by_key(&self, key: &String) -> Result<Option<String>, String> {
         match self.get_driver() {
             Ok(driver) => {
-                let keys = driver.list_objects().await;
+                let json = driver.fetch_json(key).await;
+                if json.is_ok() {
+                    println!("Fetched data file: {}", key);
+                    return Ok(Some(json.unwrap()));
+                }
 
-                if keys.is_ok() {
+                println!("No data file {} found", key);
+                Ok(None)
+            }
+            Err(err) => Err(err.to_string()),
+        }
+    }
+
+    pub async fn fetch_latest_data(&self) -> Result<Option<String>, String> {
+        match self.get_driver() {
+            Ok(driver) => match driver.list_objects().await {
+                Ok(keys) => {
                     let mut data_keys: Vec<String> = keys
-                        .unwrap()
                         .iter()
                         .filter(|key| CLIENT_DATA_REGEX.is_match(key))
                         .cloned()
@@ -62,13 +113,12 @@ impl DataStore {
                             eprintln!("Unable to fetch json: {}", json.unwrap_err());
                         }
                     }
-                } else {
-                    eprintln!("Unable to list objects: {}", keys.unwrap_err());
-                }
 
-                println!("No data file found");
-                Ok(None)
-            }
+                    println!("No data file found");
+                    Ok(None)
+                }
+                Err(err) => Err(err.to_string()),
+            },
             Err(err) => Err(err.to_string()),
         }
     }
@@ -80,17 +130,29 @@ impl DataStore {
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_millis();
-                let key = format!("{}{}", time, CLIENT_DATA_SUFFIX);
+                let key = Self::create_file_name(time);
 
                 let response = driver.upload_json(&key, json).await;
 
                 match response {
                     Ok(_) => Ok(key),
-                    Err(err) => Err(format!("Failed to save data file: {}", err)),
+                    Err(_) => Err(String::from("Failed to save data file")),
                 }
             }
             Err(err) => Err(err.to_string()),
         }
+    }
+
+    pub fn get_past_max_file_name_by_timestamp(latest_timestamp: u64, period: u64) -> String {
+        let past_max_timestamp =
+            (Duration::from_millis(latest_timestamp) - Duration::from_secs(period)).as_millis();
+        let past_max_file_name = Self::create_file_name(past_max_timestamp);
+
+        return past_max_file_name;
+    }
+
+    pub fn create_file_name(timestamp: u128) -> String {
+        return format!("{}{}", timestamp, CLIENT_DATA_SUFFIX);
     }
 
     fn get_driver(&self) -> Result<&dyn DataStoreDriver, &str> {

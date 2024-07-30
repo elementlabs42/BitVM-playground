@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{super::transactions::base::Input, connector::*};
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ConnectorZ {
     pub network: Network,
     pub depositor_taproot_public_key: XOnlyPublicKey,
@@ -55,10 +55,6 @@ impl ConnectorZ {
         script! {
         OP_FALSE
         OP_IF
-        { String::from("ord").into_bytes() } // TODO Decide if this metadata is needed or not
-        1
-        { String::from("text/plain;charset=utf-8").into_bytes() } // TODO change to json for clearer meaning
-        0
         { self.evm_address.clone().into_bytes() }
         OP_ENDIF
         { self.n_of_n_taproot_public_key }
