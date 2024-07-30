@@ -61,7 +61,7 @@ impl Sftp {
         let mut buffer: Vec<u8> = vec![];
 
         match connect(&self.credentials).await {
-            Ok(mut sftp) => match sftp.open(key).await.map(TokioCompatFile::from) {
+            Ok(sftp) => match sftp.open(key).await.map(TokioCompatFile::from) {
                 Ok(file) => {
                     tokio::pin!(file);
                     match file.read_to_end(&mut buffer).await {
@@ -86,7 +86,7 @@ impl Sftp {
 
     async fn upload_object(&self, key: &str, data: &Vec<u8>) -> Result<(), String> {
         match connect(&self.credentials).await {
-            Ok(mut sftp) => match sftp
+            Ok(sftp) => match sftp
                 .options()
                 .write(true)
                 .create_new(true)
@@ -94,7 +94,7 @@ impl Sftp {
                 .await
                 .map(TokioCompatFile::from)
             {
-                Ok(mut file) => {
+                Ok(file) => {
                     tokio::pin!(file);
                     match file.write(data).await {
                         Ok(_) => match file.flush().await {
@@ -127,7 +127,7 @@ impl Sftp {
 impl DataStoreDriver for Sftp {
     async fn list_objects(&self) -> Result<Vec<String>, String> {
         match connect(&self.credentials).await {
-            Ok(mut sftp) => {
+            Ok(sftp) => {
                 let mut fs = sftp.fs();
                 match fs.open_dir(".").await {
                     Ok(dir) => {
@@ -182,7 +182,7 @@ impl DataStoreDriver for Sftp {
 
 fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
     match executor::block_on(connect(credentials)) {
-        Ok(mut sftp) => {
+        Ok(sftp) => {
             executor::block_on(disconnect(sftp));
             Ok(())
         }
