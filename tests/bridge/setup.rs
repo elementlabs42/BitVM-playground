@@ -12,7 +12,8 @@ use bitvm::bridge::{
         verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
     graphs::base::{
-        DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, VERIFIER0_SECRET, VERIFIER1_SECRET, WITHDRAWER_SECRET
+        DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, VERIFIER0_SECRET,
+        VERIFIER1_SECRET, WITHDRAWER_SECRET,
     },
 };
 
@@ -20,6 +21,7 @@ pub async fn setup_test() -> (
     BitVMClient,
     DepositorContext,
     OperatorContext,
+    VerifierContext,
     VerifierContext,
     WithdrawerContext,
     ConnectorA,
@@ -50,10 +52,22 @@ pub async fn setup_test() -> (
     let mut verifier_public_keys: Vec<PublicKey> = Vec::new();
     verifier_public_keys.push(generate_keys_from_secret(network, verifier0_secret).2);
     verifier_public_keys.push(generate_keys_from_secret(network, verifier1_secret).2);
-    let verifier0_context =
-        VerifierContext::new(network, verifier0_secret, &verifier_public_keys, N_OF_N_SECRET, &operator_keys.2, &operator_keys.3);
-    let verifier1_context =
-        VerifierContext::new(network, verifier1_secret, &verifier_public_keys, N_OF_N_SECRET, &operator_keys.2, &operator_keys.3);
+    let verifier0_context = VerifierContext::new(
+        network,
+        verifier0_secret,
+        &verifier_public_keys,
+        N_OF_N_SECRET,
+        &operator_keys.2,
+        &operator_keys.3,
+    );
+    let verifier1_context = VerifierContext::new(
+        network,
+        verifier1_secret,
+        &verifier_public_keys,
+        N_OF_N_SECRET,
+        &operator_keys.2,
+        &operator_keys.3,
+    );
     let withdrawer_context = WithdrawerContext::new(
         network,
         WITHDRAWER_SECRET,
@@ -95,6 +109,7 @@ pub async fn setup_test() -> (
         depositor_context,
         operator_context,
         verifier0_context,
+        verifier1_context,
         withdrawer_context,
         connector_a,
         connector_b,

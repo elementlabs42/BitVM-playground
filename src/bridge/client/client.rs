@@ -297,19 +297,22 @@ impl BitVMClient {
         }
     }
 
-    pub async fn create_peg_in_graph(&mut self, input: Input, evm_address: &str) {
+    pub async fn create_peg_in_graph(&mut self, input: Input, evm_address: &str) -> String {
         if self.depositor_context.is_none() {
             panic!("Depositor context must be initialized");
         }
 
         let peg_in_graph =
             PegInGraph::new(self.depositor_context.as_ref().unwrap(), input, evm_address);
+        let ret_val = peg_in_graph.id().clone();
 
         // TODO broadcast peg in txn
 
         self.data.peg_in_graphs.push(peg_in_graph);
 
         // self.save().await;
+
+        ret_val
     }
 
     pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
@@ -544,7 +547,7 @@ impl BitVMClient {
         }
     }
 
-    pub async fn push_peg_in_nonces(&mut self, peg_in_graph_id: &str) {
+    pub fn push_peg_in_nonces(&mut self, peg_in_graph_id: &str) {
         if self.verifier_context.is_none() {
             panic!("Can only be called by a verifier!");
         }
@@ -572,7 +575,7 @@ impl BitVMClient {
             );
     }
 
-    pub async fn push_peg_out_nonces(&mut self, peg_out_graph_id: &str) {
+    pub fn push_peg_out_nonces(&mut self, peg_out_graph_id: &str) {
         if self.verifier_context.is_none() {
             panic!("Can only be called by a verifier!");
         }
@@ -606,7 +609,7 @@ impl BitVMClient {
         // TODO: Add remaining nonces
     }
 
-    pub async fn get_aggregate_peg_in_confirm_nonce(&self, peg_in_graph_id: &str) -> AggNonce {
+    pub fn get_aggregate_peg_in_confirm_nonce(&self, peg_in_graph_id: &str) -> AggNonce {
         if self.verifier_context.is_none() {
             panic!("Can only be called by a verifier!");
         }
@@ -642,13 +645,13 @@ impl BitVMClient {
         AggNonce::sum(tx_ref.musig2_nonces.values())
     }
 
-    pub async fn get_aggregate_peg_out_take1_nonce(&self, peg_out_graph_id: &str) { todo!() }
-    pub async fn get_aggregate_peg_out_assert_nonce(&self, peg_out_graph_id: &str) { todo!() }
-    pub async fn get_aggregate_peg_out_take2_nonce(&self, peg_out_graph_id: &str) { todo!() }
-    pub async fn get_aggregate_peg_out_disprove_nonce(&self, peg_out_graph_id: &str) { todo!() }
-    pub async fn get_aggregate_peg_out_burn_nonce(&self, peg_out_graph_id: &str) { todo!() }
+    pub fn get_aggregate_peg_out_take1_nonce(&self, peg_out_graph_id: &str) { todo!() }
+    pub fn get_aggregate_peg_out_assert_nonce(&self, peg_out_graph_id: &str) { todo!() }
+    pub fn get_aggregate_peg_out_take2_nonce(&self, peg_out_graph_id: &str) { todo!() }
+    pub fn get_aggregate_peg_out_disprove_nonce(&self, peg_out_graph_id: &str) { todo!() }
+    pub fn get_aggregate_peg_out_burn_nonce(&self, peg_out_graph_id: &str) { todo!() }
 
-    pub async fn pre_sign_peg_in(&mut self, peg_in_graph_id: &str) {
+    pub fn pre_sign_peg_in(&mut self, peg_in_graph_id: &str) {
         if self.verifier_context.is_none() {
             panic!("Can only be called by a verifier!");
         }
@@ -669,11 +672,11 @@ impl BitVMClient {
             .pre_sign(&self.verifier_context.as_ref().unwrap());
     }
 
-    pub async fn push_peg_out_signatures(&self, peg_out_graph_id: &str) { todo!() }
+    pub fn push_peg_out_signatures(&self, peg_out_graph_id: &str) { todo!() }
 
-    pub async fn get_aggregate_peg_in_signature(&self, peg_in_graph_id: &str) { todo!() }
+    pub fn get_aggregate_peg_in_signature(&self, peg_in_graph_id: &str) { todo!() }
 
-    pub async fn get_aggregate_peg_out_signature(&self, peg_out_graph_id: &str) { todo!() }
+    pub fn get_aggregate_peg_out_signature(&self, peg_out_graph_id: &str) { todo!() }
 
     // pub async fn execute_possible_txs(
     //     &mut self,

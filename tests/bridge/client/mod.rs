@@ -1,2 +1,2 @@
-pub mod sync;
 pub mod musig2;
+pub mod sync;
