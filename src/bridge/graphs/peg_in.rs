@@ -3,7 +3,7 @@ use bitcoin::{
     Network, OutPoint, PublicKey, XOnlyPublicKey,
 };
 use esplora_client::{AsyncClient, Error, TxStatus};
-use musig2::PubNonce;
+use musig2::{PartialSignature, PubNonce};
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -234,6 +234,15 @@ impl PegInGraph {
     pub fn push_peg_in_confirm_nonce(&mut self, public_key: PublicKey, public_nonce: PubNonce) {
         self.peg_in_confirm_transaction
             .push_nonce(public_key, public_nonce)
+    }
+
+    pub fn push_peg_in_confirm_signature(
+        &mut self,
+        public_key: PublicKey,
+        partial_sig: PartialSignature,
+    ) {
+        self.peg_in_confirm_transaction
+            .push_signature(public_key, partial_sig)
     }
 
     pub fn pre_sign(&mut self, context: &VerifierContext) {

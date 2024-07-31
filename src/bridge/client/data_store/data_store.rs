@@ -7,7 +7,7 @@ use super::aws_s3::AwsS3;
 
 static CLIENT_MISSING_CREDENTIALS_ERROR: &str = "Bridge client is missing AWS S3 credentials";
 
-static CLIENT_DATA_SUFFIX: &str = "-bridge-client-data-cheekymonkey.json";
+static CLIENT_DATA_SUFFIX: &str = "-bridge-client-data.json";
 static CLIENT_DATA_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(&format!(r"(\d{{13}}){}", CLIENT_DATA_SUFFIX)).unwrap());
 

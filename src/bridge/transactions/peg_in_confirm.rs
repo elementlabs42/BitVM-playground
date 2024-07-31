@@ -1,10 +1,15 @@
 use std::collections::HashMap;
 
 use bitcoin::{
-    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
+    absolute, consensus,
+    sighash::{Prevouts, SighashCache},
+    taproot::LeafVersion,
+    Amount, Network, PublicKey, ScriptBuf, TapLeafHash, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
-use musig2::PubNonce;
+use musig2::{
+    secp::Point, sign_partial, AggNonce, KeyAggContext, PartialSignature, PubNonce, SecNonce,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -23,6 +28,7 @@ pub struct PegInConfirmTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
     pub musig2_nonces: HashMap<PublicKey, PubNonce>, // TODO: Consider changing to private and adding read-only access via the PreSignedTransaction trait
+    pub musig2_signatures: HashMap<PublicKey, PartialSignature>,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
@@ -88,6 +94,7 @@ impl PegInConfirmTransaction {
                 output: vec![_output0],
             },
             musig2_nonces: HashMap::new(),
+            musig2_signatures: HashMap::new(),
             prev_outs: vec![TxOut {
                 value: input0.amount,
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
@@ -137,6 +144,40 @@ impl PegInConfirmTransaction {
         self.musig2_nonces.insert(public_key, public_nonce);
     }
 
+    pub fn pre_sign_solo(&mut self, context: &VerifierContext) {
+        let sec_nonce = SecNonce::build(&mut rand::rngs::OsRng).build(); // TODO: Read from local storage
+        let pub_keys: Vec<Point> =
+            Vec::from_iter(context.verifier_public_keys.iter().map(|&pk| to_point(pk)));
+        let key_agg_ctx = KeyAggContext::new(pub_keys).unwrap();
+
+        let input_index = 0;
+        let script = &self.prev_scripts[input_index];
+        let sighash_type = TapSighashType::All;
+        let leaf_hash = TapLeafHash::from_script(script, LeafVersion::TapScript);
+        let sighash_cache = SighashCache::new(&mut self.tx)
+            .taproot_script_spend_signature_hash(
+                input_index,
+                &Prevouts::One(input_index, &self.prev_outs[input_index]),
+                leaf_hash,
+                sighash_type,
+            )
+            .expect("Failed to construct sighash");
+
+        let partial_sig = sign_partial(
+            &key_agg_ctx,
+            context.keypair.secret_key(),
+            sec_nonce,
+            &AggNonce::sum(self.musig2_nonces.values()),
+            sighash_cache,
+        );
+
+        self.push_signature(context.public_key, partial_sig.unwrap());
+    }
+
+    pub fn push_signature(&mut self, public_key: PublicKey, partial_sig: PartialSignature) {
+        self.musig2_signatures.insert(public_key, partial_sig);
+    }
+
     pub fn pre_sign(&mut self, context: &VerifierContext) {
         self.push_n_of_n_signature_input0(context);
         self.finalize_input0();
@@ -149,4 +190,8 @@ impl PegInConfirmTransaction {
 
 impl BaseTransaction for PegInConfirmTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+}
+
+pub fn to_point(public_key: PublicKey) -> Point {
+    Point::from_slice(&public_key.to_bytes()).unwrap() // TODO: Add error handling. If incorrect, see conversion via secp256k1::PublicKey.
 }

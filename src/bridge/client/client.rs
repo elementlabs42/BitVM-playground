@@ -1,9 +1,14 @@
-use musig2::{AggNonce, SecNonce};
+use musig2::{secp::Point, sign_partial, AggNonce, KeyAggContext, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, ScriptBuf};
+use bitcoin::{
+    absolute::Height, consensus::encode::serialize_hex, Address, Amount, Network, OutPoint,
+    PublicKey, ScriptBuf,
+};
 use esplora_client::{AsyncClient, Builder, Utxo};
+
+use crate::bridge::transactions::base::BaseTransaction;
 
 use super::{
     super::{
@@ -51,6 +56,7 @@ impl BitVMClient {
         depositor_secret: Option<&str>,
         operator_secret: Option<&str>,
         verifier_secret: Option<&str>,
+        verifier_public_keys: Option<Vec<PublicKey>>,
         n_of_n_secret: Option<&str>,
         withdrawer_secret: Option<&str>,
     ) -> Self {
@@ -83,6 +89,7 @@ impl BitVMClient {
             verifier_context = Some(VerifierContext::new(
                 network,
                 verifier_secret.unwrap(),
+                &verifier_public_keys.unwrap(),
                 n_of_n_secret.unwrap(),
                 &operator_keys.2,
                 &operator_keys.3,
@@ -538,6 +545,10 @@ impl BitVMClient {
     }
 
     pub async fn push_peg_in_nonces(&mut self, peg_in_graph_id: &str) {
+        if self.verifier_context.is_none() {
+            panic!("Can only be called by a verifier!");
+        }
+
         let i = self
             .data
             .peg_in_graphs
@@ -562,6 +573,10 @@ impl BitVMClient {
     }
 
     pub async fn push_peg_out_nonces(&mut self, peg_out_graph_id: &str) {
+        if self.verifier_context.is_none() {
+            panic!("Can only be called by a verifier!");
+        }
+
         let i = self
             .data
             .peg_out_graphs
@@ -592,6 +607,10 @@ impl BitVMClient {
     }
 
     pub async fn get_aggregate_peg_in_confirm_nonce(&self, peg_in_graph_id: &str) -> AggNonce {
+        if self.verifier_context.is_none() {
+            panic!("Can only be called by a verifier!");
+        }
+
         let peg_in_graph = self
             .data
             .peg_in_graphs
@@ -601,15 +620,26 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        // TODO: Check that nonces from all verifiers are present.
+        let tx_ref = peg_in_graph.unwrap().peg_in_confirm_transaction_ref();
+        let verifier_count = self
+            .verifier_context
+            .as_ref()
+            .unwrap()
+            .verifier_public_keys
+            .len();
 
-        AggNonce::sum(
-            peg_in_graph
-                .unwrap()
-                .peg_in_confirm_transaction_ref()
-                .musig2_nonces
-                .values(),
-        )
+        if verifier_count == 0 {
+            panic!("No verifiers present. Nothing to aggregate!")
+        }
+        let nonce_count = tx_ref.musig2_nonces.len();
+        if nonce_count != verifier_count {
+            panic!(
+                "Cannot aggregate nonces. There are {} verifiers and {} nonces.",
+                verifier_count, nonce_count
+            );
+        }
+
+        AggNonce::sum(tx_ref.musig2_nonces.values())
     }
 
     pub async fn get_aggregate_peg_out_take1_nonce(&self, peg_out_graph_id: &str) { todo!() }
@@ -618,7 +648,26 @@ impl BitVMClient {
     pub async fn get_aggregate_peg_out_disprove_nonce(&self, peg_out_graph_id: &str) { todo!() }
     pub async fn get_aggregate_peg_out_burn_nonce(&self, peg_out_graph_id: &str) { todo!() }
 
-    pub async fn push_peg_in_signatures(&self, peg_in_graph_id: &str) { todo!() }
+    pub async fn pre_sign_peg_in(&mut self, peg_in_graph_id: &str) {
+        if self.verifier_context.is_none() {
+            panic!("Can only be called by a verifier!");
+        }
+
+        let i = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .position(|g| g.id().eq(peg_in_graph_id));
+        if i.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        self.data
+            .peg_in_graphs
+            .get_mut(i.unwrap())
+            .unwrap()
+            .pre_sign(&self.verifier_context.as_ref().unwrap());
+    }
 
     pub async fn push_peg_out_signatures(&self, peg_out_graph_id: &str) { todo!() }
 

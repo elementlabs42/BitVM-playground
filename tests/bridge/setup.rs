@@ -1,4 +1,4 @@
-use bitcoin::Network;
+use bitcoin::{Network, PublicKey};
 
 use bitvm::bridge::{
     client::client::BitVMClient,
@@ -12,7 +12,7 @@ use bitvm::bridge::{
         verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
     graphs::base::{
-        DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, VERIFIER0_SECRET, WITHDRAWER_SECRET
+        DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, VERIFIER0_SECRET, VERIFIER1_SECRET, WITHDRAWER_SECRET
     },
 };
 
@@ -45,15 +45,15 @@ pub async fn setup_test() -> (
     );
     let operator_context =
         OperatorContext::new(network, OPERATOR_SECRET, &verifier_keys.2, &verifier_keys.3);
-    let verifier0_secret = Scalar::from_str(VERIFIER0_SECRET);
+    let verifier0_secret = VERIFIER0_SECRET;
+    let verifier1_secret = VERIFIER1_SECRET;
+    let mut verifier_public_keys: Vec<PublicKey> = Vec::new();
+    verifier_public_keys.push(generate_keys_from_secret(network, verifier0_secret).2);
+    verifier_public_keys.push(generate_keys_from_secret(network, verifier1_secret).2);
     let verifier0_context =
-        VerifierContext::new(network, verifier0_secret.unwrap(), N_OF_N_SECRET, &operator_keys.2, &operator_keys.3);
-    let verifier1_secret = Scalar::from_str(VERIFIER0_SECRET);
+        VerifierContext::new(network, verifier0_secret, &verifier_public_keys, N_OF_N_SECRET, &operator_keys.2, &operator_keys.3);
     let verifier1_context =
-        VerifierContext::new(network, verifier1_secret.unwrap(), N_OF_N_SECRET, &operator_keys.2, &operator_keys.3);
-    let verifier2_secret = Scalar::from_str(VERIFIER0_SECRET);
-    let verifier2_context =
-        VerifierContext::new(network, verifier2_secret.unwrap(), N_OF_N_SECRET, &operator_keys.2, &operator_keys.3);
+        VerifierContext::new(network, verifier1_secret, &verifier_public_keys, N_OF_N_SECRET, &operator_keys.2, &operator_keys.3);
     let withdrawer_context = WithdrawerContext::new(
         network,
         WITHDRAWER_SECRET,
@@ -65,7 +65,8 @@ pub async fn setup_test() -> (
         network,
         Some(DEPOSITOR_SECRET),
         Some(OPERATOR_SECRET),
-        verifier0_secret,
+        Some(verifier0_secret),
+        Some(verifier_public_keys),
         Some(N_OF_N_SECRET),
         Some(WITHDRAWER_SECRET),
     )
