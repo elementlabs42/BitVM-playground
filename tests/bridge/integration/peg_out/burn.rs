@@ -22,6 +22,7 @@ async fn test_burn_success() {
         _,
         operator_context,
         verifier_context,
+        _,
         withdrawer_context,
         _,
         _,

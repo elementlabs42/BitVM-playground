@@ -19,6 +19,7 @@ async fn test_take1_tx() {
         operator_context,
         verifier_context,
         _,
+        _,
         connector_a,
         connector_b,
         _,

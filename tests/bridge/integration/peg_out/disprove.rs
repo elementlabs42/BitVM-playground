@@ -20,6 +20,7 @@ async fn test_disprove_success() {
         _,
         operator_context,
         verifier_context,
+        _,
         withdrawer_context,
         _,
         _,

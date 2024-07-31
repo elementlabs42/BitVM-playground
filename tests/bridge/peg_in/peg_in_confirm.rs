@@ -22,6 +22,7 @@ async fn test_peg_in_confirm_tx() {
         _,
         _,
         _,
+        _,
         connector_z,
         _,
         _,

@@ -28,6 +28,7 @@ async fn test_take2_success() {
         verifier_context,
         _,
         _,
+        _,
         connector_b,
         _,
         connector_z,
