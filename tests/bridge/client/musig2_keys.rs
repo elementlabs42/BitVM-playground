@@ -7,7 +7,7 @@ use musig2::{
 async fn generate_signer_keys() {
     let mut public_keys: Vec<Point> = Vec::new();
     for i in 0..2 {
-        let secret = Scalar::random(&mut rand::rngs::OsRng);
+        let secret = Scalar::random(&mut rand::rngs::OsRng); // TODO: Double check the use of RNG here.
         let secret_string: String = secret
             .serialize()
             .iter()

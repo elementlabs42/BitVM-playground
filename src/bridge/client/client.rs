@@ -672,11 +672,11 @@ impl BitVMClient {
             .pre_sign(&self.verifier_context.as_ref().unwrap());
     }
 
-    pub fn push_peg_out_signatures(&self, peg_out_graph_id: &str) { todo!() }
+    pub fn pre_sign_peg_out(&self, peg_out_graph_id: &str) { todo!() }
 
-    pub fn get_aggregate_peg_in_signature(&self, peg_in_graph_id: &str) { todo!() }
+    pub fn finalize_peg_in(&self, peg_in_graph_id: &str) { todo!() }
 
-    pub fn get_aggregate_peg_out_signature(&self, peg_out_graph_id: &str) { todo!() }
+    pub fn finalize_peg_out(&self, peg_out_graph_id: &str) { todo!() }
 
     // pub async fn execute_possible_txs(
     //     &mut self,
