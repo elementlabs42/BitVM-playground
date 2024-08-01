@@ -36,41 +36,30 @@ pub fn test_connection(credentials: &FtpCredentials) -> Result<(), String> {
 pub async fn list_objects(credentials: &FtpCredentials) -> Result<Vec<String>, String> {
     if credentials.is_secure {
         match secure_connect(credentials).await {
-            Ok(mut ftp_stream) => {
-                println!("FTP 40");
-                match ftp_stream.list(None).await {
-                    Ok(files) => {
-                        disconnect(None, Some(&mut ftp_stream)).await;
-                        Ok(files)
-                    }
-                    Err(err) => {
-                        disconnect(None, Some(&mut ftp_stream)).await;
-                        Err(format!("Unable to list objects: {}", err.to_string()))
-                    }
+            Ok(mut ftp_stream) => match ftp_stream.nlst(None).await {
+                Ok(files) => {
+                    disconnect(None, Some(&mut ftp_stream)).await;
+                    Ok(files)
                 }
-            }
+                Err(err) => {
+                    disconnect(None, Some(&mut ftp_stream)).await;
+                    Err(format!("Unable to list objects: {}", err.to_string()))
+                }
+            },
             Err(err) => Err(format!("Unable to list objects: {}", err.to_string())),
         }
     } else {
-        println!("FTP 52");
         match insecure_connect(credentials).await {
-            Ok(mut ftp_stream) => {
-                println!("FTP 55");
-                match ftp_stream.list(None).await {
-                    Ok(files) => {
-                        println!("FTP 56");
-                        println!("Files: {:?}", files);
-                        disconnect(Some(&mut ftp_stream), None).await;
-                        println!("Post disconnect files: {:?}", files);
-                        Ok(files)
-                    }
-                    Err(err) => {
-                        println!("List error: {:?}", err);
-                        disconnect(Some(&mut ftp_stream), None).await;
-                        Err(format!("Unable to list objects: {}", err.to_string()))
-                    }
+            Ok(mut ftp_stream) => match ftp_stream.nlst(None).await {
+                Ok(files) => {
+                    disconnect(Some(&mut ftp_stream), None).await;
+                    Ok(files)
                 }
-            }
+                Err(err) => {
+                    disconnect(Some(&mut ftp_stream), None).await;
+                    Err(format!("Unable to list objects: {}", err.to_string()))
+                }
+            },
             Err(err) => Err(format!("Unable to list objects: {}", err.to_string())),
         }
     }
@@ -114,6 +103,7 @@ async fn get_object(credentials: &FtpCredentials, key: &str) -> Result<Vec<u8>, 
             Ok(mut ftp_stream) => match ftp_stream.retr_as_stream(key).await {
                 Ok(mut reader) => match reader.read_to_end(&mut buffer).await {
                     Ok(_) => {
+                        let _ = ftp_stream.finalize_retr_stream(reader).await;
                         disconnect(None, Some(&mut ftp_stream)).await;
                         Ok(buffer)
                     }
@@ -134,6 +124,7 @@ async fn get_object(credentials: &FtpCredentials, key: &str) -> Result<Vec<u8>, 
             Ok(mut ftp_stream) => match ftp_stream.retr_as_stream(key).await {
                 Ok(mut reader) => match reader.read_to_end(&mut buffer).await {
                     Ok(_) => {
+                        let _ = ftp_stream.finalize_retr_stream(reader).await;
                         disconnect(Some(&mut ftp_stream), None).await;
                         Ok(buffer)
                     }
@@ -163,6 +154,8 @@ async fn upload_object(
                 Ok(mut writer) => match writer.write(data).await {
                     Ok(_) => match writer.flush().await {
                         Ok(_) => {
+                            let _ = writer.close().await;
+                            let _ = ftp_stream.finalize_put_stream(writer).await;
                             disconnect(None, Some(&mut ftp_stream)).await;
                             Ok(())
                         }
@@ -189,6 +182,8 @@ async fn upload_object(
                 Ok(mut writer) => match writer.write(data).await {
                     Ok(_) => match writer.flush().await {
                         Ok(_) => {
+                            let _ = writer.close().await;
+                            let _ = ftp_stream.finalize_put_stream(writer).await;
                             disconnect(Some(&mut ftp_stream), None).await;
                             Ok(())
                         }
@@ -213,7 +208,6 @@ async fn upload_object(
 }
 
 async fn insecure_connect(credentials: &FtpCredentials) -> Result<AsyncFtpStream, String> {
-    println!("FTP 208");
     let result =
         AsyncFtpStream::connect(format!("{}:{}", &credentials.host, &credentials.port)).await;
     if result.is_err() {
@@ -224,11 +218,9 @@ async fn insecure_connect(credentials: &FtpCredentials) -> Result<AsyncFtpStream
             result.err().unwrap()
         ));
     }
-    println!("FTP 217");
 
     let mut ftp_stream = result.unwrap();
 
-    println!("FTP 221");
     let result = ftp_stream
         .login(&credentials.username, &credentials.password)
         .await;
@@ -239,7 +231,6 @@ async fn insecure_connect(credentials: &FtpCredentials) -> Result<AsyncFtpStream
         ));
     }
 
-    println!("FTP 229");
     let result = ftp_stream.cwd(&credentials.base_path).await;
     if result.is_err() {
         return Err(format!(
@@ -249,10 +240,11 @@ async fn insecure_connect(credentials: &FtpCredentials) -> Result<AsyncFtpStream
         ));
     }
 
-    let result = ftp_stream.pwd().await;
-    println!("PWD: {:?}", result);
+    // let result = ftp_stream.pwd().await;
+    // println!("PWD: {:?}", result);
 
-    println!("FTP 230");
+    // Use passive mode
+    ftp_stream.set_mode(suppaftp::Mode::ExtendedPassive);
 
     Ok(ftp_stream)
 }
@@ -263,7 +255,7 @@ async fn secure_connect(credentials: &FtpCredentials) -> Result<AsyncNativeTlsFt
             .await;
     if result.is_err() {
         return Err(format!(
-            "Unable to connect to FTP server at {}:{} (error: {})",
+            "Unable to connect to FTPS server at {}:{} (error: {})",
             &credentials.host,
             &credentials.port,
             result.err().unwrap()
@@ -305,8 +297,11 @@ async fn secure_connect(credentials: &FtpCredentials) -> Result<AsyncNativeTlsFt
         ));
     }
 
-    let result = ftp_stream.pwd().await;
-    println!("PWD: {:?}", result);
+    // let result = ftp_stream.pwd().await;
+    // println!("PWD: {:?}", result);
+
+    // Use passive mode
+    ftp_stream.set_mode(suppaftp::Mode::Passive);
 
     Ok(ftp_stream)
 }
@@ -315,14 +310,15 @@ async fn disconnect(
     insecure_ftp_stream: Option<&mut AsyncFtpStream>,
     secure_ftp_stream: Option<&mut AsyncNativeTlsFtpStream>,
 ) {
-    println!("FTP DISCONNECT");
-    if insecure_ftp_stream.is_some() && insecure_ftp_stream.unwrap().quit().await.is_ok() {
-        println!("FTP DISCONNECTED");
-        return;
-    } else if secure_ftp_stream.is_some() && secure_ftp_stream.unwrap().quit().await.is_ok() {
-        println!("SFTP DISCONNECTED");
-        return;
+    if insecure_ftp_stream.is_some() {
+        match insecure_ftp_stream.unwrap().quit().await {
+            Ok(_) => {}
+            Err(err) => eprintln!("Unable to close FTP connection: {}", err),
+        }
+    } else if secure_ftp_stream.is_some() {
+        match secure_ftp_stream.unwrap().quit().await {
+            Ok(_) => {}
+            Err(err) => eprintln!("Unable to close FTPS connection: {}", err),
+        }
     }
-
-    eprintln!("Unable to close connection");
 }
