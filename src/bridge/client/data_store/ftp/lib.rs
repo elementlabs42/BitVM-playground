@@ -36,30 +36,38 @@ pub fn test_connection(credentials: &FtpCredentials) -> Result<(), String> {
 pub async fn list_objects(credentials: &FtpCredentials) -> Result<Vec<String>, String> {
     if credentials.is_secure {
         match secure_connect(credentials).await {
-            Ok(mut ftp_stream) => match ftp_stream.list(None).await {
-                Ok(files) => {
-                    disconnect(None, Some(&mut ftp_stream)).await;
-                    Ok(files)
+            Ok(mut ftp_stream) => {
+                println!("FTP 40");
+                match ftp_stream.list(None).await {
+                    Ok(files) => {
+                        disconnect(None, Some(&mut ftp_stream)).await;
+                        Ok(files)
+                    }
+                    Err(err) => {
+                        disconnect(None, Some(&mut ftp_stream)).await;
+                        Err(format!("Unable to list objects: {}", err.to_string()))
+                    }
                 }
-                Err(err) => {
-                    disconnect(None, Some(&mut ftp_stream)).await;
-                    Err(format!("Unable to list objects: {}", err.to_string()))
-                }
-            },
+            }
             Err(err) => Err(format!("Unable to list objects: {}", err.to_string())),
         }
     } else {
+        println!("FTP 52");
         match insecure_connect(credentials).await {
-            Ok(mut ftp_stream) => match ftp_stream.list(None).await {
-                Ok(files) => {
-                    disconnect(Some(&mut ftp_stream), None).await;
-                    Ok(files)
+            Ok(mut ftp_stream) => {
+                println!("FTP 55");
+                match ftp_stream.list(Some(&credentials.base_path)).await {
+                    Ok(files) => {
+                        println!("FTP 56");
+                        disconnect(Some(&mut ftp_stream), None).await;
+                        Ok(files)
+                    }
+                    Err(err) => {
+                        disconnect(Some(&mut ftp_stream), None).await;
+                        Err(format!("Unable to list objects: {}", err.to_string()))
+                    }
                 }
-                Err(err) => {
-                    disconnect(Some(&mut ftp_stream), None).await;
-                    Err(format!("Unable to list objects: {}", err.to_string()))
-                }
-            },
+            }
             Err(err) => Err(format!("Unable to list objects: {}", err.to_string())),
         }
     }
@@ -203,28 +211,42 @@ async fn upload_object(
 }
 
 async fn insecure_connect(credentials: &FtpCredentials) -> Result<AsyncFtpStream, String> {
+    println!("FTP 208");
     let result =
         AsyncFtpStream::connect(format!("{}:{}", &credentials.host, &credentials.port)).await;
     if result.is_err() {
         return Err(format!(
-            "Unable to connect to FTP server at {}:{}",
-            &credentials.host, &credentials.port
+            "Unable to connect to FTP server at {}:{} (error: {})",
+            &credentials.host,
+            &credentials.port,
+            result.err().unwrap()
         ));
     }
+    println!("FTP 217");
 
     let mut ftp_stream = result.unwrap();
 
+    println!("FTP 221");
     let result = ftp_stream
         .login(&credentials.username, &credentials.password)
         .await;
     if result.is_err() {
-        return Err("Invalid login credentials".to_string());
+        return Err(format!(
+            "Invalid login credentials (error: {})",
+            result.err().unwrap()
+        ));
     }
 
+    println!("FTP 229");
     let result = ftp_stream.cwd(&credentials.base_path).await;
     if result.is_err() {
-        return Err(format!("Invalid base path: {}", &credentials.base_path));
+        return Err(format!(
+            "Invalid base path: {} (error: {})",
+            &credentials.base_path,
+            result.err().unwrap()
+        ));
     }
+    println!("FTP 230");
 
     Ok(ftp_stream)
 }
@@ -235,8 +257,10 @@ async fn secure_connect(credentials: &FtpCredentials) -> Result<AsyncNativeTlsFt
             .await;
     if result.is_err() {
         return Err(format!(
-            "Unable to connect to FTP server at {}:{}",
-            &credentials.host, &credentials.port
+            "Unable to connect to FTP server at {}:{} (error: {})",
+            &credentials.host,
+            &credentials.port,
+            result.err().unwrap()
         ));
     }
 
@@ -248,7 +272,10 @@ async fn secure_connect(credentials: &FtpCredentials) -> Result<AsyncNativeTlsFt
         )
         .await;
     if result.is_err() {
-        return Err("Unable to switch to secure ssl".to_string());
+        return Err(format!(
+            "Unable to switch to secure ssl (error: {})",
+            result.err().unwrap()
+        ));
     }
 
     let mut ftp_stream = result.unwrap();
@@ -257,12 +284,19 @@ async fn secure_connect(credentials: &FtpCredentials) -> Result<AsyncNativeTlsFt
         .login(&credentials.username, &credentials.password)
         .await;
     if result.is_err() {
-        return Err("Invalid login credentials".to_string());
+        return Err(format!(
+            "Invalid login credentials (error: {})",
+            result.err().unwrap()
+        ));
     }
 
     let result = ftp_stream.cwd(&credentials.base_path).await;
     if result.is_err() {
-        return Err(format!("Invalid base path: {}", &credentials.base_path));
+        return Err(format!(
+            "Invalid base path: {} (error: {})",
+            &credentials.base_path,
+            result.err().unwrap()
+        ));
     }
 
     Ok(ftp_stream)
