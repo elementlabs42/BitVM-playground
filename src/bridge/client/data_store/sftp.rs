@@ -177,11 +177,10 @@ impl DataStoreDriver for Sftp {
         let size = bytes.len();
 
         println!("Writing data file to {} (size: {})", key, size);
-        let response = self.upload_object(&key, &bytes).await;
 
-        match response {
+        match self.upload_object(&key, &bytes).await {
             Ok(_) => Ok(size),
-            Err(_) => Err("Failed to save json file".to_string()),
+            Err(err) => Err(format!("Failed to save json file: {}", err)),
         }
     }
 }

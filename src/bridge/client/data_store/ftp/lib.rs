@@ -56,13 +56,16 @@ pub async fn list_objects(credentials: &FtpCredentials) -> Result<Vec<String>, S
         match insecure_connect(credentials).await {
             Ok(mut ftp_stream) => {
                 println!("FTP 55");
-                match ftp_stream.list(Some(&credentials.base_path)).await {
+                match ftp_stream.list(None).await {
                     Ok(files) => {
                         println!("FTP 56");
+                        println!("Files: {:?}", files);
                         disconnect(Some(&mut ftp_stream), None).await;
+                        println!("Post disconnect files: {:?}", files);
                         Ok(files)
                     }
                     Err(err) => {
+                        println!("List error: {:?}", err);
                         disconnect(Some(&mut ftp_stream), None).await;
                         Err(format!("Unable to list objects: {}", err.to_string()))
                     }
@@ -96,11 +99,10 @@ pub async fn upload_json(
     let size = bytes.len();
 
     println!("Writing data file to {} (size: {})", key, size);
-    let response = upload_object(credentials, &key, &bytes).await;
 
-    match response {
+    match upload_object(credentials, &key, &bytes).await {
         Ok(_) => Ok(size),
-        Err(_) => Err("Failed to save json file".to_string()),
+        Err(err) => Err(format!("Failed to save json file: {}", err)),
     }
 }
 
@@ -246,6 +248,10 @@ async fn insecure_connect(credentials: &FtpCredentials) -> Result<AsyncFtpStream
             result.err().unwrap()
         ));
     }
+
+    let result = ftp_stream.pwd().await;
+    println!("PWD: {:?}", result);
+
     println!("FTP 230");
 
     Ok(ftp_stream)
@@ -299,6 +305,9 @@ async fn secure_connect(credentials: &FtpCredentials) -> Result<AsyncNativeTlsFt
         ));
     }
 
+    let result = ftp_stream.pwd().await;
+    println!("PWD: {:?}", result);
+
     Ok(ftp_stream)
 }
 
@@ -306,9 +315,12 @@ async fn disconnect(
     insecure_ftp_stream: Option<&mut AsyncFtpStream>,
     secure_ftp_stream: Option<&mut AsyncNativeTlsFtpStream>,
 ) {
+    println!("FTP DISCONNECT");
     if insecure_ftp_stream.is_some() && insecure_ftp_stream.unwrap().quit().await.is_ok() {
+        println!("FTP DISCONNECTED");
         return;
     } else if secure_ftp_stream.is_some() && secure_ftp_stream.unwrap().quit().await.is_ok() {
+        println!("SFTP DISCONNECTED");
         return;
     }
 
