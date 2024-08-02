@@ -51,8 +51,8 @@ impl Take1Transaction {
     ) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.operator_public_key,
-            &context.operator_taproot_public_key,
+            &context.public_key,
+            &context.taproot_public_key,
             &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
             input0,
@@ -157,7 +157,7 @@ impl Take1Transaction {
             context,
             1,
             EcdsaSighashType::All,
-            &vec![&context.operator_keypair],
+            &vec![&context.keypair],
         );
     }
 
@@ -168,7 +168,7 @@ impl Take1Transaction {
             2,
             TapSighashType::All,
             self.connector_a.generate_taproot_spend_info(),
-            &vec![&context.operator_keypair],
+            &vec![&context.keypair],
         );
     }
 

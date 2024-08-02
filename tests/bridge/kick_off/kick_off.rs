@@ -21,7 +21,7 @@ async fn test_kick_off_tx() {
     let input_amount = Amount::from_sat(input_amount_raw);
     let funding_address = generate_pay_to_pubkey_script_address(
         operator_context.network,
-        &operator_context.operator_public_key,
+        &operator_context.public_key,
     );
     let funding_outpoint_0 = generate_stub_outpoint(&client, &funding_address, input_amount).await;
 

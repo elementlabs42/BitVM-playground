@@ -18,8 +18,8 @@ async fn test_challenge_tx() {
         setup_test().await;
 
     // We re-use the depositor private key to imitate a third-party
-    let crowdfunding_keypair = &depositor_context.depositor_keypair;
-    let crowdfunding_public_key = &depositor_context.depositor_public_key;
+    let crowdfunding_keypair = &depositor_context.keypair;
+    let crowdfunding_public_key = &depositor_context.public_key;
 
     let amount_0 = Amount::from_sat(DUST_AMOUNT);
     let outpoint_0 =

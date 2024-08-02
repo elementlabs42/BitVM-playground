@@ -19,7 +19,7 @@ async fn test_sync() {
         &client,
         &generate_pay_to_pubkey_script_address(
             depositor_context.network,
-            &depositor_context.depositor_public_key,
+            &depositor_context.public_key,
         ),
         amount,
     )

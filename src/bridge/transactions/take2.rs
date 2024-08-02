@@ -37,7 +37,7 @@ impl Take2Transaction {
     pub fn new(context: &OperatorContext, input0: Input, input1: Input, input2: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.operator_public_key,
+            &context.public_key,
             &context.n_of_n_public_key,
             input0,
             input1,
@@ -121,7 +121,7 @@ impl Take2Transaction {
             context,
             1,
             EcdsaSighashType::All,
-            &vec![&context.operator_keypair],
+            &vec![&context.keypair],
         );
     }
 

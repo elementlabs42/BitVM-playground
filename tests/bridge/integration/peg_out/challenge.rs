@@ -26,13 +26,13 @@ async fn test_challenge_success() {
     let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
         operator_context.network,
-        &operator_context.operator_public_key,
+        &operator_context.public_key,
     );
     funding_inputs.push((&kick_off_funding_utxo_address, kick_off_input_amount));
     let challenge_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let challenge_funding_utxo_address = generate_pay_to_pubkey_script_address(
         depositor_context.network,
-        &depositor_context.depositor_public_key,
+        &depositor_context.public_key,
     );
     funding_inputs.push((&challenge_funding_utxo_address, challenge_input_amount));
 
@@ -57,7 +57,7 @@ async fn test_challenge_success() {
     let challenge_crowdfunding_input = InputWithScript {
         outpoint: challenge_funding_outpoint,
         amount: challenge_input_amount,
-        script: &generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
+        script: &generate_pay_to_pubkey_script(&depositor_context.public_key),
     };
 
     let kick_off_output_index = 1; // connectorA
@@ -78,8 +78,8 @@ async fn test_challenge_success() {
     challenge.add_inputs_and_output(
         &depositor_context,
         &vec![challenge_crowdfunding_input],
-        &depositor_context.depositor_keypair,
-        generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
+        &depositor_context.keypair,
+        generate_pay_to_pubkey_script(&depositor_context.public_key),
     ); // add crowdfunding input
     let challenge_tx = challenge.finalize();
     let challenge_tx_id = challenge_tx.compute_txid();
@@ -91,7 +91,7 @@ async fn test_challenge_success() {
     // operator balance
     let operator_address = generate_pay_to_pubkey_script_address(
         operator_context.network,
-        &operator_context.operator_public_key,
+        &operator_context.public_key,
     );
     let operator_utxos = client
         .esplora

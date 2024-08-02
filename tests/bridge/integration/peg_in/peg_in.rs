@@ -29,7 +29,7 @@ async fn test_peg_in_success() {
     // peg-in deposit
     let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
         depositor_context.network,
-        &depositor_context.depositor_public_key,
+        &depositor_context.public_key,
     );
     let deposit_funding_outpoint =
         generate_stub_outpoint(&client, &deposit_funding_utxo_address, deposit_input_amount).await;
@@ -107,7 +107,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
     // peg-in deposit
     let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
         depositor_context.network,
-        &depositor_context.depositor_public_key,
+        &depositor_context.public_key,
     );
     let deposit_funding_outpoint =
         generate_stub_outpoint(&client, &deposit_funding_utxo_address, deposit_input_amount).await;
@@ -162,7 +162,7 @@ async fn test_peg_in_time_lock_surpassed() {
     // peg-in deposit
     let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
         depositor_context.network,
-        &depositor_context.depositor_public_key,
+        &depositor_context.public_key,
     );
     let deposit_funding_outpoint =
         generate_stub_outpoint(&client, &deposit_funding_utxo_address, deposit_input_amount).await;
@@ -202,7 +202,7 @@ async fn test_peg_in_time_lock_surpassed() {
     // depositor balance
     let depositor_address = generate_pay_to_pubkey_script_address(
         depositor_context.network,
-        &depositor_context.depositor_public_key,
+        &depositor_context.public_key,
     );
     let depositor_utxos = client
         .esplora

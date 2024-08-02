@@ -45,8 +45,8 @@ impl ChallengeTransaction {
     ) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.operator_public_key,
-            &context.operator_taproot_public_key,
+            &context.public_key,
+            &context.taproot_public_key,
             &context.n_of_n_taproot_public_key,
             input0,
             input_amount_crowdfunding,
@@ -112,7 +112,7 @@ impl ChallengeTransaction {
             0,
             TapSighashType::SinglePlusAnyoneCanPay,
             self.connector_a.generate_taproot_spend_info(),
-            &vec![&context.operator_keypair],
+            &vec![&context.keypair],
         );
     }
 

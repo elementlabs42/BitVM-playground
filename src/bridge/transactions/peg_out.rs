@@ -38,7 +38,7 @@ impl PegOutTransaction {
     ) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.operator_public_key,
+            &context.public_key,
             withdrawer_public_key,
             input0,
             input1,
@@ -117,7 +117,7 @@ impl PegOutTransaction {
             context,
             1,
             EcdsaSighashType::All,
-            &vec![&context.operator_keypair],
+            &vec![&context.keypair],
         );
     }
 }

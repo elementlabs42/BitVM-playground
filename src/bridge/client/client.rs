@@ -3,8 +3,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use bitcoin::{
-    absolute::Height, consensus::encode::serialize_hex, Address, Amount, Network, OutPoint,
-    PublicKey, ScriptBuf,
+    absolute::Height,
+    consensus::encode::serialize_hex,
+    key::{Keypair, Secp256k1},
+    Address, Amount, Network, OutPoint, PublicKey, ScriptBuf,
 };
 use esplora_client::{AsyncClient, Builder, Utxo};
 
@@ -55,22 +57,18 @@ impl BitVMClient {
         network: Network,
         depositor_secret: Option<&str>,
         operator_secret: Option<&str>,
+        operator_public_key: Option<&PublicKey>,
         verifier_secret: Option<&str>,
-        verifier_public_keys: Option<Vec<PublicKey>>,
-        n_of_n_secret: Option<&str>,
+        n_of_n_public_keys: Option<Vec<PublicKey>>,
+        n_of_n_public_key: Option<&PublicKey>,
         withdrawer_secret: Option<&str>,
     ) -> Self {
-        // TODO these publc key values should be hardcoded
-        let operator_keys = generate_keys_from_secret(network, OPERATOR_SECRET);
-        let verifier_keys = generate_keys_from_secret(network, N_OF_N_SECRET);
-
         let mut depositor_context = None;
         if depositor_secret.is_some() {
             depositor_context = Some(DepositorContext::new(
                 network,
                 depositor_secret.unwrap(),
-                &verifier_keys.2,
-                &verifier_keys.3,
+                n_of_n_public_key.unwrap(),
             ));
         }
 
@@ -79,20 +77,22 @@ impl BitVMClient {
             operator_context = Some(OperatorContext::new(
                 network,
                 operator_secret.unwrap(),
-                &verifier_keys.2,
-                &verifier_keys.3,
+                n_of_n_public_key.unwrap(),
             ));
         }
 
         let mut verifier_context = None;
-        if n_of_n_secret.is_some() && verifier_secret.is_some() {
+        if verifier_secret.is_some()
+            && n_of_n_public_keys.is_some()
+            && n_of_n_public_key.is_some()
+            && operator_public_key.is_some()
+        {
             verifier_context = Some(VerifierContext::new(
                 network,
                 verifier_secret.unwrap(),
-                &verifier_public_keys.unwrap(),
-                n_of_n_secret.unwrap(),
-                &operator_keys.2,
-                &operator_keys.3,
+                &n_of_n_public_keys.unwrap(),
+                n_of_n_public_key.unwrap(),
+                operator_public_key.unwrap(),
             ));
         }
 
@@ -101,8 +101,7 @@ impl BitVMClient {
             withdrawer_context = Some(WithdrawerContext::new(
                 network,
                 withdrawer_secret.unwrap(),
-                &verifier_keys.2,
-                &verifier_keys.3,
+                n_of_n_public_key.unwrap(),
             ));
         }
 
@@ -246,11 +245,7 @@ impl BitVMClient {
             panic!("Depositor context must be initialized");
         }
 
-        let depositor_public_key = &self
-            .depositor_context
-            .as_ref()
-            .unwrap()
-            .depositor_public_key;
+        let depositor_public_key = &self.depositor_context.as_ref().unwrap().public_key;
         for peg_in_graph in self.data.peg_in_graphs.iter() {
             if peg_in_graph.depositor_public_key.eq(depositor_public_key) {
                 let status = peg_in_graph.depositor_status(&self.esplora).await;
@@ -269,7 +264,7 @@ impl BitVMClient {
             peg_out_graphs_by_id.insert(peg_out_graph.id(), peg_out_graph);
         }
 
-        let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
+        let operator_public_key = &self.operator_context.as_ref().unwrap().public_key;
         for peg_in_graph in self.data.peg_in_graphs.iter() {
             let peg_out_graph_id = generate_id(peg_in_graph, operator_public_key);
             if !peg_out_graphs_by_id.contains_key(&peg_out_graph_id) {
@@ -332,7 +327,7 @@ impl BitVMClient {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
         }
-        let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
+        let operator_public_key = &self.operator_context.as_ref().unwrap().public_key;
 
         let peg_in_graph = self
             .data
@@ -401,7 +396,7 @@ impl BitVMClient {
                     &self.esplora,
                     self.depositor_context.as_ref().unwrap(),
                     crowdfundng_inputs,
-                    &self.depositor_context.as_ref().unwrap().depositor_keypair,
+                    &self.depositor_context.as_ref().unwrap().keypair,
                     output_script_pubkey,
                 )
                 .await;
@@ -412,7 +407,7 @@ impl BitVMClient {
                     &self.esplora,
                     self.operator_context.as_ref().unwrap(),
                     crowdfundng_inputs,
-                    &self.operator_context.as_ref().unwrap().operator_keypair,
+                    &self.operator_context.as_ref().unwrap().keypair,
                     output_script_pubkey,
                 )
                 .await;
@@ -423,7 +418,7 @@ impl BitVMClient {
                     &self.esplora,
                     self.verifier_context.as_ref().unwrap(),
                     crowdfundng_inputs,
-                    &self.verifier_context.as_ref().unwrap().n_of_n_keypair,
+                    &self.verifier_context.as_ref().unwrap().keypair,
                     output_script_pubkey,
                 )
                 .await;
@@ -434,7 +429,7 @@ impl BitVMClient {
                     &self.esplora,
                     self.withdrawer_context.as_ref().unwrap(),
                     crowdfundng_inputs,
-                    &self.withdrawer_context.as_ref().unwrap().withdrawer_keypair,
+                    &self.withdrawer_context.as_ref().unwrap().keypair,
                     output_script_pubkey,
                 )
                 .await;
@@ -628,7 +623,7 @@ impl BitVMClient {
             .verifier_context
             .as_ref()
             .unwrap()
-            .verifier_public_keys
+            .n_of_n_public_keys
             .len();
 
         if verifier_count == 0 {

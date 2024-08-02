@@ -24,7 +24,7 @@ async fn test_peg_out_graph_serialization() {
         &client,
         &generate_pay_to_pubkey_script_address(
             depositor_context.network,
-            &depositor_context.depositor_public_key,
+            &depositor_context.public_key,
         ),
         amount,
     )
@@ -39,7 +39,7 @@ async fn test_peg_out_graph_serialization() {
         &client,
         &generate_pay_to_pubkey_script_address(
             operator_context.network,
-            &operator_context.operator_public_key,
+            &operator_context.public_key,
         ),
         kick_off_amount,
     )

@@ -38,8 +38,8 @@ impl PegInDepositTransaction {
     pub fn new(context: &DepositorContext, evm_address: &str, input0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.depositor_public_key,
-            &context.depositor_taproot_public_key,
+            &context.public_key,
+            &context.taproot_public_key,
             &context.n_of_n_taproot_public_key,
             evm_address,
             input0,
@@ -96,7 +96,7 @@ impl PegInDepositTransaction {
             context,
             0,
             EcdsaSighashType::All,
-            &vec![&context.depositor_keypair],
+            &vec![&context.keypair],
         );
     }
 }

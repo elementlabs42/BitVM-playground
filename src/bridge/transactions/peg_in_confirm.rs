@@ -49,7 +49,7 @@ impl PegInConfirmTransaction {
     pub fn new(context: &DepositorContext, evm_address: &str, input0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.depositor_taproot_public_key,
+            &context.taproot_public_key,
             &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
             evm_address,
@@ -113,7 +113,7 @@ impl PegInConfirmTransaction {
             input_index,
             TapSighashType::All,
             &self.prev_scripts[input_index],
-            &context.depositor_keypair,
+            &context.keypair,
         );
     }
 
@@ -147,7 +147,7 @@ impl PegInConfirmTransaction {
     pub fn pre_sign_solo(&mut self, context: &VerifierContext) {
         let sec_nonce = SecNonce::build(&mut rand::rngs::OsRng).build(); // TODO: Read from local storage
         let pub_keys: Vec<Point> =
-            Vec::from_iter(context.verifier_public_keys.iter().map(|&pk| to_point(pk)));
+            Vec::from_iter(context.n_of_n_public_keys.iter().map(|&pk| to_point(pk)));
         let key_agg_ctx = KeyAggContext::new(pub_keys).unwrap();
 
         let input_index = 0;

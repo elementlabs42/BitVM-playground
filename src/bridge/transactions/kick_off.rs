@@ -40,8 +40,8 @@ impl KickOffTransaction {
     pub fn new(context: &OperatorContext, operator_input: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.operator_public_key,
-            &context.operator_taproot_public_key,
+            &context.public_key,
+            &context.taproot_public_key,
             &context.n_of_n_taproot_public_key,
             operator_input,
         );
@@ -114,7 +114,7 @@ impl KickOffTransaction {
             context,
             0,
             EcdsaSighashType::All,
-            &vec![&context.operator_keypair],
+            &vec![&context.keypair],
         );
     }
 }

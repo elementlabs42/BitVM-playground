@@ -115,7 +115,7 @@ async fn test_take2_success() {
     // operator balance
     let operator_address = generate_pay_to_pubkey_script_address(
         operator_context.network,
-        &operator_context.operator_public_key,
+        &operator_context.public_key,
     );
     let operator_utxos = client
         .esplora

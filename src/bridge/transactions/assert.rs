@@ -41,7 +41,7 @@ impl AssertTransaction {
     pub fn new(context: &OperatorContext, input0: Input) -> Self {
         Self::new_for_validation(
             context.network,
-            &context.operator_public_key,
+            &context.public_key,
             &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
             input0,

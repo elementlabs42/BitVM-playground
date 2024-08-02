@@ -163,8 +163,8 @@ impl PegInGraph {
             n_of_n_presigned: false,
             n_of_n_public_key: context.n_of_n_public_key,
             n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
-            depositor_public_key: context.depositor_public_key,
-            depositor_taproot_public_key: context.depositor_taproot_public_key,
+            depositor_public_key: context.public_key,
+            depositor_taproot_public_key: context.taproot_public_key,
             depositor_evm_address: evm_address.to_string(),
         }
     }

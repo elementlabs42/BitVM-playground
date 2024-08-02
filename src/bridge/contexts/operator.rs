@@ -10,9 +10,9 @@ pub struct OperatorContext {
     pub network: Network,
     pub secp: Secp256k1<All>,
 
-    pub operator_keypair: Keypair,
-    pub operator_public_key: PublicKey,
-    pub operator_taproot_public_key: XOnlyPublicKey,
+    pub keypair: Keypair,
+    pub public_key: PublicKey,
+    pub taproot_public_key: XOnlyPublicKey,
 
     pub n_of_n_public_key: PublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
@@ -24,12 +24,7 @@ impl BaseContext for OperatorContext {
 }
 
 impl OperatorContext {
-    pub fn new(
-        network: Network,
-        operator_secret: &str,
-        n_of_n_public_key: &PublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
-    ) -> Self {
+    pub fn new(network: Network, operator_secret: &str, n_of_n_public_key: &PublicKey) -> Self {
         let (secp, keypair, public_key, taproot_public_key) =
             generate_keys_from_secret(network, operator_secret);
 
@@ -37,12 +32,12 @@ impl OperatorContext {
             network,
             secp,
 
-            operator_keypair: keypair,
-            operator_public_key: public_key,
-            operator_taproot_public_key: taproot_public_key,
+            keypair,
+            public_key,
+            taproot_public_key,
 
             n_of_n_public_key: n_of_n_public_key.clone(),
-            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            n_of_n_taproot_public_key: XOnlyPublicKey::from(*n_of_n_public_key),
         }
     }
 }
