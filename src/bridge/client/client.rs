@@ -59,7 +59,7 @@ impl BitVMClient {
         operator_secret: Option<&str>,
         operator_public_key: Option<&PublicKey>,
         verifier_secret: Option<&str>,
-        n_of_n_public_keys: Option<Vec<PublicKey>>,
+        n_of_n_public_keys: Option<&Vec<PublicKey>>,
         n_of_n_public_key: Option<&PublicKey>,
         withdrawer_secret: Option<&str>,
     ) -> Self {
@@ -90,7 +90,7 @@ impl BitVMClient {
             verifier_context = Some(VerifierContext::new(
                 network,
                 verifier_secret.unwrap(),
-                &n_of_n_public_keys.unwrap(),
+                n_of_n_public_keys.unwrap(),
                 n_of_n_public_key.unwrap(),
                 operator_public_key.unwrap(),
             ));

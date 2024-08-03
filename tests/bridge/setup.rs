@@ -69,7 +69,7 @@ pub async fn setup_test() -> (
         Some(OPERATOR_SECRET),
         Some(&operator_public_key),
         Some(VERIFIER0_SECRET),
-        Some(n_of_n_public_keys),
+        Some(&n_of_n_public_keys),
         Some(&n_of_n_public_key),
         Some(WITHDRAWER_SECRET),
     )
