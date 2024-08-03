@@ -192,6 +192,8 @@ impl PegInConfirmTransaction {
             .push(final_signature.to_bytes());
 
         self.finalize_input0();
+
+        // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
     }
 
     pub fn merge(&mut self, peg_in_confirm: &PegInConfirmTransaction) {
