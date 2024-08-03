@@ -1,15 +1,10 @@
 use std::collections::HashMap;
 
 use bitcoin::{
-    absolute, consensus,
-    sighash::{Prevouts, SighashCache},
-    taproot::LeafVersion,
-    Amount, Network, PublicKey, ScriptBuf, TapLeafHash, TapSighashType, Transaction, TxOut,
+    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
-use musig2::{
-    secp::Point, sign_partial, AggNonce, KeyAggContext, PartialSignature, PubNonce, SecNonce,
-};
+use musig2::{BinaryEncoding, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -21,6 +16,7 @@ use super::{
     base::*,
     pre_signed::*,
     signing::*,
+    signing_musig2::{get_aggregated_nonce, get_aggregated_signature, get_partial_signature},
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -117,18 +113,18 @@ impl PegInConfirmTransaction {
         );
     }
 
-    fn push_n_of_n_signature_input0(&mut self, context: &VerifierContext) {
-        let input_index = 0;
-        push_taproot_leaf_signature_to_witness(
-            context,
-            &mut self.tx,
-            &self.prev_outs,
-            input_index,
-            TapSighashType::All,
-            &self.prev_scripts[input_index],
-            &context.n_of_n_keypair,
-        );
-    }
+    // fn push_n_of_n_signature_input0(&mut self, context: &VerifierContext) {
+    //     let input_index = 0;
+    //     push_taproot_leaf_signature_to_witness(
+    //         context,
+    //         &mut self.tx,
+    //         &self.prev_outs,
+    //         input_index,
+    //         TapSighashType::All,
+    //         &self.prev_scripts[input_index],
+    //         &context.n_of_n_keypair,
+    //     );
+    // }
 
     fn finalize_input0(&mut self) {
         let input_index = 0;
@@ -144,42 +140,57 @@ impl PegInConfirmTransaction {
         self.musig2_nonces.insert(public_key, public_nonce);
     }
 
-    pub fn pre_sign_solo(&mut self, context: &VerifierContext) {
-        let sec_nonce = SecNonce::build(&mut rand::rngs::OsRng).build(); // TODO: Read from local storage
-        let pub_keys: Vec<Point> =
-            Vec::from_iter(context.n_of_n_public_keys.iter().map(|&pk| to_point(pk)));
-        let key_agg_ctx = KeyAggContext::new(pub_keys).unwrap();
-
+    fn push_partial_signature_input0(&mut self, context: &VerifierContext, secnonce: &SecNonce) {
         let input_index = 0;
-        let script = &self.prev_scripts[input_index];
-        let sighash_type = TapSighashType::All;
-        let leaf_hash = TapLeafHash::from_script(script, LeafVersion::TapScript);
-        let sighash_cache = SighashCache::new(&mut self.tx)
-            .taproot_script_spend_signature_hash(
-                input_index,
-                &Prevouts::One(input_index, &self.prev_outs[input_index]),
-                leaf_hash,
-                sighash_type,
-            )
-            .expect("Failed to construct sighash");
+        let partial_signature = get_partial_signature(
+            context,
+            &self.tx,
+            secnonce,
+            &get_aggregated_nonce(self.musig2_nonces.values()),
+            input_index,
+            &self.prev_outs,
+            &self.prev_scripts[input_index],
+            TapSighashType::All,
+        )
+        .unwrap(); // TODO: Add error handling.
 
-        let partial_sig = sign_partial(
-            &key_agg_ctx,
-            context.keypair.secret_key(),
-            sec_nonce,
-            &AggNonce::sum(self.musig2_nonces.values()),
-            sighash_cache,
-        );
-
-        self.push_signature(context.public_key, partial_sig.unwrap());
+        self.push_signature(context.public_key, partial_signature);
     }
 
-    pub fn push_signature(&mut self, public_key: PublicKey, partial_sig: PartialSignature) {
+    fn push_signature(&mut self, public_key: PublicKey, partial_sig: PartialSignature) {
         self.musig2_signatures.insert(public_key, partial_sig);
     }
 
-    pub fn pre_sign(&mut self, context: &VerifierContext) {
-        self.push_n_of_n_signature_input0(context);
+    pub fn pre_sign(&mut self, context: &VerifierContext, secnonce: &SecNonce) {
+        self.push_partial_signature_input0(context, secnonce);
+    }
+
+    /// Generate the final Schnorr signature and push it to the witness in this tx.
+    // TODO: Compare with BaseTransaction::finalize() and refactor as needed.
+    pub fn finalize(&mut self, context: &VerifierContext) {
+        // TODO: Verify we have partial signatures from all verifiers.
+        // TODO: Verify each signature against the signers public key.
+        // See example here: https://github.com/conduition/musig2/blob/c39bfce58098d337a3ec38b54d93def8306d9953/src/signing.rs#L358C1-L366C65
+
+        let input_index = 0;
+        let final_signature = get_aggregated_signature(
+            context,
+            &self.tx,
+            &get_aggregated_nonce(self.musig2_nonces.values()),
+            input_index,
+            &self.prev_outs,
+            &self.prev_scripts[input_index],
+            TapSighashType::All,
+            self.musig2_signatures
+                .values()
+                .map(|&ps| PartialSignature::from(ps))
+                .collect(), // TODO: Is there a more elegant way of doing this?
+        )
+        .unwrap(); // TODO: Add error handling.
+        self.tx.input[input_index]
+            .witness
+            .push(final_signature.to_bytes());
+
         self.finalize_input0();
     }
 
@@ -190,8 +201,4 @@ impl PegInConfirmTransaction {
 
 impl BaseTransaction for PegInConfirmTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
-}
-
-pub fn to_point(public_key: PublicKey) -> Point {
-    Point::from_slice(&public_key.to_bytes()).unwrap() // TODO: Add error handling. If incorrect, see conversion via secp256k1::PublicKey.
 }

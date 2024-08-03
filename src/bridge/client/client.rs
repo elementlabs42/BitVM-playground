@@ -10,7 +10,7 @@ use bitcoin::{
 };
 use esplora_client::{AsyncClient, Builder, Utxo};
 
-use crate::bridge::transactions::base::BaseTransaction;
+use crate::bridge::transactions::{base::BaseTransaction, peg_in_confirm};
 
 use super::{
     super::{
@@ -556,9 +556,10 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        let sec_nonce_confirm_transaction = SecNonce::build(&mut rand::rngs::OsRng).build(); // TODO: Use SecNonce::generate
+        let secnonce_peg_in_confirm = SecNonce::build(&mut rand::rngs::OsRng).build(); // TODO: Double check the use of RNG here.
 
-        // TODO: Save secret nonce to local file system
+        // TODO: Save secret nonces for all txs in the graph to the local file system. Later, when pre-signing the tx,
+        // we'll need to retrieve these nonces for this graph ID.
 
         self.data
             .peg_in_graphs
@@ -566,7 +567,7 @@ impl BitVMClient {
             .unwrap()
             .push_peg_in_confirm_nonce(
                 self.verifier_context.as_ref().unwrap().public_key,
-                sec_nonce_confirm_transaction.public_nonce(),
+                secnonce_peg_in_confirm.public_nonce(),
             );
     }
 
@@ -584,13 +585,14 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        let sec_nonce_take1_transaction = SecNonce::build(&mut rand::rngs::OsRng).build();
-        let sec_nonce_assert_transaction = SecNonce::build(&mut rand::rngs::OsRng).build();
-        let sec_nonce_take2_transaction = SecNonce::build(&mut rand::rngs::OsRng).build();
-        let sec_nonce_disprove_transaction = SecNonce::build(&mut rand::rngs::OsRng).build();
-        let sec_nonce_burn_transaction = SecNonce::build(&mut rand::rngs::OsRng).build();
+        let secnonce_take1 = SecNonce::build(&mut rand::rngs::OsRng).build();
+        let secnonce_assert = SecNonce::build(&mut rand::rngs::OsRng).build();
+        let secnonce_take2 = SecNonce::build(&mut rand::rngs::OsRng).build();
+        let secnonce_disprove = SecNonce::build(&mut rand::rngs::OsRng).build();
+        let secnonce_burn = SecNonce::build(&mut rand::rngs::OsRng).build();
 
-        // TODO: Save secret nonces to local file system
+        // TODO: Save secret nonces for all txs in the graph to the local file system. Later, when pre-signing the tx,
+        // we'll need to retrieve these nonces for this graph ID.
 
         self.data
             .peg_out_graphs
@@ -598,10 +600,10 @@ impl BitVMClient {
             .unwrap()
             .push_take1_nonce(
                 self.verifier_context.as_ref().unwrap().public_key,
-                sec_nonce_take1_transaction.public_nonce(),
+                secnonce_take1.public_nonce(),
             );
 
-        // TODO: Add remaining nonces
+        // TODO: Add public nonces in the remaining txs in this graph.
     }
 
     pub fn get_aggregate_peg_in_confirm_nonce(&self, peg_in_graph_id: &str) -> AggNonce {
@@ -647,8 +649,8 @@ impl BitVMClient {
     pub fn get_aggregate_peg_out_burn_nonce(&self, peg_out_graph_id: &str) { todo!() }
 
     pub fn pre_sign_peg_in(&mut self, peg_in_graph_id: &str) {
-        if self.verifier_context.is_none() {
-            panic!("Can only be called by a verifier!");
+        if self.operator_context.is_none() && self.verifier_context.is_none() {
+            panic!("Can only be called by an operator or a verifier!");
         }
 
         let i = self
@@ -660,11 +662,17 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
+        // TODO: Read secret nonces for all the txs in the graph from local storage.
+        let peg_in_confirm_secnonce = SecNonce::build(&mut rand::rngs::OsRng).build();
+
         self.data
             .peg_in_graphs
             .get_mut(i.unwrap())
             .unwrap()
-            .pre_sign(&self.verifier_context.as_ref().unwrap());
+            .pre_sign(
+                &self.verifier_context.as_ref().unwrap(),
+                &peg_in_confirm_secnonce,
+            );
     }
 
     pub fn pre_sign_peg_out(&self, peg_out_graph_id: &str) { todo!() }

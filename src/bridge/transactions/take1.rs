@@ -141,15 +141,15 @@ impl Take1Transaction {
         }
     }
 
-    fn sign_input0(&mut self, context: &VerifierContext) {
-        pre_sign_p2wsh_input(
-            self,
-            context,
-            0,
-            EcdsaSighashType::All,
-            &vec![&context.n_of_n_keypair],
-        );
-    }
+    // fn sign_input0(&mut self, context: &VerifierContext) {
+    //     pre_sign_p2wsh_input(
+    //         self,
+    //         context,
+    //         0,
+    //         EcdsaSighashType::All,
+    //         &vec![&context.n_of_n_keypair],
+    //     );
+    // }
 
     fn sign_input1(&mut self, context: &OperatorContext) {
         pre_sign_p2wsh_input(
@@ -172,24 +172,24 @@ impl Take1Transaction {
         );
     }
 
-    fn sign_input3(&mut self, context: &VerifierContext) {
-        pre_sign_taproot_input(
-            self,
-            context,
-            3,
-            TapSighashType::All,
-            self.connector_b.generate_taproot_spend_info(),
-            &vec![&context.n_of_n_keypair],
-        );
-    }
+    // fn sign_input3(&mut self, context: &VerifierContext) {
+    //     pre_sign_taproot_input(
+    //         self,
+    //         context,
+    //         3,
+    //         TapSighashType::All,
+    //         self.connector_b.generate_taproot_spend_info(),
+    //         &vec![&context.n_of_n_keypair],
+    //     );
+    // }
 
     pub fn push_nonce(&mut self, public_key: PublicKey, public_nonce: PubNonce) {
         self.musig2_nonces.insert(public_key, public_nonce);
     }
 
     pub fn pre_sign(&mut self, context: &VerifierContext) {
-        self.sign_input0(context);
-        self.sign_input3(context);
+        // self.sign_input0(context);
+        // self.sign_input3(context);
     }
 }
 

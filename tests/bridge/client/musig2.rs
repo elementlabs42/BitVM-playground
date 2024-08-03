@@ -9,7 +9,7 @@ use bitvm::bridge::{
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
-async fn test_musig2() {
+async fn test_musig2_peg_in() {
     let (mut depositor_client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, _, _) =
         setup_test().await;
     let (mut operator_client, _, operator_context, _, _, _, _, _, _, _, _, _, _, _, evm_address) =
@@ -83,9 +83,12 @@ async fn test_musig2() {
     println!("Operator: Reading state from remote...");
     operator_client.sync().await;
 
+    // TODO: operator will not be able to finalize because its context lacks the n-of-n public key list.
     println!("Operator: Pre-signing...");
     operator_client.finalize_peg_in(&graph_id);
 
     println!("Operator: Saving state changes to remote...");
     operator_client.flush().await;
 }
+
+async fn test_musig2_peg_out() { todo!() }

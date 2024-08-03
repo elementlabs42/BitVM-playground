@@ -10,12 +10,12 @@ use bitvm::bridge::{
         connector_c::ConnectorC, connector_z::ConnectorZ,
     },
     contexts::{
-        base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
-        verifier::VerifierContext, withdrawer::WithdrawerContext,
+        depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext,
+        withdrawer::WithdrawerContext,
     },
     graphs::base::{
-        DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_PUBKEY, N_OF_N_PUBKEYS, N_OF_N_SECRET,
-        OPERATOR_PUBKEY, OPERATOR_SECRET, VERIFIER0_SECRET, VERIFIER1_SECRET, WITHDRAWER_SECRET,
+        DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_PUBKEY, N_OF_N_PUBKEYS, OPERATOR_PUBKEY,
+        OPERATOR_SECRET, VERIFIER0_SECRET, VERIFIER1_SECRET, WITHDRAWER_SECRET,
     },
 };
 
@@ -37,33 +37,40 @@ pub async fn setup_test() -> (
     String,
 ) {
     let network = Network::Testnet;
+    // TODO: Add error handling below (when unwrapping).
+    let n_of_n_public_key = PublicKey::from_str(N_OF_N_PUBKEY).unwrap();
+    let mut n_of_n_public_keys: Vec<PublicKey> = Vec::new();
+    for pkstr in N_OF_N_PUBKEYS {
+        n_of_n_public_keys.push(PublicKey::from_str(pkstr).unwrap())
+    }
+    let operator_public_key = PublicKey::from_str(OPERATOR_PUBKEY).unwrap();
 
-    let depositor_context = DepositorContext::new(network, DEPOSITOR_SECRET, N_OF_N_PUBKEY);
-    let operator_context = OperatorContext::new(network, OPERATOR_SECRET, N_OF_N_PUBKEY);
+    let depositor_context = DepositorContext::new(network, DEPOSITOR_SECRET, &n_of_n_public_key);
+    let operator_context = OperatorContext::new(network, OPERATOR_SECRET, &n_of_n_public_key);
     let verifier0_context = VerifierContext::new(
         network,
         VERIFIER0_SECRET,
-        N_OF_N_PUBKEYS,
-        N_OF_N_PUBKEY,
-        OPERATOR_PUBKEY,
+        &n_of_n_public_keys,
+        &n_of_n_public_key,
+        &operator_public_key,
     );
     let verifier1_context = VerifierContext::new(
         network,
         VERIFIER1_SECRET,
-        N_OF_N_PUBKEYS,
-        N_OF_N_PUBKEY,
-        OPERATOR_PUBKEY,
+        &n_of_n_public_keys,
+        &n_of_n_public_key,
+        &operator_public_key,
     );
-    let withdrawer_context = WithdrawerContext::new(network, WITHDRAWER_SECRET, N_OF_N_PUBKEY);
+    let withdrawer_context = WithdrawerContext::new(network, WITHDRAWER_SECRET, &n_of_n_public_key);
 
     let client = BitVMClient::new(
         network,
         Some(DEPOSITOR_SECRET),
         Some(OPERATOR_SECRET),
-        Some(OPERATOR_PUBKEY),
+        Some(&operator_public_key),
         Some(VERIFIER0_SECRET),
-        Some(N_OF_N_PUBKEYS),
-        Some(N_OF_N_PUBKEY),
+        Some(n_of_n_public_keys),
+        Some(&n_of_n_public_key),
         Some(WITHDRAWER_SECRET),
     )
     .await;
@@ -71,21 +78,23 @@ pub async fn setup_test() -> (
     let connector_a = ConnectorA::new(
         network,
         &operator_context.taproot_public_key,
-        &XOnlyPublicKey::from(N_OF_N_PUBKEY),
+        &XOnlyPublicKey::from(n_of_n_public_key),
     );
-    let connector_b = ConnectorB::new(network, &XOnlyPublicKey::from(N_OF_N_PUBKEY));
-    let connector_c = ConnectorC::new(network, &XOnlyPublicKey::from(N_OF_N_PUBKEY));
+    let connector_b = ConnectorB::new(network, &XOnlyPublicKey::from(n_of_n_public_key));
+    let connector_c = ConnectorC::new(network, &XOnlyPublicKey::from(n_of_n_public_key));
     let connector_z = ConnectorZ::new(
         network,
         EVM_ADDRESS,
         &depositor_context.taproot_public_key,
-        &XOnlyPublicKey::from(N_OF_N_PUBKEY),
+        &XOnlyPublicKey::from(n_of_n_public_key),
     );
-    let connector_0 = Connector0::new(network, N_OF_N_PUBKEY);
-    let connector_1 = Connector1::new(network, OPERATOR_PUBKEY);
-    let connector_2 = Connector2::new(network, OPERATOR_PUBKEY);
-    let connector_3 = Connector3::new(network, N_OF_N_PUBKEY);
+    let connector_0 = Connector0::new(network, &PublicKey::from_str(N_OF_N_PUBKEY).unwrap());
+    let connector_1 = Connector1::new(network, &PublicKey::from_str(OPERATOR_PUBKEY).unwrap());
+    let connector_2 = Connector2::new(network, &PublicKey::from_str(OPERATOR_PUBKEY).unwrap());
+    let connector_3 = Connector3::new(network, &PublicKey::from_str(N_OF_N_PUBKEY).unwrap());
 
+    // TODO: Instead of one client with all role contexts in it, return clients limited to only one role for every role.
+    // Using those clients in tests will help mimic production environment better.
     return (
         client,
         depositor_context,

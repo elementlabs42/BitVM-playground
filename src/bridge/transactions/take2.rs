@@ -105,15 +105,15 @@ impl Take2Transaction {
         }
     }
 
-    fn sign_input0(&mut self, context: &VerifierContext) {
-        pre_sign_p2wsh_input(
-            self,
-            context,
-            0,
-            EcdsaSighashType::All,
-            &vec![&context.n_of_n_keypair],
-        );
-    }
+    // fn sign_input0(&mut self, context: &VerifierContext) {
+    //     pre_sign_p2wsh_input(
+    //         self,
+    //         context,
+    //         0,
+    //         EcdsaSighashType::All,
+    //         &vec![&context.n_of_n_keypair],
+    //     );
+    // }
 
     fn sign_input1(&mut self, context: &OperatorContext) {
         pre_sign_p2wsh_input(
@@ -125,19 +125,19 @@ impl Take2Transaction {
         );
     }
 
-    fn sign_input2(&mut self, context: &VerifierContext) {
-        pre_sign_p2wsh_input(
-            self,
-            context,
-            2,
-            EcdsaSighashType::All,
-            &vec![&context.n_of_n_keypair],
-        );
-    }
+    // fn sign_input2(&mut self, context: &VerifierContext) {
+    //     pre_sign_p2wsh_input(
+    //         self,
+    //         context,
+    //         2,
+    //         EcdsaSighashType::All,
+    //         &vec![&context.n_of_n_keypair],
+    //     );
+    // }
 
     pub fn pre_sign(&mut self, context: &VerifierContext) {
-        self.sign_input0(context);
-        self.sign_input2(context);
+        // self.sign_input0(context);
+        // self.sign_input2(context);
     }
 }
 

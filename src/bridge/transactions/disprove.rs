@@ -100,17 +100,18 @@ impl DisproveTransaction {
         }
     }
 
-    fn sign_input0(&mut self, context: &VerifierContext) {
-        pre_sign_p2wsh_input(
-            self,
-            context,
-            0,
-            EcdsaSighashType::Single,
-            &vec![&context.n_of_n_keypair],
-        );
-    }
+    // fn sign_input0(&mut self, context: &VerifierContext) {
+    //     pre_sign_p2wsh_input(
+    //         self,
+    //         context,
+    //         0,
+    //         EcdsaSighashType::Single,
+    //         &vec![&context.n_of_n_keypair],
+    //     );
+    // }
 
-    pub fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
+    pub fn pre_sign(&mut self, context: &VerifierContext) { /* self.sign_input0(context); */
+    }
 
     pub fn add_input_output(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {
         // Add output
