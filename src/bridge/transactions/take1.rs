@@ -143,20 +143,32 @@ impl Take1Transaction {
         }
     }
 
-    pub fn push_nonce(&mut self, context: &VerifierContext, public_nonce: PubNonce) {
-        self.musig2_nonces
-            .insert(context.verifier_public_key, public_nonce);
-    }
+    fn sign_input0(&mut self, context: &VerifierContext) {
+        // pre_sign_p2wsh_input(
+        //     self,
+        //     context,
+        //     0,
+        //     EcdsaSighashType::All,
+        //     &vec![&context.n_of_n_keypair],
+        // );
 
-    // fn sign_input0(&mut self, context: &VerifierContext) {
-    //     pre_sign_p2wsh_input(
-    //         self,
-    //         context,
-    //         0,
-    //         EcdsaSighashType::All,
-    //         &vec![&context.n_of_n_keypair],
-    //     );
-    // }
+        // TODO validate nonces first
+
+        let input_index = 0;
+        let partial_signature = get_partial_signature(
+            context,
+            &self.tx,
+            secret_nonce,
+            &get_aggregated_nonce(self.musig2_nonces.values()),
+            input_index,
+            &self.prev_outs,
+            &self.prev_scripts[input_index],
+            TapSighashType::All,
+        )
+        .unwrap(); // TODO: Add error handling.
+
+        self.musig2_signatures.insert(context.verifier_public_key, partial_signature);
+    }
 
     fn sign_input1(&mut self, context: &OperatorContext) {
         pre_sign_p2wsh_input(
@@ -179,20 +191,25 @@ impl Take1Transaction {
         );
     }
 
-    // fn sign_input3(&mut self, context: &VerifierContext) {
-    //     pre_sign_taproot_input(
-    //         self,
-    //         context,
-    //         3,
-    //         TapSighashType::All,
-    //         self.connector_b.generate_taproot_spend_info(),
-    //         &vec![&context.n_of_n_keypair],
-    //     );
-    // }
+    fn sign_input3(&mut self, context: &VerifierContext) {
+        pre_sign_taproot_input(
+            self,
+            context,
+            3,
+            TapSighashType::All,
+            self.connector_b.generate_taproot_spend_info(),
+            &vec![&context.n_of_n_keypair],
+        );
+    }
 
-    pub fn pre_sign(&mut self, context: &VerifierContext) {
-        // self.sign_input0(context);
-        // self.sign_input3(context);
+    pub fn push_nonce(&mut self, context: &VerifierContext, public_nonce: PubNonce) {
+        self.musig2_nonces
+            .insert(context.verifier_public_key, public_nonce);
+    }
+
+    pub fn pre_sign(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+        self.sign_input0(context);
+        self.sign_input3(context);
     }
 
     pub fn merge(&mut self, take1: &Take1Transaction) {

@@ -99,36 +99,6 @@ impl PegInConfirmTransaction {
         }
     }
 
-    pub fn push_nonce(&mut self, context: &VerifierContext, public_nonce: PubNonce) {
-        self.musig2_nonces
-            .insert(context.verifier_public_key, public_nonce);
-    }
-
-    fn push_partial_signature_input0(
-        &mut self,
-        context: &VerifierContext,
-        secret_nonce: &SecNonce,
-    ) {
-        let input_index = 0;
-        let partial_signature = get_partial_signature(
-            context,
-            &self.tx,
-            secret_nonce,
-            &get_aggregated_nonce(self.musig2_nonces.values()),
-            input_index,
-            &self.prev_outs,
-            &self.prev_scripts[input_index],
-            TapSighashType::All,
-        )
-        .unwrap(); // TODO: Add error handling.
-
-        self.push_signature(context.verifier_public_key, partial_signature);
-    }
-
-    fn push_signature(&mut self, public_key: PublicKey, partial_sig: PartialSignature) {
-        self.musig2_signatures.insert(public_key, partial_sig);
-    }
-
     fn push_depositor_signature_input0(&mut self, context: &DepositorContext) {
         let input_index = 0;
         push_taproot_leaf_signature_to_witness(
@@ -142,18 +112,28 @@ impl PegInConfirmTransaction {
         );
     }
 
-    // fn push_n_of_n_signature_input0(&mut self, context: &VerifierContext) {
-    //     let input_index = 0;
-    //     push_taproot_leaf_signature_to_witness(
-    //         context,
-    //         &mut self.tx,
-    //         &self.prev_outs,
-    //         input_index,
-    //         TapSighashType::All,
-    //         &self.prev_scripts[input_index],
-    //         &context.n_of_n_keypair,
-    //     );
-    // }
+    fn push_verifier_signature_input0(
+        &mut self,
+        context: &VerifierContext,
+        secret_nonce: &SecNonce,
+    ) {
+        // TODO validate nonces first
+
+        let input_index = 0;
+        let partial_signature = get_partial_signature(
+            context,
+            &self.tx,
+            secret_nonce,
+            &get_aggregated_nonce(self.musig2_nonces.values()),
+            input_index,
+            &self.prev_outs,
+            &self.prev_scripts[input_index],
+            TapSighashType::All,
+        )
+        .unwrap(); // TODO: Add error handling.
+
+        self.musig2_signatures.insert(context.verifier_public_key, partial_signature);
+    }
 
     fn finalize_input0(&mut self) {
         let input_index = 0;
@@ -165,8 +145,13 @@ impl PegInConfirmTransaction {
         );
     }
 
+    pub fn push_nonce(&mut self, context: &VerifierContext, public_nonce: PubNonce) {
+        self.musig2_nonces
+            .insert(context.verifier_public_key, public_nonce);
+    }
+
     pub fn pre_sign(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
-        self.push_partial_signature_input0(context, secret_nonce);
+        self.push_verifier_signature_input0(context, secret_nonce);
     }
 
     /// Generate the final Schnorr signature and push it to the witness in this tx.

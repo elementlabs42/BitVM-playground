@@ -6,7 +6,7 @@ use bitcoin::{
 use musig2::{
     aggregate_partial_signatures,
     errors::{SigningError, VerifyError},
-    secp::{MaybeScalar, Point, Scalar},
+    secp::{MaybeScalar, Point},
     sign_partial, AggNonce, KeyAggContext, LiftedSignature, PartialSignature, PubNonce, SecNonce,
 };
 
@@ -31,7 +31,7 @@ pub fn get_partial_signature(
     sighash_type: TapSighashType,
 ) -> Result<MaybeScalar, SigningError> {
     let pubkeys: Vec<Point> =
-        Vec::from_iter(context.n_of_n_public_keys.iter().map(|&pk| pk.inner.into())); // TODO: The tests will reveal whether this conversion works as expected.
+        Vec::from_iter(context.n_of_n_public_keys.iter().map(|&public_key| public_key.inner.into())); // TODO: The tests will reveal whether this conversion works as expected.
     let key_agg_ctx = KeyAggContext::new(pubkeys).unwrap();
 
     let leaf_hash = TapLeafHash::from_script(script, LeafVersion::TapScript);
@@ -64,7 +64,7 @@ pub fn get_aggregated_signature(
     partial_signatures: Vec<PartialSignature>,
 ) -> Result<LiftedSignature, VerifyError> {
     let pubkeys: Vec<Point> =
-        Vec::from_iter(context.n_of_n_public_keys.iter().map(|&pk| pk.inner.into()));
+        Vec::from_iter(context.n_of_n_public_keys.iter().map(|&public_key| public_key.inner.into()));
     let key_agg_ctx = KeyAggContext::new(pubkeys).unwrap();
 
     let leaf_hash = TapLeafHash::from_script(script, LeafVersion::TapScript);

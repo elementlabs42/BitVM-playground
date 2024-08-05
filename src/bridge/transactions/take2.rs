@@ -111,11 +111,6 @@ impl Take2Transaction {
         }
     }
 
-    pub fn push_nonce(&mut self, context: &VerifierContext, public_nonce: PubNonce) {
-        self.musig2_nonces
-            .insert(context.verifier_public_key, public_nonce);
-    }
-
     // fn sign_input0(&mut self, context: &VerifierContext) {
     //     pre_sign_p2wsh_input(
     //         self,
@@ -145,6 +140,11 @@ impl Take2Transaction {
     //         &vec![&context.n_of_n_keypair],
     //     );
     // }
+
+    pub fn push_nonce(&mut self, context: &VerifierContext, public_nonce: PubNonce) {
+        self.musig2_nonces
+            .insert(context.verifier_public_key, public_nonce);
+    }
 
     pub fn pre_sign(&mut self, context: &VerifierContext) {
         // self.sign_input0(context);
