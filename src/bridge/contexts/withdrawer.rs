@@ -10,9 +10,9 @@ pub struct WithdrawerContext {
     pub network: Network,
     pub secp: Secp256k1<All>,
 
-    pub keypair: Keypair,
-    pub public_key: PublicKey,
-    pub taproot_public_key: XOnlyPublicKey,
+    pub withdrawer_keypair: Keypair,
+    pub withdrawer_public_key: PublicKey,
+    pub withdrawer_taproot_public_key: XOnlyPublicKey,
 
     pub n_of_n_public_key: PublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
@@ -32,9 +32,9 @@ impl WithdrawerContext {
             network,
             secp,
 
-            keypair,
-            public_key,
-            taproot_public_key,
+            withdrawer_keypair: keypair,
+            withdrawer_public_key: public_key,
+            withdrawer_taproot_public_key: taproot_public_key,
 
             n_of_n_public_key: n_of_n_public_key.clone(),
             n_of_n_taproot_public_key: XOnlyPublicKey::from(*n_of_n_public_key),

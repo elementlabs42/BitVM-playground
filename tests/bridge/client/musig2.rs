@@ -25,7 +25,7 @@ async fn test_musig2_peg_in() {
         &depositor_client,
         &generate_pay_to_pubkey_script_address(
             depositor_context.network,
-            &depositor_context.public_key,
+            &depositor_context.depositor_public_key,
         ),
         amount,
     )

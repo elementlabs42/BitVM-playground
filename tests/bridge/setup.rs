@@ -77,7 +77,7 @@ pub async fn setup_test() -> (
 
     let connector_a = ConnectorA::new(
         network,
-        &operator_context.taproot_public_key,
+        &operator_context.operator_taproot_public_key,
         &XOnlyPublicKey::from(n_of_n_public_key),
     );
     let connector_b = ConnectorB::new(network, &XOnlyPublicKey::from(n_of_n_public_key));
@@ -85,7 +85,7 @@ pub async fn setup_test() -> (
     let connector_z = ConnectorZ::new(
         network,
         EVM_ADDRESS,
-        &depositor_context.taproot_public_key,
+        &depositor_context.depositor_taproot_public_key,
         &XOnlyPublicKey::from(n_of_n_public_key),
     );
     let connector_0 = Connector0::new(network, &PublicKey::from_str(N_OF_N_PUBKEY).unwrap());

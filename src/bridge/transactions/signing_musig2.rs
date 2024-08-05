@@ -46,7 +46,7 @@ pub fn get_partial_signature(
 
     sign_partial(
         &key_agg_ctx,
-        context.keypair.secret_key(),
+        context.verifier_keypair.secret_key(),
         secnonce.clone(),
         &aggregated_nonce,
         sighash_cache,

@@ -10,7 +10,7 @@ use super::{
     pre_signed::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegOutTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -38,7 +38,7 @@ impl PegOutTransaction {
     ) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.public_key,
+            &context.operator_public_key,
             withdrawer_public_key,
             input0,
             input1,
@@ -117,7 +117,7 @@ impl PegOutTransaction {
             context,
             1,
             EcdsaSighashType::All,
-            &vec![&context.keypair],
+            &vec![&context.operator_keypair],
         );
     }
 }

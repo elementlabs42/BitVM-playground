@@ -16,7 +16,7 @@ use super::{
     signing::push_taproot_leaf_script_and_control_block_to_witness,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct DisproveTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -139,6 +139,10 @@ impl DisproveTransaction {
             &taproot_spend_info,
             &script,
         );
+    }
+
+    pub fn merge(&mut self, disprove: &DisproveTransaction) {
+        merge_transactions(&mut self.tx, &disprove.tx);
     }
 }
 

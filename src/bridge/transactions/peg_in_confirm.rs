@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-
 use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
@@ -19,7 +18,7 @@ use super::{
     signing_musig2::{get_aggregated_nonce, get_aggregated_signature, get_partial_signature},
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegInConfirmTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -45,7 +44,7 @@ impl PegInConfirmTransaction {
     pub fn new(context: &DepositorContext, evm_address: &str, input0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.taproot_public_key,
+            &context.depositor_taproot_public_key,
             &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
             evm_address,
@@ -109,7 +108,7 @@ impl PegInConfirmTransaction {
             input_index,
             TapSighashType::All,
             &self.prev_scripts[input_index],
-            &context.keypair,
+            &context.depositor_keypair,
         );
     }
 
@@ -154,7 +153,7 @@ impl PegInConfirmTransaction {
         )
         .unwrap(); // TODO: Add error handling.
 
-        self.push_signature(context.public_key, partial_signature);
+        self.push_signature(context.verifier_public_key, partial_signature);
     }
 
     fn push_signature(&mut self, public_key: PublicKey, partial_sig: PartialSignature) {

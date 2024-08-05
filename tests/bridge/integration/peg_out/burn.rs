@@ -40,7 +40,7 @@ async fn test_burn_success() {
     let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
         operator_context.network,
-        &operator_context.public_key,
+        &operator_context.operator_public_key,
     );
     funding_inputs.push((&kick_off_funding_utxo_address, kick_off_input_amount));
 
@@ -70,7 +70,7 @@ async fn test_burn_success() {
 
     let reward_address = generate_pay_to_pubkey_script_address(
         withdrawer_context.network,
-        &withdrawer_context.public_key,
+        &withdrawer_context.withdrawer_public_key,
     );
     burn.add_output(reward_address.script_pubkey());
 

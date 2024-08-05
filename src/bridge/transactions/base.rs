@@ -37,6 +37,7 @@ pub fn merge_transactions(
         destination_transaction.input.len(),
         source_transaction.input.len(),
     ) {
+        // TODO takes longer witness data but should combine both
         if destination_transaction.input[i].witness.len()
             < source_transaction.input[i].witness.len()
         {
@@ -60,6 +61,11 @@ pub fn validate_transaction(
             || transaction.input[i].script_sig != comparison_transaction.input[i].script_sig
             || transaction.input[i].sequence != comparison_transaction.input[i].sequence
         {
+            println!(
+                "Input mismatch on transaction: {} input index: {}",
+                transaction.compute_txid(),
+                i
+            );
             return false;
         }
     }
@@ -68,6 +74,11 @@ pub fn validate_transaction(
         if transaction.output[i].value != comparison_transaction.output[i].value
             || transaction.output[i].script_pubkey != comparison_transaction.output[i].script_pubkey
         {
+            println!(
+                "Output mismatch on transaction: {} output index: {}",
+                transaction.compute_txid(),
+                i
+            );
             return false;
         }
     }

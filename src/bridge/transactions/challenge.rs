@@ -16,7 +16,7 @@ use super::{
     signing::populate_p2wsh_witness,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ChallengeTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -45,8 +45,8 @@ impl ChallengeTransaction {
     ) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.public_key,
-            &context.taproot_public_key,
+            &context.operator_public_key,
+            &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             input0,
             input_amount_crowdfunding,
@@ -112,7 +112,7 @@ impl ChallengeTransaction {
             0,
             TapSighashType::SinglePlusAnyoneCanPay,
             self.connector_a.generate_taproot_spend_info(),
-            &vec![&context.keypair],
+            &vec![&context.operator_keypair],
         );
     }
 
@@ -169,6 +169,10 @@ impl ChallengeTransaction {
 
             input_index += 1;
         }
+    }
+
+    pub fn merge(&mut self, challenge: &ChallengeTransaction) {
+        merge_transactions(&mut self.tx, &challenge.tx);
     }
 }
 

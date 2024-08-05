@@ -17,7 +17,7 @@ use super::{
     pre_signed::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct KickOffTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -40,8 +40,8 @@ impl KickOffTransaction {
     pub fn new(context: &OperatorContext, operator_input: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.public_key,
-            &context.taproot_public_key,
+            &context.operator_public_key,
+            &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             operator_input,
         );
@@ -114,7 +114,7 @@ impl KickOffTransaction {
             context,
             0,
             EcdsaSighashType::All,
-            &vec![&context.keypair],
+            &vec![&context.operator_keypair],
         );
     }
 }

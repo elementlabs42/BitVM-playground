@@ -16,7 +16,7 @@ use super::{
     pre_signed::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Take2Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
@@ -37,7 +37,7 @@ impl Take2Transaction {
     pub fn new(context: &OperatorContext, input0: Input, input1: Input, input2: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.public_key,
+            &context.operator_public_key,
             &context.n_of_n_public_key,
             input0,
             input1,
@@ -121,7 +121,7 @@ impl Take2Transaction {
             context,
             1,
             EcdsaSighashType::All,
-            &vec![&context.keypair],
+            &vec![&context.operator_keypair],
         );
     }
 
@@ -138,6 +138,10 @@ impl Take2Transaction {
     pub fn pre_sign(&mut self, context: &VerifierContext) {
         // self.sign_input0(context);
         // self.sign_input2(context);
+    }
+
+    pub fn merge(&mut self, take2: &Take2Transaction) {
+        merge_transactions(&mut self.tx, &take2.tx);
     }
 }
 

@@ -46,7 +46,7 @@ async fn test_take1_success() {
     let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
         operator_context.network,
-        &operator_context.public_key,
+        &operator_context.operator_public_key,
     );
     funding_inputs.push((&kick_off_funding_utxo_address, kick_off_input_amount));
 
@@ -122,7 +122,7 @@ async fn test_take1_success() {
     // operator balance
     let operator_address = generate_pay_to_pubkey_script_address(
         operator_context.network,
-        &operator_context.public_key,
+        &operator_context.operator_public_key,
     );
     let operator_utxos = client
         .esplora

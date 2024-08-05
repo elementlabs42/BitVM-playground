@@ -10,8 +10,8 @@ pub struct VerifierContext {
     pub network: Network,
     pub secp: Secp256k1<All>,
 
-    pub keypair: Keypair,
-    pub public_key: PublicKey,
+    pub verifier_keypair: Keypair,
+    pub verifier_public_key: PublicKey,
 
     pub n_of_n_public_keys: Vec<PublicKey>,
     pub n_of_n_public_key: PublicKey,
@@ -40,8 +40,8 @@ impl VerifierContext {
             network,
             secp,
 
-            keypair,
-            public_key,
+            verifier_keypair: keypair,
+            verifier_public_key: public_key,
 
             n_of_n_public_keys: n_of_n_public_keys.clone(),
             n_of_n_public_key: n_of_n_public_key.clone(),

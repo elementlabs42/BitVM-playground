@@ -15,7 +15,7 @@ use super::{
     pre_signed::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegInRefundTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -39,8 +39,8 @@ impl PegInRefundTransaction {
     pub fn new(context: &DepositorContext, evm_address: &str, input0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.public_key,
-            &context.taproot_public_key,
+            &context.depositor_public_key,
+            &context.depositor_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             evm_address,
             input0,
@@ -99,7 +99,7 @@ impl PegInRefundTransaction {
             0,
             TapSighashType::All,
             self.connector_z.generate_taproot_spend_info(),
-            &vec![&context.keypair],
+            &vec![&context.depositor_keypair],
         );
     }
 }

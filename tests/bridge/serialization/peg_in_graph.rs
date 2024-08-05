@@ -23,7 +23,7 @@ async fn test_peg_in_graph_serialization() {
         &client,
         &generate_pay_to_pubkey_script_address(
             depositor_context.network,
-            &depositor_context.public_key,
+            &depositor_context.depositor_public_key,
         ),
         amount,
     )

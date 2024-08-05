@@ -17,7 +17,7 @@ use super::{
     pre_signed::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct AssertTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -41,7 +41,7 @@ impl AssertTransaction {
     pub fn new(context: &OperatorContext, input0: Input) -> Self {
         Self::new_for_validation(
             context.network,
-            &context.public_key,
+            &context.operator_public_key,
             &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
             input0,
@@ -106,7 +106,10 @@ impl AssertTransaction {
     //     );
     // }
 
-    pub fn pre_sign(&mut self, context: &VerifierContext) { /* self.sign_input0(context); */
+    pub fn pre_sign(&mut self, context: &VerifierContext) { /* self.sign_input0(context); */}
+
+    pub fn merge(&mut self, assert: &AssertTransaction) {
+        merge_transactions(&mut self.tx, &assert.tx);
     }
 }
 

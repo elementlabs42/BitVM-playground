@@ -21,7 +21,7 @@ async fn test_peg_in_deposit_tx() {
         &client,
         &generate_pay_to_pubkey_script_address(
             depositor_context.network,
-            &depositor_context.public_key,
+            &depositor_context.depositor_public_key,
         ),
         amount,
     )
@@ -32,7 +32,7 @@ async fn test_peg_in_deposit_tx() {
 
     println!(
         "Depositor public key: {:?}\n",
-        &depositor_context.public_key
+        &depositor_context.depositor_public_key
     );
 
     let tx = peg_in_deposit_tx.finalize();

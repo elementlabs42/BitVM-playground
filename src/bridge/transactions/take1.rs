@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-
 use bitcoin::{
     absolute, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, TapSighashType, Transaction,
     TxOut, XOnlyPublicKey,
@@ -21,7 +20,7 @@ use super::{
     pre_signed::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Take1Transaction {
     tx: Transaction,
     musig2_nonces: HashMap<PublicKey, PubNonce>,
@@ -51,8 +50,8 @@ impl Take1Transaction {
     ) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
-            &context.public_key,
-            &context.taproot_public_key,
+            &context.operator_public_key,
+            &context.operator_taproot_public_key,
             &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
             input0,
@@ -157,7 +156,7 @@ impl Take1Transaction {
             context,
             1,
             EcdsaSighashType::All,
-            &vec![&context.keypair],
+            &vec![&context.operator_keypair],
         );
     }
 
@@ -168,7 +167,7 @@ impl Take1Transaction {
             2,
             TapSighashType::All,
             self.connector_a.generate_taproot_spend_info(),
-            &vec![&context.keypair],
+            &vec![&context.operator_keypair],
         );
     }
 
@@ -190,6 +189,10 @@ impl Take1Transaction {
     pub fn pre_sign(&mut self, context: &VerifierContext) {
         // self.sign_input0(context);
         // self.sign_input3(context);
+    }
+
+    pub fn merge(&mut self, take1: &Take1Transaction) {
+        merge_transactions(&mut self.tx, &take1.tx);
     }
 }
 
