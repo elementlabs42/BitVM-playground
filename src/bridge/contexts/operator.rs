@@ -25,7 +25,7 @@ impl BaseContext for OperatorContext {
 
 impl OperatorContext {
     pub fn new(network: Network, operator_secret: &str, n_of_n_public_key: &PublicKey) -> Self {
-        let (secp, keypair, public_key, taproot_public_key) =
+        let (secp, keypair, public_key) =
             generate_keys_from_secret(network, operator_secret);
 
         OperatorContext {
@@ -34,9 +34,9 @@ impl OperatorContext {
 
             operator_keypair: keypair,
             operator_public_key: public_key,
-            operator_taproot_public_key: taproot_public_key,
+            operator_taproot_public_key: XOnlyPublicKey::from(public_key),
 
-            n_of_n_public_key: n_of_n_public_key.clone(),
+            n_of_n_public_key: *n_of_n_public_key,
             n_of_n_taproot_public_key: XOnlyPublicKey::from(*n_of_n_public_key),
         }
     }

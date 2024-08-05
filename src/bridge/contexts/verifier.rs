@@ -34,7 +34,7 @@ impl VerifierContext {
         n_of_n_public_key: &PublicKey,
         operator_public_key: &PublicKey,
     ) -> Self {
-        let (secp, keypair, public_key, _) = generate_keys_from_secret(network, verifier_secret);
+        let (secp, keypair, public_key) = generate_keys_from_secret(network, verifier_secret);
 
         VerifierContext {
             network,
@@ -44,10 +44,10 @@ impl VerifierContext {
             verifier_public_key: public_key,
 
             n_of_n_public_keys: n_of_n_public_keys.clone(),
-            n_of_n_public_key: n_of_n_public_key.clone(),
+            n_of_n_public_key: *n_of_n_public_key,
             n_of_n_taproot_public_key: XOnlyPublicKey::from(*n_of_n_public_key),
 
-            operator_public_key: operator_public_key.clone(),
+            operator_public_key: *operator_public_key,
             operator_taproot_public_key: XOnlyPublicKey::from(*operator_public_key),
         }
     }

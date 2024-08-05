@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use bitcoin::{Network, PublicKey, XOnlyPublicKey};
+use bitcoin::{Network, PublicKey};
 
 use bitvm::bridge::{
     client::client::BitVMClient,
@@ -78,20 +78,20 @@ pub async fn setup_test() -> (
     let connector_a = ConnectorA::new(
         network,
         &operator_context.operator_taproot_public_key,
-        &XOnlyPublicKey::from(n_of_n_public_key),
+        &verifier0_context.n_of_n_taproot_public_key,
     );
-    let connector_b = ConnectorB::new(network, &XOnlyPublicKey::from(n_of_n_public_key));
-    let connector_c = ConnectorC::new(network, &XOnlyPublicKey::from(n_of_n_public_key));
+    let connector_b = ConnectorB::new(network, &verifier0_context.n_of_n_taproot_public_key);
+    let connector_c = ConnectorC::new(network, &verifier0_context.n_of_n_taproot_public_key);
     let connector_z = ConnectorZ::new(
         network,
         EVM_ADDRESS,
         &depositor_context.depositor_taproot_public_key,
-        &XOnlyPublicKey::from(n_of_n_public_key),
+        &verifier0_context.n_of_n_taproot_public_key,
     );
-    let connector_0 = Connector0::new(network, &PublicKey::from_str(N_OF_N_PUBKEY).unwrap());
-    let connector_1 = Connector1::new(network, &PublicKey::from_str(OPERATOR_PUBKEY).unwrap());
-    let connector_2 = Connector2::new(network, &PublicKey::from_str(OPERATOR_PUBKEY).unwrap());
-    let connector_3 = Connector3::new(network, &PublicKey::from_str(N_OF_N_PUBKEY).unwrap());
+    let connector_0 = Connector0::new(network,  &verifier0_context.n_of_n_public_key);
+    let connector_1 = Connector1::new(network, &operator_context.operator_public_key);
+    let connector_2 = Connector2::new(network, &operator_context.operator_public_key);
+    let connector_3 = Connector3::new(network, &verifier0_context.n_of_n_public_key);
 
     // TODO: Instead of one client with all role contexts in it, return clients limited to only one role for every role.
     // Using those clients in tests will help mimic production environment better.

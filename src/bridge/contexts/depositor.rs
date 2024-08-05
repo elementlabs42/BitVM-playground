@@ -25,7 +25,7 @@ impl BaseContext for DepositorContext {
 
 impl DepositorContext {
     pub fn new(network: Network, depositor_secret: &str, n_of_n_public_key: &PublicKey) -> Self {
-        let (secp, keypair, public_key, taproot_public_key) =
+        let (secp, keypair, public_key) =
             generate_keys_from_secret(network, depositor_secret);
 
         DepositorContext {
@@ -34,9 +34,9 @@ impl DepositorContext {
 
             depositor_keypair: keypair,
             depositor_public_key: public_key,
-            depositor_taproot_public_key: taproot_public_key,
+            depositor_taproot_public_key: XOnlyPublicKey::from(public_key),
 
-            n_of_n_public_key: n_of_n_public_key.clone(),
+            n_of_n_public_key: *n_of_n_public_key,
             n_of_n_taproot_public_key: XOnlyPublicKey::from(*n_of_n_public_key),
         }
     }
