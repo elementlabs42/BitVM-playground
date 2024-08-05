@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use bitcoin::{
     absolute, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, TapSighashType, Transaction,
     TxOut, XOnlyPublicKey,
 };
-use musig2::PubNonce;
+use musig2::{PartialSignature, PubNonce};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use super::{
     super::{
@@ -23,11 +23,13 @@ use super::{
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Take1Transaction {
     tx: Transaction,
-    musig2_nonces: HashMap<PublicKey, PubNonce>,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     connector_a: ConnectorA,
     connector_b: ConnectorB,
+
+    musig2_nonces: HashMap<PublicKey, PubNonce>,
+    musig2_signatures: HashMap<PublicKey, PartialSignature>,
 }
 
 impl PreSignedTransaction for Take1Transaction {
@@ -110,7 +112,6 @@ impl Take1Transaction {
                 input: vec![_input0, _input1, _input2, _input3],
                 output: vec![_output0],
             },
-            musig2_nonces: HashMap::new(),
             prev_outs: vec![
                 TxOut {
                     value: input0.amount,
@@ -137,7 +138,14 @@ impl Take1Transaction {
             ],
             connector_a,
             connector_b,
+            musig2_nonces: HashMap::new(),
+            musig2_signatures: HashMap::new(),
         }
+    }
+
+    pub fn push_nonce(&mut self, context: &VerifierContext, public_nonce: PubNonce) {
+        self.musig2_nonces
+            .insert(context.verifier_public_key, public_nonce);
     }
 
     // fn sign_input0(&mut self, context: &VerifierContext) {
@@ -181,10 +189,6 @@ impl Take1Transaction {
     //         &vec![&context.n_of_n_keypair],
     //     );
     // }
-
-    pub fn push_nonce(&mut self, public_key: PublicKey, public_nonce: PubNonce) {
-        self.musig2_nonces.insert(public_key, public_nonce);
-    }
 
     pub fn pre_sign(&mut self, context: &VerifierContext) {
         // self.sign_input0(context);

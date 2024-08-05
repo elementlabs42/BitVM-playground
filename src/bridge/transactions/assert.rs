@@ -2,7 +2,9 @@ use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
+use musig2::{PartialSignature, PubNonce};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use super::{
     super::{
@@ -19,12 +21,14 @@ use super::{
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct AssertTransaction {
-    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
+    // #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
-    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
+    // #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     connector_b: ConnectorB,
+    musig2_nonces: HashMap<PublicKey, PubNonce>,
+    musig2_signatures: HashMap<PublicKey, PartialSignature>,
 }
 
 impl PreSignedTransaction for AssertTransaction {
@@ -92,7 +96,14 @@ impl AssertTransaction {
             }],
             prev_scripts: vec![connector_b.generate_taproot_leaf_script(1)],
             connector_b,
+            musig2_nonces: HashMap::new(),
+            musig2_signatures: HashMap::new(),
         }
+    }
+
+    pub fn push_nonce(&mut self, context: &VerifierContext, public_nonce: PubNonce) {
+        self.musig2_nonces
+            .insert(context.verifier_public_key, public_nonce);
     }
 
     // fn sign_input0(&mut self, context: &VerifierContext) {
@@ -106,7 +117,8 @@ impl AssertTransaction {
     //     );
     // }
 
-    pub fn pre_sign(&mut self, context: &VerifierContext) { /* self.sign_input0(context); */}
+    pub fn pre_sign(&mut self, context: &VerifierContext) { /* self.sign_input0(context); */
+    }
 
     pub fn merge(&mut self, assert: &AssertTransaction) {
         merge_transactions(&mut self.tx, &assert.tx);

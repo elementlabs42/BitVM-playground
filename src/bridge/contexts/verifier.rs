@@ -16,9 +16,6 @@ pub struct VerifierContext {
     pub n_of_n_public_keys: Vec<PublicKey>,
     pub n_of_n_public_key: PublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
-
-    pub operator_public_key: PublicKey,
-    pub operator_taproot_public_key: XOnlyPublicKey,
 }
 
 impl BaseContext for VerifierContext {
@@ -32,7 +29,6 @@ impl VerifierContext {
         verifier_secret: &str,
         n_of_n_public_keys: &Vec<PublicKey>,
         n_of_n_public_key: &PublicKey,
-        operator_public_key: &PublicKey,
     ) -> Self {
         let (secp, keypair, public_key) = generate_keys_from_secret(network, verifier_secret);
 
@@ -46,9 +42,6 @@ impl VerifierContext {
             n_of_n_public_keys: n_of_n_public_keys.clone(),
             n_of_n_public_key: *n_of_n_public_key,
             n_of_n_taproot_public_key: XOnlyPublicKey::from(*n_of_n_public_key),
-
-            operator_public_key: *operator_public_key,
-            operator_taproot_public_key: XOnlyPublicKey::from(*operator_public_key),
         }
     }
 }

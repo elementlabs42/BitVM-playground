@@ -25,8 +25,7 @@ impl BaseContext for OperatorContext {
 
 impl OperatorContext {
     pub fn new(network: Network, operator_secret: &str, n_of_n_public_key: &PublicKey) -> Self {
-        let (secp, keypair, public_key) =
-            generate_keys_from_secret(network, operator_secret);
+        let (secp, keypair, public_key) = generate_keys_from_secret(network, operator_secret);
 
         OperatorContext {
             network,

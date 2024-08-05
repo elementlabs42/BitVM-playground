@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
 use musig2::{BinaryEncoding, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use super::{
     super::{
@@ -20,14 +20,14 @@ use super::{
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegInConfirmTransaction {
-    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
-    pub musig2_nonces: HashMap<PublicKey, PubNonce>, // TODO: Consider changing to private and adding read-only access via the PreSignedTransaction trait
-    pub musig2_signatures: HashMap<PublicKey, PartialSignature>,
-    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     connector_z: ConnectorZ,
+
+    // #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
+    musig2_nonces: HashMap<PublicKey, PubNonce>,
+    musig2_signatures: HashMap<PublicKey, PartialSignature>,
 }
 
 impl PreSignedTransaction for PegInConfirmTransaction {
@@ -88,15 +88,45 @@ impl PegInConfirmTransaction {
                 input: vec![_input0],
                 output: vec![_output0],
             },
-            musig2_nonces: HashMap::new(),
-            musig2_signatures: HashMap::new(),
             prev_outs: vec![TxOut {
                 value: input0.amount,
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_z.generate_taproot_leaf_script(1)],
             connector_z,
+            musig2_nonces: HashMap::new(),
+            musig2_signatures: HashMap::new(),
         }
+    }
+
+    pub fn push_nonce(&mut self, context: &VerifierContext, public_nonce: PubNonce) {
+        self.musig2_nonces
+            .insert(context.verifier_public_key, public_nonce);
+    }
+
+    fn push_partial_signature_input0(
+        &mut self,
+        context: &VerifierContext,
+        secret_nonce: &SecNonce,
+    ) {
+        let input_index = 0;
+        let partial_signature = get_partial_signature(
+            context,
+            &self.tx,
+            secret_nonce,
+            &get_aggregated_nonce(self.musig2_nonces.values()),
+            input_index,
+            &self.prev_outs,
+            &self.prev_scripts[input_index],
+            TapSighashType::All,
+        )
+        .unwrap(); // TODO: Add error handling.
+
+        self.push_signature(context.verifier_public_key, partial_signature);
+    }
+
+    fn push_signature(&mut self, public_key: PublicKey, partial_sig: PartialSignature) {
+        self.musig2_signatures.insert(public_key, partial_sig);
     }
 
     fn push_depositor_signature_input0(&mut self, context: &DepositorContext) {
@@ -135,33 +165,8 @@ impl PegInConfirmTransaction {
         );
     }
 
-    pub fn push_nonce(&mut self, public_key: PublicKey, public_nonce: PubNonce) {
-        self.musig2_nonces.insert(public_key, public_nonce);
-    }
-
-    fn push_partial_signature_input0(&mut self, context: &VerifierContext, secnonce: &SecNonce) {
-        let input_index = 0;
-        let partial_signature = get_partial_signature(
-            context,
-            &self.tx,
-            secnonce,
-            &get_aggregated_nonce(self.musig2_nonces.values()),
-            input_index,
-            &self.prev_outs,
-            &self.prev_scripts[input_index],
-            TapSighashType::All,
-        )
-        .unwrap(); // TODO: Add error handling.
-
-        self.push_signature(context.verifier_public_key, partial_signature);
-    }
-
-    fn push_signature(&mut self, public_key: PublicKey, partial_sig: PartialSignature) {
-        self.musig2_signatures.insert(public_key, partial_sig);
-    }
-
-    pub fn pre_sign(&mut self, context: &VerifierContext, secnonce: &SecNonce) {
-        self.push_partial_signature_input0(context, secnonce);
+    pub fn pre_sign(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+        self.push_partial_signature_input0(context, secret_nonce);
     }
 
     /// Generate the final Schnorr signature and push it to the witness in this tx.

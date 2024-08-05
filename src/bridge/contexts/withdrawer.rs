@@ -25,8 +25,7 @@ impl BaseContext for WithdrawerContext {
 
 impl WithdrawerContext {
     pub fn new(network: Network, withdrawer_secret: &str, n_of_n_public_key: &PublicKey) -> Self {
-        let (secp, keypair, public_key) =
-            generate_keys_from_secret(network, withdrawer_secret);
+        let (secp, keypair, public_key) = generate_keys_from_secret(network, withdrawer_secret);
 
         WithdrawerContext {
             network,

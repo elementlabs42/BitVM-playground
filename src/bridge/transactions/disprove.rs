@@ -2,7 +2,9 @@ use bitcoin::{
     absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction,
     TxOut, XOnlyPublicKey,
 };
+use musig2::{PartialSignature, PubNonce};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use super::{
     super::{
@@ -18,13 +20,15 @@ use super::{
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct DisproveTransaction {
-    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
+    // #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
-    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
+    // #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     connector_c: ConnectorC,
     reward_output_amount: Amount,
+    musig2_nonces: HashMap<PublicKey, PubNonce>,
+    musig2_signatures: HashMap<PublicKey, PartialSignature>,
 }
 
 impl PreSignedTransaction for DisproveTransaction {
@@ -97,7 +101,14 @@ impl DisproveTransaction {
             prev_scripts: vec![connector_3.generate_script()],
             connector_c,
             reward_output_amount,
+            musig2_nonces: HashMap::new(),
+            musig2_signatures: HashMap::new(),
         }
+    }
+
+    pub fn push_nonce(&mut self, context: &VerifierContext, public_nonce: PubNonce) {
+        self.musig2_nonces
+            .insert(context.verifier_public_key, public_nonce);
     }
 
     // fn sign_input0(&mut self, context: &VerifierContext) {

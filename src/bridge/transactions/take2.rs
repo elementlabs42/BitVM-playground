@@ -1,7 +1,9 @@
 use bitcoin::{
     absolute, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction, TxOut,
 };
+use musig2::{PartialSignature, PubNonce};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use super::{
     super::{
@@ -21,6 +23,8 @@ pub struct Take2Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
+    musig2_nonces: HashMap<PublicKey, PubNonce>,
+    musig2_signatures: HashMap<PublicKey, PartialSignature>,
 }
 
 impl PreSignedTransaction for Take2Transaction {
@@ -102,7 +106,14 @@ impl Take2Transaction {
                 connector_2.generate_script(),
                 connector_3.generate_script(),
             ],
+            musig2_nonces: HashMap::new(),
+            musig2_signatures: HashMap::new(),
         }
+    }
+
+    pub fn push_nonce(&mut self, context: &VerifierContext, public_nonce: PubNonce) {
+        self.musig2_nonces
+            .insert(context.verifier_public_key, public_nonce);
     }
 
     // fn sign_input0(&mut self, context: &VerifierContext) {

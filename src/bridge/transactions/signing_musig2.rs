@@ -23,7 +23,7 @@ where
 pub fn get_partial_signature(
     context: &VerifierContext,
     tx: &Transaction,
-    secnonce: &SecNonce,
+    secret_nonce: &SecNonce,
     aggregated_nonce: &AggNonce,
     input_index: usize,
     prevouts: &Vec<TxOut>,
@@ -47,7 +47,7 @@ pub fn get_partial_signature(
     sign_partial(
         &key_agg_ctx,
         context.verifier_keypair.secret_key(),
-        secnonce.clone(),
+        secret_nonce.clone(),
         &aggregated_nonce,
         sighash_cache,
     )
