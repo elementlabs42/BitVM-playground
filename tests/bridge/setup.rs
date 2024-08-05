@@ -14,10 +14,11 @@ use bitvm::bridge::{
         verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
     graphs::base::{
-        DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_PUBKEY, OPERATOR_SECRET, VERIFIER0_SECRET,
+        DEPOSITOR_SECRET, EVM_ADDRESS, OPERATOR_SECRET, VERIFIER0_SECRET,
         VERIFIER1_SECRET, WITHDRAWER_SECRET,
     },
 };
+use musig2::{secp::Point, KeyAggContext};
 
 pub async fn setup_test() -> (
     BitVMClient,
@@ -38,15 +39,25 @@ pub async fn setup_test() -> (
 ) {
     let network = Network::Testnet;
     // TODO: Add error handling below (when unwrapping).
-    let n_of_n_public_key = PublicKey::from_str(N_OF_N_PUBKEY).unwrap();
-    let n_of_n_taproot_public_key = XOnlyPublicKey::from(n_of_n_public_key);
 
+    // Generate N of N public key
     let (_, _, verifier0_public_key) = generate_keys_from_secret(network, VERIFIER0_SECRET);
     let (_, _, verifier1_public_key) = generate_keys_from_secret(network, VERIFIER1_SECRET);
 
     let mut n_of_n_public_keys: Vec<PublicKey> = Vec::new();
     n_of_n_public_keys.push(verifier0_public_key);
     n_of_n_public_keys.push(verifier1_public_key);
+
+    let mut public_keys: Vec<Point> = Vec::new();
+    for public_key in n_of_n_public_keys.iter() {
+        let point = Point::from_str(&public_key.to_string()).unwrap();
+        public_keys.push(point);
+    }
+    let key_agg_ctx = KeyAggContext::new(public_keys).unwrap();
+    let aggregated_key: Point = key_agg_ctx.aggregated_pubkey();
+    
+    let n_of_n_public_key = PublicKey::from_str(&aggregated_key.to_string()).unwrap();
+    let n_of_n_taproot_public_key = XOnlyPublicKey::from(n_of_n_public_key);
 
     let depositor_context = DepositorContext::new(network, DEPOSITOR_SECRET, &n_of_n_public_key);
     let operator_context = OperatorContext::new(network, OPERATOR_SECRET, &n_of_n_public_key);
