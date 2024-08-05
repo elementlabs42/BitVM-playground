@@ -2,26 +2,27 @@ use super::base::DataStoreDriver;
 use async_trait::async_trait;
 use dotenv;
 use futures::{executor, TryStreamExt};
-use openssh_sftp_client::{
-    file::TokioCompatFile,
-    openssh::{KnownHosts, Session as SshSession},
-    Sftp as _Sftp,
-};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+// use log::{error, info, LevelFilter};
+use russh::*;
+use russh_keys::*;
+use russh_sftp::{client::SftpSession, protocol::OpenFlags};
+use std::sync::Arc;
+use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 
 // To use this data store, create a .env file in the base directory with the following values:
 // export BRIDGE_SFTP_HOST="..."
 // export BRIDGE_SFTP_PORT="..."
 // export BRIDGE_SFTP_USERNAME="..."
+// export BRIDGE_SFTP_KEYFILE_PATH="..."
 // export BRIDGE_SFTP_BASE_PATH="..."
 
 // NOTE: BRIDGE_SFTP_HOST should be an ip/domain that supports SSH
-// NOTE: BRIDGE_SFTP_HOST will be added to KNOWN_HOSTS
 
 struct SftpCredentials {
     pub host: String,
     pub port: String,
     pub username: String,
+    pub keyfile_path: String,
     pub base_path: String,
 }
 
@@ -35,24 +36,20 @@ impl Sftp {
         let host = dotenv::var("BRIDGE_SFTP_HOST");
         let port = dotenv::var("BRIDGE_SFTP_PORT");
         let username = dotenv::var("BRIDGE_SFTP_USERNAME");
+        let keyfile_path = dotenv::var("BRIDGE_SFTP_KEYFILE_PATH");
         let base_path = dotenv::var("BRIDGE_SFTP_BASE_PATH");
 
-        println!("SFTP 40");
-
-        if host.is_err() || port.is_err() || username.is_err() || base_path.is_err() {
+        if host.is_err() || port.is_err() || username.is_err() || keyfile_path.is_err() || base_path.is_err() {
             return None;
         }
-
-        println!("SFTP 46");
 
         let credentials = SftpCredentials {
             host: host.unwrap(),
             port: port.unwrap(),
             username: username.unwrap(),
+            keyfile_path: keyfile_path.unwrap(),
             base_path: base_path.unwrap(),
         };
-
-        println!("SFTP 55");
 
         match test_connection(&credentials) {
             Ok(_) => Some(Self { credentials }),
@@ -66,96 +63,102 @@ impl Sftp {
     async fn get_object(&self, key: &str) -> Result<Vec<u8>, String> {
         let mut buffer: Vec<u8> = vec![];
 
-        match connect(&self.credentials).await {
-            Ok(sftp) => match sftp.open(key).await.map(TokioCompatFile::from) {
-                Ok(file) => {
-                    tokio::pin!(file);
-                    match file.read_to_end(&mut buffer).await {
-                        Ok(_) => {
-                            disconnect(sftp).await;
-                            Ok(buffer)
-                        }
-                        Err(err) => {
-                            disconnect(sftp).await;
-                            Err(format!("Unable to get {}: {}", key, err))
-                        }
-                    }
-                }
-                Err(err) => {
-                    disconnect(sftp).await;
-                    Err(format!("Unable to get {}: {}", key, err))
-                }
-            },
-            Err(err) => Err(format!("Unable to get {}: {}", key, err)),
-        }
+        Err("Not implemented yet".to_string())
+        
+        // match connect(&self.credentials).await {
+        //     Ok(sftp) => match sftp.open(key).await.map(TokioCompatFile::from) {
+        //         Ok(file) => {
+        //             tokio::pin!(file);
+        //             match file.read_to_end(&mut buffer).await {
+        //                 Ok(_) => {
+        //                     disconnect(sftp).await;
+        //                     Ok(buffer)
+        //                 }
+        //                 Err(err) => {
+        //                     disconnect(sftp).await;
+        //                     Err(format!("Unable to get {}: {}", key, err))
+        //                 }
+        //             }
+        //         }
+        //         Err(err) => {
+        //             disconnect(sftp).await;
+        //             Err(format!("Unable to get {}: {}", key, err))
+        //         }
+        //     },
+        //     Err(err) => Err(format!("Unable to get {}: {}", key, err)),
+        // }
     }
 
     async fn upload_object(&self, key: &str, data: &Vec<u8>) -> Result<(), String> {
-        match connect(&self.credentials).await {
-            Ok(sftp) => match sftp
-                .options()
-                .write(true)
-                .create_new(true)
-                .open(key)
-                .await
-                .map(TokioCompatFile::from)
-            {
-                Ok(file) => {
-                    tokio::pin!(file);
-                    match file.write(data).await {
-                        Ok(_) => match file.flush().await {
-                            Ok(_) => {
-                                disconnect(sftp).await;
-                                Ok(())
-                            }
-                            Err(err) => {
-                                disconnect(sftp).await;
-                                return Err(format!("Unable to write {}: {}", key, err));
-                            }
-                        },
-                        Err(err) => {
-                            disconnect(sftp).await;
-                            return Err(format!("Unable to write {}: {}", key, err));
-                        }
-                    }
-                }
-                Err(err) => {
-                    disconnect(sftp).await;
-                    return Err(format!("Unable to write {}: {}", key, err));
-                }
-            },
-            Err(err) => Err(format!("Unable to write {}: {}", key, err)),
-        }
+        Err("Not implemented yet".to_string())
+
+        // match connect(&self.credentials).await {
+        //     Ok(sftp) => match sftp
+        //         .options()
+        //         .write(true)
+        //         .create_new(true)
+        //         .open(key)
+        //         .await
+        //         .map(TokioCompatFile::from)
+        //     {
+        //         Ok(file) => {
+        //             tokio::pin!(file);
+        //             match file.write(data).await {
+        //                 Ok(_) => match file.flush().await {
+        //                     Ok(_) => {
+        //                         disconnect(sftp).await;
+        //                         Ok(())
+        //                     }
+        //                     Err(err) => {
+        //                         disconnect(sftp).await;
+        //                         return Err(format!("Unable to write {}: {}", key, err));
+        //                     }
+        //                 },
+        //                 Err(err) => {
+        //                     disconnect(sftp).await;
+        //                     return Err(format!("Unable to write {}: {}", key, err));
+        //                 }
+        //             }
+        //         }
+        //         Err(err) => {
+        //             disconnect(sftp).await;
+        //             return Err(format!("Unable to write {}: {}", key, err));
+        //         }
+        //     },
+        //     Err(err) => Err(format!("Unable to write {}: {}", key, err)),
+        // }
     }
 }
 
 #[async_trait]
 impl DataStoreDriver for Sftp {
     async fn list_objects(&self) -> Result<Vec<String>, String> {
-        match connect(&self.credentials).await {
-            Ok(sftp) => {
-                let mut fs = sftp.fs();
-                match fs.open_dir(".").await {
-                    Ok(dir) => {
-                        let read_dir = dir.read_dir();
-                        tokio::pin!(read_dir);
+        Err("Not implemented yet".to_string())
 
-                        let mut buffer: Vec<String> = vec![];
-                        while let Some(entry) = read_dir.try_next().await.unwrap() {
-                            buffer.push(entry.filename().to_str().unwrap().to_string());
-                        }
+        // match connect(&self.credentials).await {
+        //     Ok(sftp) => {
+        //         let mut fs = sftp.fs();
+        //         match fs.open_dir(".").await {
+        //             Ok(dir) => {
+        //                 let read_dir = dir.read_dir();
+        //                 tokio::pin!(read_dir);
 
-                        disconnect(sftp).await;
-                        Ok(buffer)
-                    }
-                    Err(err) => {
-                        disconnect(sftp).await;
-                        Err(format!("Unable to list objects: {}", err.to_string()))
-                    }
-                }
-            }
-            Err(err) => Err(format!("Unable tolist objects: {}", err.to_string())),
-        }
+        //                 let mut buffer: Vec<String> = vec![];
+        //                 while let Some(entry) = read_dir.try_next().await.unwrap() {
+        //                     buffer.push(entry.filename().to_str().unwrap().to_string());
+        //                 }
+
+        //                 disconnect(sftp).await;
+        //                 Ok(buffer)
+        //             }
+        //             Err(err) => {
+        //                 disconnect(sftp).await;
+        //                 Err(format!("Unable to list objects: {}", err.to_string()))
+        //             }
+        //         }
+        //     }
+        //     Err(err) => Err(format!("Unable tolist objects: {}", err.to_string())),
+        // }
     }
 
     async fn fetch_json(&self, key: &str) -> Result<String, String> {
@@ -185,11 +188,35 @@ impl DataStoreDriver for Sftp {
     }
 }
 
+struct Client;
+
+#[async_trait]
+impl client::Handler for Client {
+    type Error = anyhow::Error;
+
+    async fn check_server_key(
+        &mut self,
+        server_public_key: &key::PublicKey,
+    ) -> Result<bool, Self::Error> {
+        println!("check_server_key: {:?}", server_public_key);
+        Ok(true)
+    }
+
+    async fn data(
+        &mut self,
+        channel: ChannelId,
+        data: &[u8],
+        _session: &mut client::Session,
+    ) -> Result<(), Self::Error> {
+        println!("data on channel {:?}: {}", channel, data.len());
+        Ok(())
+    }
+}
+
+
 fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
-    println!("SFTP 190");
     match executor::block_on(connect(credentials)) {
         Ok(sftp) => {
-            println!("SFTP 192");
             executor::block_on(disconnect(sftp));
             Ok(())
         }
@@ -197,18 +224,17 @@ fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
     }
 }
 
-async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
+async fn connect(credentials: &SftpCredentials) -> Result<SftpSession, String> {
     println!("SFTP 200");
 
-    let result = SshSession::connect_mux(
-        format!(
-            "ssh://{}@{}:{}",
-            &credentials.username, &credentials.host, &credentials.port
-        ),
-        KnownHosts::Add,
-    )
-    .await;
-    println!("SFTP 202");
+    // env_logger::builder()
+    //     .filter_level(LevelFilter::Debug)
+    //     .init();
+
+    let config = russh::client::Config::default();
+
+    let sh = Client {};
+    let result = russh::client::connect(Arc::new(config), ("18.139.200.225", 22), sh).await;
     if result.is_err() {
         return Err(format!(
             "Unable to connect to SSH server at {}:{} (error: {})",
@@ -219,9 +245,38 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
     }
     println!("SFTP 209");
 
-    let ssh_session = result.unwrap();
+    let mut ssh_session = result.unwrap();
 
-    let result = _Sftp::from_session(ssh_session, Default::default()).await;
+    let result = ssh_session.authenticate_password("ec2-user", "password").await;
+    if result.is_err() {
+        return Err(format!(
+            "Unable to authenticate via SSH server at {}:{} (error: {})",
+            &credentials.host,
+            &credentials.port,
+            result.err().unwrap()
+        ));
+    }
+    println!("SFTP 209");
+
+    let result = ssh_session.channel_open_session().await;
+    if result.is_err() {
+        return Err(format!(
+            "Unable to open channel (error: {})",
+            result.err().unwrap()
+        ));
+    }
+
+    let channel = result.unwrap();
+
+    let result = channel.request_subsystem(true, "sftp").await;
+    if result.is_err() {
+        return Err(format!(
+            "Unable to request sftp subsystem (error: {})",
+            result.err().unwrap()
+        ));
+    }
+
+    let result = SftpSession::new(channel.into_stream()).await;
     if result.is_err() {
         return Err(format!(
             "Unable to establish to SFTP session from SSH session at {}:{} (error: {})",
@@ -230,12 +285,45 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
             result.err().unwrap()
         ));
     }
-    println!("SFTP 220");
 
     let sftp = result.unwrap();
+    println!("current path: {:?}", sftp.canonicalize(".").await.unwrap());
 
-    let mut fs = sftp.fs();
-    fs.set_cwd(&credentials.base_path);
+    // if session
+    //     .authenticate_publickey(&credentials.username, key)
+    //     .await
+    //     .unwrap() {
+
+    //     }
+
+    // println!("SFTP 202");
+    // if result.is_err() {
+    //     return Err(format!(
+    //         "Unable to connect to SSH server at {}:{} (error: {})",
+    //         &credentials.host,
+    //         &credentials.port,
+    //         result.err().unwrap()
+    //     ));
+    // }
+    // println!("SFTP 209");
+
+    // let ssh_session = result.unwrap();
+
+    // let result = _Sftp::from_session(ssh_session, Default::default()).await;
+    // if result.is_err() {
+    //     return Err(format!(
+    //         "Unable to establish to SFTP session from SSH session at {}:{} (error: {})",
+    //         &credentials.host,
+    //         &credentials.port,
+    //         result.err().unwrap()
+    //     ));
+    // }
+    // println!("SFTP 220");
+
+    // let sftp = result.unwrap();
+
+    // let mut fs = sftp.fs();
+    // fs.set_cwd(&credentials.base_path);
     // let result = fs.open_dir(&credentials.base_path).await;
     // if result.is_err() {
     //     return Err(format!("Invalid base path: {}", &credentials.base_path));
@@ -246,7 +334,7 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
     Ok(sftp)
 }
 
-async fn disconnect(sftp: _Sftp) {
+async fn disconnect(sftp: SftpSession) {
     if sftp.close().await.is_ok() {
         return;
     }
