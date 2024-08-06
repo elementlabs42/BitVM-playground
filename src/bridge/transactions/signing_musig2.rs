@@ -16,11 +16,7 @@ pub fn generate_nonce() -> SecNonce {
     SecNonce::build(&mut rand::rngs::OsRng).build() // TODO: Double check the use of RNG here.
 }
 
-pub fn get_aggregated_nonce<T, I>(nonces: I) -> AggNonce
-where
-    T: std::borrow::Borrow<PubNonce>,
-    I: IntoIterator<Item = T>,
-{
+pub fn get_aggregated_nonce(nonces: &Vec<PubNonce>) -> AggNonce {
     AggNonce::sum(nonces)
 }
 

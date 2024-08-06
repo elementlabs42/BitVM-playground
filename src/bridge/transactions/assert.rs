@@ -2,11 +2,9 @@ use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
-use musig2::{BinaryEncoding, PartialSignature, PubNonce, SecNonce};
+use musig2::{PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-use crate::bridge::contexts::base::BaseContext;
 
 use super::{
     super::{
@@ -14,15 +12,12 @@ use super::{
             connector::*, connector_2::Connector2, connector_3::Connector3,
             connector_b::ConnectorB, connector_c::ConnectorC,
         },
-        contexts::{operator::OperatorContext, verifier::VerifierContext},
+        contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
     },
     base::*,
     pre_signed::*,
-    signing::push_taproot_leaf_script_and_control_block_to_witness,
-    signing_musig2::{
-        generate_nonce, get_aggregated_nonce, get_aggregated_signature, get_partial_signature,
-    },
+    pre_signed_musig2::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -46,6 +41,11 @@ impl PreSignedTransaction for AssertTransaction {
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
     fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
+}
+
+impl PreSignedMusig2Transaction for AssertTransaction {
+    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> { &mut self.musig2_nonces }
+    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> { &mut self.musig2_signatures }
 }
 
 impl AssertTransaction {
@@ -119,25 +119,7 @@ impl AssertTransaction {
         // );
 
         let input_index = 0;
-        let partial_signature = get_partial_signature(
-            context,
-            &self.tx,
-            secret_nonce,
-            &get_aggregated_nonce(self.musig2_nonces[&input_index].values()),
-            input_index,
-            &self.prev_outs,
-            &self.prev_scripts[input_index],
-            TapSighashType::All,
-        )
-        .unwrap(); // TODO: Add error handling.
-
-        if self.musig2_signatures.get(&input_index).is_none() {
-            self.musig2_signatures.insert(input_index, HashMap::new());
-        }
-        self.musig2_signatures
-            .get_mut(&input_index)
-            .unwrap()
-            .insert(context.verifier_public_key, partial_signature);
+        pre_sign_musig2_taproot_input(self, context, input_index, TapSighashType::All, secret_nonce);
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
@@ -146,51 +128,15 @@ impl AssertTransaction {
     }
 
     fn finalize_input0(&mut self, context: &dyn BaseContext) {
-        // TODO: Verify we have partial signatures from all verifiers.
-        // TODO: Verify each signature against the signers public key.
-        // See example here: https://github.com/conduition/musig2/blob/c39bfce58098d337a3ec38b54d93def8306d9953/src/signing.rs#L358C1-L366C65
-
-        // Aggregate + push signature
         let input_index = 0;
-        let final_signature = get_aggregated_signature(
-            context,
-            &self.tx,
-            &get_aggregated_nonce(self.musig2_nonces[&input_index].values()),
-            input_index,
-            &self.prev_outs,
-            &self.prev_scripts[input_index],
-            TapSighashType::All,
-            self.musig2_signatures[&input_index]
-                .values()
-                .map(|&partial_signature| PartialSignature::from(partial_signature))
-                .collect(), // TODO: Is there a more elegant way of doing this?
-        )
-        .unwrap(); // TODO: Add error handling.
-        self.tx.input[input_index]
-            .witness
-            .push(final_signature.to_bytes());
-
-        // Push script + control block
-        push_taproot_leaf_script_and_control_block_to_witness(
-            &mut self.tx,
-            input_index,
-            &self.connector_b.generate_taproot_spend_info(),
-            &self.prev_scripts[input_index],
-        );
+        finalize_musig2_taproot_input(self, context, input_index, TapSighashType::All, self.connector_b.generate_taproot_spend_info());
     }
 
     pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
         let mut secret_nonces = HashMap::new();
 
         let input_index = 0;
-        let secret_nonce = generate_nonce();
-        if self.musig2_nonces.get(&input_index).is_none() {
-            self.musig2_nonces.insert(input_index, HashMap::new());
-        }
-        self.musig2_nonces
-            .get_mut(&input_index)
-            .unwrap()
-            .insert(context.verifier_public_key, secret_nonce.public_nonce());
+        let secret_nonce = push_nonce(self, context, input_index);
         secret_nonces.insert(input_index, secret_nonce);
 
         secret_nonces

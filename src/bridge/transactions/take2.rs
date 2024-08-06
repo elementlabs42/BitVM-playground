@@ -16,7 +16,7 @@ use super::{
     },
     base::*,
     pre_signed::*,
-    signing_musig2::generate_nonce,
+    pre_signed_musig2::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -37,6 +37,11 @@ impl PreSignedTransaction for Take2Transaction {
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
     fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
+}
+
+impl PreSignedMusig2Transaction for Take2Transaction {
+    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> { &mut self.musig2_nonces }
+    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> { &mut self.musig2_signatures }
 }
 
 impl Take2Transaction {
@@ -147,25 +152,11 @@ impl Take2Transaction {
         let mut secret_nonces = HashMap::new();
 
         let input_index = 0;
-        let secret_nonce = generate_nonce();
-        if self.musig2_nonces.get(&input_index).is_none() {
-            self.musig2_nonces.insert(input_index, HashMap::new());
-        }
-        self.musig2_nonces
-            .get_mut(&input_index)
-            .unwrap()
-            .insert(context.verifier_public_key, secret_nonce.public_nonce());
+        let secret_nonce = push_nonce(self, context, input_index);
         secret_nonces.insert(input_index, secret_nonce);
 
         let input_index = 2;
-        let secret_nonce = generate_nonce();
-        if self.musig2_nonces.get(&input_index).is_none() {
-            self.musig2_nonces.insert(input_index, HashMap::new());
-        }
-        self.musig2_nonces
-            .get_mut(&input_index)
-            .unwrap()
-            .insert(context.verifier_public_key, secret_nonce.public_nonce());
+        let secret_nonce = push_nonce(self, context, input_index);
         secret_nonces.insert(input_index, secret_nonce);
 
         secret_nonces
