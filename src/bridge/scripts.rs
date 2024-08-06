@@ -1,9 +1,8 @@
 use crate::treepp::*;
 use bitcoin::{
-    hashes::Hash, Address, CompressedPublicKey, Network, PublicKey, ScriptBuf, XOnlyPublicKey,
+    hashes::{ripemd160, ripemd160::Hash as Ripemd160, sha256, sha256::Hash as Sha256, Hash}, Address, CompressedPublicKey, Network, PublicKey, ScriptBuf, XOnlyPublicKey,
 };
 use lazy_static::lazy_static;
-use sha2::{Digest, Sha256};
 use std::str::FromStr;
 
 lazy_static! {
@@ -44,18 +43,16 @@ pub fn generate_pay_to_pubkey_hash_with_inscription_script(
     evm_address: &str,
 ) -> ScriptBuf {
     let inscription = [
-        public_key.to_bytes(),
+        public_key.pubkey_hash().as_byte_array().to_vec(),
         timestamp.to_be_bytes().to_vec(),
         evm_address.as_bytes().to_vec(),
     ]
     .concat();
-    let mut inscription_hasher = Sha256::new();
-    inscription_hasher.update(&inscription);
-    let inscription_hash = inscription_hasher.finalize();
+    let inscription_hash = Ripemd160::hash(&Sha256::hash(&inscription).to_byte_array());
     script! {
         OP_FALSE
         OP_IF
-        { inscription_hash.to_vec() }
+        { inscription_hash.to_byte_array().to_vec() }
         OP_ENDIF
         OP_DUP
         OP_HASH160

@@ -1,6 +1,10 @@
-use bitcoin::{Amount, CompressedPublicKey};
+use bitcoin::{
+    hashes::{ripemd160, ripemd160::Hash as Ripemd160, sha256, sha256::Hash as Sha256, Hash},
+    Amount, CompressedPublicKey,
+};
 
 use bitvm::bridge::{
+    contexts::withdrawer,
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::{
         generate_pay_to_pubkey_hash_with_inscription_script,
@@ -12,7 +16,6 @@ use bitvm::bridge::{
         peg_out::PegOutTransaction,
     },
 };
-use sha2::{Digest, Sha256};
 
 use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
 
@@ -22,65 +25,47 @@ async fn test_peg_out_success() {
         setup_test().await;
     let timestamp = 1722328130u32;
 
-    println!(
-        "withdrawer pub key: {:?}",
-        hex::encode(withdrawer_context.withdrawer_public_key.to_bytes())
-    );
-    println!(
-        "withdrawer x pub key: {:?}",
-        hex::encode(withdrawer_context.withdrawer_taproot_public_key.serialize())
-    );
-    println!(
-        "withdrawer pubkey: {:?}",
-        hex::encode(
-            CompressedPublicKey::try_from(withdrawer_context.withdrawer_public_key)
-                .expect("Could not compress public key")
-                .to_bytes()
-        )
-    );
+    let pub_key = withdrawer_context.withdrawer_public_key;
+    println!("withdrawer pub key: {:?}", hex::encode(pub_key.to_bytes()));
     println!(
         "withdrawer pubkey hash: {:?}",
-        hex::encode(withdrawer_context.withdrawer_public_key.pubkey_hash())
+        hex::encode(pub_key.pubkey_hash())
     );
     let inscription = [
-        withdrawer_context.withdrawer_public_key.to_bytes(),
+        pub_key.pubkey_hash().as_byte_array().to_vec(),
         timestamp.to_be_bytes().to_vec(),
         evm_address.as_bytes().to_vec(),
     ]
     .concat();
-    let mut inscription_hasher = Sha256::new();
-    inscription_hasher.update(&inscription);
-    let inscription_hash = inscription_hasher.finalize();
-    println!("inscription: {:?}", hex::encode(inscription));
-    println!(
-        "inscription hash: {:?}",
-        hex::encode(inscription_hash.to_vec())
-    );
     println!();
-    let script = generate_pay_to_pubkey_hash_with_inscription_script(
-        &withdrawer_context.withdrawer_public_key,
-        timestamp,
-        &evm_address,
+    println!(
+        "timestamp hex: {:?}",
+        hex::encode(timestamp.to_be_bytes().to_vec())
     );
+    let script =
+        generate_pay_to_pubkey_hash_with_inscription_script(&pub_key, timestamp, &evm_address);
     let script_address = generate_pay_to_pubkey_hash_with_inscription_script_address(
         withdrawer_context.network,
-        &withdrawer_context.withdrawer_public_key,
+        &pub_key,
         timestamp,
         &evm_address,
     );
     println!("script hex: {:?}", hex::encode(script.as_bytes()));
-    let mut script_hasher = Sha256::new();
-    script_hasher.update(&script.as_bytes());
-    println!(
-        "script sha256(hex): {:?}",
-        hex::encode(script_hasher.finalize().to_vec())
-    );
     println!(
         "script pubkey: {:?}",
         hex::encode(script_address.script_pubkey())
     );
     println!("script address: {:?}", script_address);
-    println!(">>>>>>>>>>>>>>>>");
+    println!();
+
+    let inscription_sha256 = Sha256::hash(&inscription);
+    let inscription_hash = Ripemd160::hash(&inscription_sha256.to_byte_array());
+    println!("inscription: {:?}", hex::encode(inscription));
+    println!(
+        "inscription hash: {:?}",
+        hex::encode(inscription_hash.to_byte_array().to_vec())
+    );
+
     println!();
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
