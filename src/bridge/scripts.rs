@@ -1,6 +1,7 @@
 use crate::treepp::*;
 use bitcoin::{
-    hashes::{ripemd160, ripemd160::Hash as Ripemd160, sha256, sha256::Hash as Sha256, Hash}, Address, CompressedPublicKey, Network, PublicKey, ScriptBuf, XOnlyPublicKey,
+    hashes::{ripemd160::Hash as Ripemd160, sha256::Hash as Sha256, Hash},
+    Address, CompressedPublicKey, Network, PublicKey, ScriptBuf, XOnlyPublicKey,
 };
 use lazy_static::lazy_static;
 use std::str::FromStr;
