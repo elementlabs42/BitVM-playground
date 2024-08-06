@@ -10,15 +10,13 @@ use musig2::{
     sign_partial, AggNonce, KeyAggContext, LiftedSignature, PartialSignature, PubNonce, SecNonce,
 };
 
-use crate::bridge::contexts::{base::BaseContext, verifier::VerifierContext};
+use super::super::contexts::{base::BaseContext, verifier::VerifierContext};
 
 pub fn generate_nonce() -> SecNonce {
     SecNonce::build(&mut rand::rngs::OsRng).build() // TODO: Double check the use of RNG here.
 }
 
-pub fn get_aggregated_nonce(nonces: &Vec<PubNonce>) -> AggNonce {
-    AggNonce::sum(nonces)
-}
+pub fn get_aggregated_nonce(nonces: &Vec<PubNonce>) -> AggNonce { AggNonce::sum(nonces) }
 
 pub fn get_partial_signature(
     context: &VerifierContext,

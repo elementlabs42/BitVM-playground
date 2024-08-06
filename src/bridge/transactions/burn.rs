@@ -6,7 +6,6 @@ use musig2::{PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-
 use super::{
     super::{
         connectors::{connector::*, connector_b::ConnectorB},
@@ -44,8 +43,12 @@ impl PreSignedTransaction for BurnTransaction {
 }
 
 impl PreSignedMusig2Transaction for BurnTransaction {
-    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> { &mut self.musig2_nonces }
-    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> { &mut self.musig2_signatures }
+    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
+        &mut self.musig2_nonces
+    }
+    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
+        &mut self.musig2_signatures
+    }
 }
 
 impl BurnTransaction {
@@ -106,7 +109,13 @@ impl BurnTransaction {
         // );
 
         let input_index = 0;
-        pre_sign_musig2_taproot_input(self, context, input_index, TapSighashType::Single, secret_nonce);
+        pre_sign_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::Single,
+            secret_nonce,
+        );
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
@@ -116,7 +125,13 @@ impl BurnTransaction {
 
     fn finalize_input0(&mut self, context: &dyn BaseContext) {
         let input_index = 0;
-        finalize_musig2_taproot_input(self, context, input_index, TapSighashType::Single, self.connector_b.generate_taproot_spend_info());
+        finalize_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::Single,
+            self.connector_b.generate_taproot_spend_info(),
+        );
     }
 
     pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {

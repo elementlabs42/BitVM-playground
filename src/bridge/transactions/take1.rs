@@ -44,8 +44,12 @@ impl PreSignedTransaction for Take1Transaction {
 }
 
 impl PreSignedMusig2Transaction for Take1Transaction {
-    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> { &mut self.musig2_nonces }
-    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> { &mut self.musig2_signatures }
+    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
+        &mut self.musig2_nonces
+    }
+    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
+        &mut self.musig2_signatures
+    }
 }
 
 impl Take1Transaction {
@@ -191,7 +195,13 @@ impl Take1Transaction {
         // );
 
         let input_index = 3;
-        pre_sign_musig2_taproot_input(self, context, input_index, TapSighashType::All, secret_nonce);
+        pre_sign_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::All,
+            secret_nonce,
+        );
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
@@ -201,7 +211,13 @@ impl Take1Transaction {
 
     fn finalize_input3(&mut self, context: &dyn BaseContext) {
         let input_index = 3;
-        finalize_musig2_taproot_input(self, context, input_index, TapSighashType::All, self.connector_b.generate_taproot_spend_info());
+        finalize_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::All,
+            self.connector_b.generate_taproot_spend_info(),
+        );
     }
 
     pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {

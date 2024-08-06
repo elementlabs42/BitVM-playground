@@ -44,8 +44,12 @@ impl PreSignedTransaction for AssertTransaction {
 }
 
 impl PreSignedMusig2Transaction for AssertTransaction {
-    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> { &mut self.musig2_nonces }
-    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> { &mut self.musig2_signatures }
+    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
+        &mut self.musig2_nonces
+    }
+    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
+        &mut self.musig2_signatures
+    }
 }
 
 impl AssertTransaction {
@@ -119,7 +123,13 @@ impl AssertTransaction {
         // );
 
         let input_index = 0;
-        pre_sign_musig2_taproot_input(self, context, input_index, TapSighashType::All, secret_nonce);
+        pre_sign_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::All,
+            secret_nonce,
+        );
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
@@ -129,7 +139,13 @@ impl AssertTransaction {
 
     fn finalize_input0(&mut self, context: &dyn BaseContext) {
         let input_index = 0;
-        finalize_musig2_taproot_input(self, context, input_index, TapSighashType::All, self.connector_b.generate_taproot_spend_info());
+        finalize_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::All,
+            self.connector_b.generate_taproot_spend_info(),
+        );
     }
 
     pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {

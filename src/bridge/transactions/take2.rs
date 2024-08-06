@@ -40,8 +40,12 @@ impl PreSignedTransaction for Take2Transaction {
 }
 
 impl PreSignedMusig2Transaction for Take2Transaction {
-    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> { &mut self.musig2_nonces }
-    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> { &mut self.musig2_signatures }
+    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
+        &mut self.musig2_nonces
+    }
+    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
+        &mut self.musig2_signatures
+    }
 }
 
 impl Take2Transaction {
