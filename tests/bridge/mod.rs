@@ -10,3 +10,4 @@ pub mod peg_in;
 pub mod serialization;
 pub mod setup;
 pub mod take1;
+pub mod validate;
