@@ -4,7 +4,7 @@ use bitcoin::{
     Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
 };
 use esplora_client::{AsyncClient, Error, TxStatus};
-use musig2::{secp::Point, PubNonce};
+use musig2::SecNonce;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -512,16 +512,61 @@ impl PegOutGraph {
         }
     }
 
-    pub fn push_take1_nonce(&mut self, public_key: PublicKey, public_nonce: PubNonce) {
-        self.take1_transaction.push_nonce(public_key, public_nonce)
+    pub fn push_nonces(
+        &mut self,
+        context: &VerifierContext,
+    ) -> HashMap<Txid, HashMap<usize, SecNonce>> {
+        let mut secret_nonces = HashMap::new();
+
+        secret_nonces.insert(
+            self.take1_transaction.tx().compute_txid(),
+            self.take1_transaction.push_nonces(context),
+        );
+        secret_nonces.insert(
+            self.assert_transaction.tx().compute_txid(),
+            self.assert_transaction.push_nonces(context),
+        );
+        secret_nonces.insert(
+            self.take2_transaction.tx().compute_txid(),
+            self.take2_transaction.push_nonces(context),
+        );
+        secret_nonces.insert(
+            self.disprove_transaction.tx().compute_txid(),
+            self.disprove_transaction.push_nonces(context),
+        );
+        secret_nonces.insert(
+            self.burn_transaction.tx().compute_txid(),
+            self.burn_transaction.push_nonces(context),
+        );
+
+        secret_nonces
     }
 
-    pub fn pre_sign(&mut self, context: &VerifierContext) {
-        self.assert_transaction.pre_sign(context);
-        self.burn_transaction.pre_sign(context);
-        self.disprove_transaction.pre_sign(context);
-        self.take1_transaction.pre_sign(context);
-        self.take2_transaction.pre_sign(context);
+    pub fn pre_sign(
+        &mut self,
+        context: &VerifierContext,
+        secret_nonces: &HashMap<Txid, HashMap<usize, SecNonce>>,
+    ) {
+        self.assert_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.assert_transaction.tx().compute_txid()],
+        );
+        self.burn_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.burn_transaction.tx().compute_txid()],
+        );
+        self.disprove_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.disprove_transaction.tx().compute_txid()],
+        );
+        self.take1_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.take1_transaction.tx().compute_txid()],
+        );
+        self.take2_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.take2_transaction.tx().compute_txid()],
+        );
 
         self.n_of_n_presigned = true; // TODO: set to true after collecting all n of n signatures
     }

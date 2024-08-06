@@ -1,8 +1,9 @@
 use bitcoin::{
-    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction,
-    TxOut, XOnlyPublicKey,
+    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, Transaction, TxOut, XOnlyPublicKey,
 };
+use musig2::{PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use super::{
     super::{
@@ -14,6 +15,7 @@ use super::{
     base::*,
     pre_signed::*,
     signing::push_taproot_leaf_script_and_control_block_to_witness,
+    signing_musig2::generate_nonce,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -25,6 +27,9 @@ pub struct DisproveTransaction {
     prev_scripts: Vec<ScriptBuf>,
     connector_c: ConnectorC,
     reward_output_amount: Amount,
+
+    musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
+    musig2_signatures: HashMap<usize, HashMap<PublicKey, PartialSignature>>,
 }
 
 impl PreSignedTransaction for DisproveTransaction {
@@ -97,20 +102,44 @@ impl DisproveTransaction {
             prev_scripts: vec![connector_3.generate_script()],
             connector_c,
             reward_output_amount,
+            musig2_nonces: HashMap::new(),
+            musig2_signatures: HashMap::new(),
         }
     }
 
-    // fn sign_input0(&mut self, context: &VerifierContext) {
-    //     pre_sign_p2wsh_input(
-    //         self,
-    //         context,
-    //         0,
-    //         EcdsaSighashType::Single,
-    //         &vec![&context.n_of_n_keypair],
-    //     );
-    // }
+    fn sign_input0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+        // pre_sign_p2wsh_input(
+        //     self,
+        //     context,
+        //     0,
+        //     EcdsaSighashType::Single,
+        //     &vec![&context.n_of_n_keypair],
+        // );
+    }
 
-    pub fn pre_sign(&mut self, context: &VerifierContext) { /* self.sign_input0(context); */
+    pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
+        let mut secret_nonces = HashMap::new();
+
+        let input_index = 0;
+        let secret_nonce = generate_nonce();
+        if self.musig2_nonces.get(&input_index).is_none() {
+            self.musig2_nonces.insert(input_index, HashMap::new());
+        }
+        self.musig2_nonces
+            .get_mut(&input_index)
+            .unwrap()
+            .insert(context.verifier_public_key, secret_nonce.public_nonce());
+        secret_nonces.insert(input_index, secret_nonce);
+
+        secret_nonces
+    }
+
+    pub fn pre_sign(
+        &mut self,
+        context: &VerifierContext,
+        secret_nonces: &HashMap<usize, SecNonce>,
+    ) {
+        self.sign_input0(context, &secret_nonces[&0]);
     }
 
     pub fn add_input_output(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {
@@ -119,8 +148,6 @@ impl DisproveTransaction {
         self.tx.output[output_index].script_pubkey = output_script_pubkey;
 
         let input_index = 1;
-
-        // TODO: Doesn't this needs to be signed sighash_single or sighash_all? Shouln't leave these input/outputs unsigned
 
         // Push the unlocking witness
         let unlock_witness = self

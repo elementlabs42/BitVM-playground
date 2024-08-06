@@ -6,11 +6,15 @@ use bitcoin::{
 use musig2::{
     aggregate_partial_signatures,
     errors::{SigningError, VerifyError},
-    secp::{MaybeScalar, Point, Scalar},
+    secp::{MaybeScalar, Point},
     sign_partial, AggNonce, KeyAggContext, LiftedSignature, PartialSignature, PubNonce, SecNonce,
 };
 
-use crate::bridge::contexts::verifier::VerifierContext;
+use crate::bridge::contexts::{base::BaseContext, verifier::VerifierContext};
+
+pub fn generate_nonce() -> SecNonce {
+    SecNonce::build(&mut rand::rngs::OsRng).build() // TODO: Double check the use of RNG here.
+}
 
 pub fn get_aggregated_nonce<T, I>(nonces: I) -> AggNonce
 where
@@ -23,15 +27,19 @@ where
 pub fn get_partial_signature(
     context: &VerifierContext,
     tx: &Transaction,
-    secnonce: &SecNonce,
+    secret_nonce: &SecNonce,
     aggregated_nonce: &AggNonce,
     input_index: usize,
     prevouts: &Vec<TxOut>,
     script: &Script,
     sighash_type: TapSighashType,
 ) -> Result<MaybeScalar, SigningError> {
-    let pubkeys: Vec<Point> =
-        Vec::from_iter(context.n_of_n_public_keys.iter().map(|&pk| pk.inner.into())); // TODO: The tests will reveal whether this conversion works as expected.
+    let pubkeys: Vec<Point> = Vec::from_iter(
+        context
+            .n_of_n_public_keys
+            .iter()
+            .map(|&public_key| public_key.inner.into()),
+    ); // TODO: The tests will reveal whether this conversion works as expected.
     let key_agg_ctx = KeyAggContext::new(pubkeys).unwrap();
 
     let leaf_hash = TapLeafHash::from_script(script, LeafVersion::TapScript);
@@ -47,14 +55,14 @@ pub fn get_partial_signature(
     sign_partial(
         &key_agg_ctx,
         context.verifier_keypair.secret_key(),
-        secnonce.clone(),
+        secret_nonce.clone(),
         &aggregated_nonce,
         sighash_cache,
     )
 }
 
 pub fn get_aggregated_signature(
-    context: &VerifierContext,
+    context: &dyn BaseContext,
     tx: &Transaction,
     aggregated_nonce: &AggNonce,
     input_index: usize,
@@ -63,8 +71,12 @@ pub fn get_aggregated_signature(
     sighash_type: TapSighashType,
     partial_signatures: Vec<PartialSignature>,
 ) -> Result<LiftedSignature, VerifyError> {
-    let pubkeys: Vec<Point> =
-        Vec::from_iter(context.n_of_n_public_keys.iter().map(|&pk| pk.inner.into()));
+    let pubkeys: Vec<Point> = Vec::from_iter(
+        context
+            .n_of_n_public_keys()
+            .iter()
+            .map(|&public_key| public_key.inner.into()),
+    );
     let key_agg_ctx = KeyAggContext::new(pubkeys).unwrap();
 
     let leaf_hash = TapLeafHash::from_script(script, LeafVersion::TapScript);

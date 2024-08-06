@@ -1,10 +1,12 @@
-use std::collections::HashMap;
 use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
 use musig2::{BinaryEncoding, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+use crate::bridge::contexts::base::BaseContext;
 
 use super::{
     super::{
@@ -15,19 +17,22 @@ use super::{
     base::*,
     pre_signed::*,
     signing::*,
-    signing_musig2::{get_aggregated_nonce, get_aggregated_signature, get_partial_signature},
+    signing_musig2::{
+        generate_nonce, get_aggregated_nonce, get_aggregated_signature, get_partial_signature,
+    },
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegInConfirmTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
-    pub musig2_nonces: HashMap<PublicKey, PubNonce>, // TODO: Consider changing to private and adding read-only access via the PreSignedTransaction trait
-    pub musig2_signatures: HashMap<PublicKey, PartialSignature>,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     connector_z: ConnectorZ,
+
+    musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
+    musig2_signatures: HashMap<usize, HashMap<PublicKey, PartialSignature>>,
 }
 
 impl PreSignedTransaction for PegInConfirmTransaction {
@@ -88,14 +93,14 @@ impl PegInConfirmTransaction {
                 input: vec![_input0],
                 output: vec![_output0],
             },
-            musig2_nonces: HashMap::new(),
-            musig2_signatures: HashMap::new(),
             prev_outs: vec![TxOut {
                 value: input0.amount,
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_z.generate_taproot_leaf_script(1)],
             connector_z,
+            musig2_nonces: HashMap::new(),
+            musig2_signatures: HashMap::new(),
         }
     }
 
@@ -112,21 +117,79 @@ impl PegInConfirmTransaction {
         );
     }
 
-    // fn push_n_of_n_signature_input0(&mut self, context: &VerifierContext) {
-    //     let input_index = 0;
-    //     push_taproot_leaf_signature_to_witness(
-    //         context,
-    //         &mut self.tx,
-    //         &self.prev_outs,
-    //         input_index,
-    //         TapSighashType::All,
-    //         &self.prev_scripts[input_index],
-    //         &context.n_of_n_keypair,
-    //     );
-    // }
+    fn push_verifier_signature_input0(
+        &mut self,
+        context: &VerifierContext,
+        secret_nonce: &SecNonce,
+    ) {
+        //     let input_index = 0;
+        //     push_taproot_leaf_signature_to_witness(
+        //         context,
+        //         &mut self.tx,
+        //         &self.prev_outs,
+        //         input_index,
+        //         TapSighashType::All,
+        //         &self.prev_scripts[input_index],
+        //         &context.n_of_n_keypair,
+        //     );
+        // }
 
-    fn finalize_input0(&mut self) {
+        // TODO validate nonces first
+        // Pass public_keys into verifier context to be able to confirm nonces
+
         let input_index = 0;
+        let partial_signature = get_partial_signature(
+            context,
+            &self.tx,
+            secret_nonce,
+            &get_aggregated_nonce(self.musig2_nonces[&input_index].values()),
+            input_index,
+            &self.prev_outs,
+            &self.prev_scripts[input_index],
+            TapSighashType::All,
+        )
+        .unwrap(); // TODO: Add error handling.
+
+        if self.musig2_signatures.get(&input_index).is_none() {
+            self.musig2_signatures.insert(input_index, HashMap::new());
+        }
+        self.musig2_signatures
+            .get_mut(&input_index)
+            .unwrap()
+            .insert(context.verifier_public_key, partial_signature);
+
+        // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
+        if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
+            self.finalize_input0(context);
+        }
+    }
+
+    fn finalize_input0(&mut self, context: &dyn BaseContext) {
+        // TODO: Verify we have partial signatures from all verifiers.
+        // TODO: Verify each signature against the signers public key.
+        // See example here: https://github.com/conduition/musig2/blob/c39bfce58098d337a3ec38b54d93def8306d9953/src/signing.rs#L358C1-L366C65
+
+        // Aggregate + push signature
+        let input_index = 0;
+        let final_signature = get_aggregated_signature(
+            context,
+            &self.tx,
+            &get_aggregated_nonce(self.musig2_nonces[&input_index].values()),
+            input_index,
+            &self.prev_outs,
+            &self.prev_scripts[input_index],
+            TapSighashType::All,
+            self.musig2_signatures[&input_index]
+                .values()
+                .map(|&partial_signature| PartialSignature::from(partial_signature))
+                .collect(), // TODO: Is there a more elegant way of doing this?
+        )
+        .unwrap(); // TODO: Add error handling.
+        self.tx.input[input_index]
+            .witness
+            .push(final_signature.to_bytes());
+
+        // Push script + control block
         push_taproot_leaf_script_and_control_block_to_witness(
             &mut self.tx,
             input_index,
@@ -135,64 +198,29 @@ impl PegInConfirmTransaction {
         );
     }
 
-    pub fn push_nonce(&mut self, public_key: PublicKey, public_nonce: PubNonce) {
-        self.musig2_nonces.insert(public_key, public_nonce);
-    }
-
-    fn push_partial_signature_input0(&mut self, context: &VerifierContext, secnonce: &SecNonce) {
-        let input_index = 0;
-        let partial_signature = get_partial_signature(
-            context,
-            &self.tx,
-            secnonce,
-            &get_aggregated_nonce(self.musig2_nonces.values()),
-            input_index,
-            &self.prev_outs,
-            &self.prev_scripts[input_index],
-            TapSighashType::All,
-        )
-        .unwrap(); // TODO: Add error handling.
-
-        self.push_signature(context.verifier_public_key, partial_signature);
-    }
-
-    fn push_signature(&mut self, public_key: PublicKey, partial_sig: PartialSignature) {
-        self.musig2_signatures.insert(public_key, partial_sig);
-    }
-
-    pub fn pre_sign(&mut self, context: &VerifierContext, secnonce: &SecNonce) {
-        self.push_partial_signature_input0(context, secnonce);
-    }
-
-    /// Generate the final Schnorr signature and push it to the witness in this tx.
-    // TODO: Compare with BaseTransaction::finalize() and refactor as needed.
-    pub fn finalize(&mut self, context: &VerifierContext) {
-        // TODO: Verify we have partial signatures from all verifiers.
-        // TODO: Verify each signature against the signers public key.
-        // See example here: https://github.com/conduition/musig2/blob/c39bfce58098d337a3ec38b54d93def8306d9953/src/signing.rs#L358C1-L366C65
+    pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
+        let mut secret_nonces = HashMap::new();
 
         let input_index = 0;
-        let final_signature = get_aggregated_signature(
-            context,
-            &self.tx,
-            &get_aggregated_nonce(self.musig2_nonces.values()),
-            input_index,
-            &self.prev_outs,
-            &self.prev_scripts[input_index],
-            TapSighashType::All,
-            self.musig2_signatures
-                .values()
-                .map(|&ps| PartialSignature::from(ps))
-                .collect(), // TODO: Is there a more elegant way of doing this?
-        )
-        .unwrap(); // TODO: Add error handling.
-        self.tx.input[input_index]
-            .witness
-            .push(final_signature.to_bytes());
+        let secret_nonce = generate_nonce();
+        if self.musig2_nonces.get(&input_index).is_none() {
+            self.musig2_nonces.insert(input_index, HashMap::new());
+        }
+        self.musig2_nonces
+            .get_mut(&input_index)
+            .unwrap()
+            .insert(context.verifier_public_key, secret_nonce.public_nonce());
+        secret_nonces.insert(input_index, secret_nonce);
 
-        self.finalize_input0();
+        secret_nonces
+    }
 
-        // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
+    pub fn pre_sign(
+        &mut self,
+        context: &VerifierContext,
+        secret_nonces: &HashMap<usize, SecNonce>,
+    ) {
+        self.push_verifier_signature_input0(context, &secret_nonces[&0]);
     }
 
     pub fn merge(&mut self, peg_in_confirm: &PegInConfirmTransaction) {

@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use bitcoin::{
     absolute, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, TapSighashType, Transaction,
     TxOut, XOnlyPublicKey,
 };
-use musig2::PubNonce;
+use musig2::{PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use super::{
     super::{
@@ -18,16 +18,19 @@ use super::{
     },
     base::*,
     pre_signed::*,
+    signing_musig2::{generate_nonce, get_aggregated_nonce, get_partial_signature},
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Take1Transaction {
     tx: Transaction,
-    musig2_nonces: HashMap<PublicKey, PubNonce>,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     connector_a: ConnectorA,
     connector_b: ConnectorB,
+
+    musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
+    musig2_signatures: HashMap<usize, HashMap<PublicKey, PartialSignature>>,
 }
 
 impl PreSignedTransaction for Take1Transaction {
@@ -110,7 +113,6 @@ impl Take1Transaction {
                 input: vec![_input0, _input1, _input2, _input3],
                 output: vec![_output0],
             },
-            musig2_nonces: HashMap::new(),
             prev_outs: vec![
                 TxOut {
                     value: input0.amount,
@@ -137,18 +139,20 @@ impl Take1Transaction {
             ],
             connector_a,
             connector_b,
+            musig2_nonces: HashMap::new(),
+            musig2_signatures: HashMap::new(),
         }
     }
 
-    // fn sign_input0(&mut self, context: &VerifierContext) {
-    //     pre_sign_p2wsh_input(
-    //         self,
-    //         context,
-    //         0,
-    //         EcdsaSighashType::All,
-    //         &vec![&context.n_of_n_keypair],
-    //     );
-    // }
+    fn sign_input0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+        // pre_sign_p2wsh_input(
+        //     self,
+        //     context,
+        //     0,
+        //     EcdsaSighashType::All,
+        //     &vec![&context.n_of_n_keypair],
+        // );
+    }
 
     fn sign_input1(&mut self, context: &OperatorContext) {
         pre_sign_p2wsh_input(
@@ -171,24 +175,75 @@ impl Take1Transaction {
         );
     }
 
-    // fn sign_input3(&mut self, context: &VerifierContext) {
-    //     pre_sign_taproot_input(
-    //         self,
-    //         context,
-    //         3,
-    //         TapSighashType::All,
-    //         self.connector_b.generate_taproot_spend_info(),
-    //         &vec![&context.n_of_n_keypair],
-    //     );
-    // }
+    fn sign_input3(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+        // pre_sign_taproot_input(
+        //     self,
+        //     context,
+        //     3,
+        //     TapSighashType::All,
+        //     self.connector_b.generate_taproot_spend_info(),
+        //     &vec![&context.n_of_n_keypair],
+        // );
 
-    pub fn push_nonce(&mut self, public_key: PublicKey, public_nonce: PubNonce) {
-        self.musig2_nonces.insert(public_key, public_nonce);
+        // TODO validate nonces first
+
+        let input_index = 3;
+        let partial_signature = get_partial_signature(
+            context,
+            &self.tx,
+            secret_nonce,
+            &get_aggregated_nonce(self.musig2_nonces[&input_index].values()),
+            input_index,
+            &self.prev_outs,
+            &self.prev_scripts[input_index],
+            TapSighashType::All,
+        )
+        .unwrap(); // TODO: Add error handling.
+
+        if self.musig2_signatures.get(&input_index).is_none() {
+            self.musig2_signatures.insert(input_index, HashMap::new());
+        }
+        self.musig2_signatures
+            .get_mut(&input_index)
+            .unwrap()
+            .insert(context.verifier_public_key, partial_signature);
     }
 
-    pub fn pre_sign(&mut self, context: &VerifierContext) {
-        // self.sign_input0(context);
-        // self.sign_input3(context);
+    pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
+        let mut secret_nonces = HashMap::new();
+
+        let input_index = 0;
+        let secret_nonce = generate_nonce();
+        if self.musig2_nonces.get(&input_index).is_none() {
+            self.musig2_nonces.insert(input_index, HashMap::new());
+        }
+        self.musig2_nonces
+            .get_mut(&input_index)
+            .unwrap()
+            .insert(context.verifier_public_key, secret_nonce.public_nonce());
+        secret_nonces.insert(input_index, secret_nonce);
+
+        let input_index = 3;
+        let secret_nonce = generate_nonce();
+        if self.musig2_nonces.get(&input_index).is_none() {
+            self.musig2_nonces.insert(input_index, HashMap::new());
+        }
+        self.musig2_nonces
+            .get_mut(&input_index)
+            .unwrap()
+            .insert(context.verifier_public_key, secret_nonce.public_nonce());
+        secret_nonces.insert(input_index, secret_nonce);
+
+        secret_nonces
+    }
+
+    pub fn pre_sign(
+        &mut self,
+        context: &VerifierContext,
+        secret_nonces: &HashMap<usize, SecNonce>,
+    ) {
+        self.sign_input0(context, &secret_nonces[&0]);
+        self.sign_input3(context, &secret_nonces[&3]);
     }
 
     pub fn merge(&mut self, take1: &Take1Transaction) {
