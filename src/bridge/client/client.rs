@@ -1,28 +1,21 @@
-use musig2::{secp::Point, sign_partial, AggNonce, KeyAggContext, SecNonce};
+use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::{self},
 };
 
-use bitcoin::{
-    absolute::Height,
-    consensus::encode::serialize_hex,
-    key::{Keypair, Secp256k1},
-    Address, Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid,
-};
+use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid};
 use esplora_client::{AsyncClient, Builder, Utxo};
-
-use crate::bridge::transactions::{base::BaseTransaction, peg_in_confirm};
 
 use super::{
     super::{
         contexts::{
-            base::generate_keys_from_secret, depositor::DepositorContext,
-            operator::OperatorContext, verifier::VerifierContext, withdrawer::WithdrawerContext,
+            depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext,
+            withdrawer::WithdrawerContext,
         },
         graphs::{
-            base::{BaseGraph, OPERATOR_SECRET},
+            base::BaseGraph,
             peg_in::{generate_id as peg_in_generate_id, PegInGraph},
             peg_out::{generate_id as peg_out_generate_id, PegOutGraph},
         },
@@ -45,6 +38,8 @@ pub struct BitVMClientPublicData {
 }
 
 pub struct BitVMClientPrivateData {
+    // Peg in and peg out nonces all go into the same file for now
+    // Graph ID -> Tx ID -> Input index
     pub secret_nonces: HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>,
 }
 
@@ -66,11 +61,10 @@ pub struct BitVMClient {
 impl BitVMClient {
     pub async fn new(
         network: Network,
+        n_of_n_public_keys: &Vec<PublicKey>,
         depositor_secret: Option<&str>,
         operator_secret: Option<&str>,
         verifier_secret: Option<&str>,
-        n_of_n_public_keys: Option<&Vec<PublicKey>>,
-        n_of_n_public_key: Option<&PublicKey>,
         withdrawer_secret: Option<&str>,
     ) -> Self {
         let mut depositor_context = None;
@@ -78,7 +72,7 @@ impl BitVMClient {
             depositor_context = Some(DepositorContext::new(
                 network,
                 depositor_secret.unwrap(),
-                n_of_n_public_key.unwrap(),
+                n_of_n_public_keys,
             ));
         }
 
@@ -87,18 +81,16 @@ impl BitVMClient {
             operator_context = Some(OperatorContext::new(
                 network,
                 operator_secret.unwrap(),
-                n_of_n_public_key.unwrap(),
+                n_of_n_public_keys,
             ));
         }
 
         let mut verifier_context = None;
-        if verifier_secret.is_some() && n_of_n_public_keys.is_some() && n_of_n_public_key.is_some()
-        {
+        if verifier_secret.is_some() {
             verifier_context = Some(VerifierContext::new(
                 network,
                 verifier_secret.unwrap(),
-                n_of_n_public_keys.unwrap(),
-                n_of_n_public_key.unwrap(),
+                n_of_n_public_keys,
             ));
         }
 
@@ -107,7 +99,7 @@ impl BitVMClient {
             withdrawer_context = Some(WithdrawerContext::new(
                 network,
                 withdrawer_secret.unwrap(),
-                n_of_n_public_key.unwrap(),
+                n_of_n_public_keys,
             ));
         }
 
@@ -920,48 +912,6 @@ impl BitVMClient {
         // TODO: Add public nonces in the remaining txs in this graph.
     }
 
-    // pub fn get_aggregate_peg_in_confirm_nonce(&self, peg_in_graph_id: &str) -> AggNonce {
-    //     if self.verifier_context.is_none() {
-    //         panic!("Can only be called by a verifier!");
-    //     }
-
-    //     let peg_in_graph = self
-    //         .data
-    //         .peg_in_graphs
-    //         .iter()
-    //         .find(|&g| g.id().eq(peg_in_graph_id));
-    //     if peg_in_graph.is_none() {
-    //         panic!("Invalid graph id");
-    //     }
-
-    //     let tx_ref = peg_in_graph.unwrap().peg_in_confirm_transaction_ref();
-    //     let verifier_count = self
-    //         .verifier_context
-    //         .as_ref()
-    //         .unwrap()
-    //         .n_of_n_public_keys
-    //         .len();
-
-    //     if verifier_count == 0 {
-    //         panic!("No verifiers present. Nothing to aggregate!")
-    //     }
-    //     let nonce_count = tx_ref.musig2_nonces.len();
-    //     if nonce_count != verifier_count {
-    //         panic!(
-    //             "Cannot aggregate nonces. There are {} verifiers and {} nonces.",
-    //             verifier_count, nonce_count
-    //         );
-    //     }
-
-    //     AggNonce::sum(tx_ref.musig2_nonces.values())
-    // }
-
-    // pub fn get_aggregate_peg_out_take1_nonce(&self, peg_out_graph_id: &str) { todo!() }
-    // pub fn get_aggregate_peg_out_assert_nonce(&self, peg_out_graph_id: &str) { todo!() }
-    // pub fn get_aggregate_peg_out_take2_nonce(&self, peg_out_graph_id: &str) { todo!() }
-    // pub fn get_aggregate_peg_out_disprove_nonce(&self, peg_out_graph_id: &str) { todo!() }
-    // pub fn get_aggregate_peg_out_burn_nonce(&self, peg_out_graph_id: &str) { todo!() }
-
     pub fn pre_sign_peg_in(&mut self, peg_in_graph_id: &str) {
         if self.operator_context.is_none() && self.verifier_context.is_none() {
             panic!("Can only be called by an operator or a verifier!");
@@ -1001,10 +951,6 @@ impl BitVMClient {
             &self.private_data.secret_nonces[peg_out_graph_id],
         );
     }
-
-    pub fn finalize_peg_in(&self, peg_in_graph_id: &str) { todo!() }
-
-    pub fn finalize_peg_out(&self, peg_out_graph_id: &str) { todo!() }
 
     fn save_local_file(key: &String, json: &String) {
         println!("Saving local file {}", key);

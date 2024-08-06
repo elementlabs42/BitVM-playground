@@ -1,7 +1,7 @@
 use bitcoin::{
     absolute, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction, TxOut,
 };
-use musig2::{BinaryEncoding, PartialSignature, PubNonce, SecNonce};
+use musig2::{PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

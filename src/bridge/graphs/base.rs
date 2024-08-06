@@ -1,6 +1,4 @@
-use std::str::FromStr;
-
-use bitcoin::{Network, PublicKey, Txid};
+use bitcoin::{Network, Txid};
 use esplora_client::{AsyncClient, Error};
 
 pub const GRAPH_VERSION: &str = "0.1";

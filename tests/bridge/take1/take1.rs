@@ -17,8 +17,8 @@ async fn test_take1_tx() {
         client,
         _,
         operator_context,
-        verifier_context,
-        _,
+        verifier0_context,
+        verifier1_context,
         _,
         connector_a,
         connector_b,
@@ -71,7 +71,12 @@ async fn test_take1_tx() {
         },
     );
 
-    take1_tx.pre_sign(&verifier_context);
+    let secret_nonces0 = take1_tx.push_nonces(&verifier0_context);
+    let secret_nonces1 = take1_tx.push_nonces(&verifier1_context);
+
+    take1_tx.pre_sign(&verifier0_context, &secret_nonces0);
+    take1_tx.pre_sign(&verifier1_context, &secret_nonces1);
+
     let tx = take1_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;

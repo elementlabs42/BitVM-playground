@@ -3,12 +3,12 @@ use bitcoin::{
     Network, OutPoint, PublicKey, Txid, XOnlyPublicKey,
 };
 use esplora_client::{AsyncClient, Error, TxStatus};
-use musig2::{PartialSignature, PubNonce, SecNonce, SecNonceBuilder};
+use musig2::SecNonce;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::{hash_map, HashMap},
+    collections::HashMap,
     fmt::{Display, Formatter, Result as FmtResult},
 };
 

@@ -1,8 +1,7 @@
 use bitcoin::{
-    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction,
-    TxOut, XOnlyPublicKey,
+    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, Transaction, TxOut, XOnlyPublicKey,
 };
-use musig2::{BinaryEncoding, PartialSignature, PubNonce, SecNonce};
+use musig2::{PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -21,9 +20,9 @@ use super::{
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct DisproveTransaction {
-    // #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
-    // #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     connector_c: ConnectorC,

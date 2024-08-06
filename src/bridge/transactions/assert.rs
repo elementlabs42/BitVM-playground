@@ -27,9 +27,9 @@ use super::{
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct AssertTransaction {
-    // #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
-    // #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     connector_b: ConnectorB,
@@ -139,9 +139,10 @@ impl AssertTransaction {
             .unwrap()
             .insert(context.verifier_public_key, partial_signature);
 
-        // TODO: call finalize automatically on last signature
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
-        self.finalize_input0(context);
+        if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
+            self.finalize_input0(context);
+        }
     }
 
     fn finalize_input0(&mut self, context: &dyn BaseContext) {
