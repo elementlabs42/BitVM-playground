@@ -512,43 +512,61 @@ impl PegOutGraph {
         }
     }
 
-    pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<Txid, SecNonce> {
+    pub fn push_nonces(
+        &mut self,
+        context: &VerifierContext,
+    ) -> HashMap<Txid, HashMap<usize, SecNonce>> {
         let mut secret_nonces = HashMap::new();
 
-        let secret_nonce = SecNonce::build(&mut rand::rngs::OsRng).build(); // TODO: Double check the use of RNG here.
-        self.take1_transaction
-            .push_nonce(context, secret_nonce.public_nonce());
-        secret_nonces.insert(self.take1_transaction.tx().compute_txid(), secret_nonce);
-
-        let secret_nonce = SecNonce::build(&mut rand::rngs::OsRng).build();
-        self.assert_transaction
-            .push_nonce(context, secret_nonce.public_nonce());
-        secret_nonces.insert(self.assert_transaction.tx().compute_txid(), secret_nonce);
-
-        let secret_nonce = SecNonce::build(&mut rand::rngs::OsRng).build();
-        self.take2_transaction
-            .push_nonce(context, secret_nonce.public_nonce());
-        secret_nonces.insert(self.take2_transaction.tx().compute_txid(), secret_nonce);
-
-        let secret_nonce = SecNonce::build(&mut rand::rngs::OsRng).build();
-        self.disprove_transaction
-            .push_nonce(context, secret_nonce.public_nonce());
-        secret_nonces.insert(self.disprove_transaction.tx().compute_txid(), secret_nonce);
-
-        let secret_nonce = SecNonce::build(&mut rand::rngs::OsRng).build();
-        self.burn_transaction
-            .push_nonce(context, secret_nonce.public_nonce());
-        secret_nonces.insert(self.burn_transaction.tx().compute_txid(), secret_nonce);
+        secret_nonces.insert(
+            self.take1_transaction.tx().compute_txid(),
+            self.take1_transaction.push_nonces(context),
+        );
+        secret_nonces.insert(
+            self.assert_transaction.tx().compute_txid(),
+            self.assert_transaction.push_nonces(context),
+        );
+        secret_nonces.insert(
+            self.take2_transaction.tx().compute_txid(),
+            self.take2_transaction.push_nonces(context),
+        );
+        secret_nonces.insert(
+            self.disprove_transaction.tx().compute_txid(),
+            self.disprove_transaction.push_nonces(context),
+        );
+        secret_nonces.insert(
+            self.burn_transaction.tx().compute_txid(),
+            self.burn_transaction.push_nonces(context),
+        );
 
         secret_nonces
     }
 
-    pub fn pre_sign(&mut self, context: &VerifierContext, secret_nonces: &HashMap<Txid, SecNonce>) {
-        self.assert_transaction.pre_sign(context);
-        self.burn_transaction.pre_sign(context);
-        self.disprove_transaction.pre_sign(context);
-        self.take1_transaction.pre_sign(context);
-        self.take2_transaction.pre_sign(context);
+    pub fn pre_sign(
+        &mut self,
+        context: &VerifierContext,
+        secret_nonces: &HashMap<Txid, HashMap<usize, SecNonce>>,
+    ) {
+        self.assert_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.assert_transaction.tx().compute_txid()],
+        );
+        self.burn_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.burn_transaction.tx().compute_txid()],
+        );
+        self.disprove_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.disprove_transaction.tx().compute_txid()],
+        );
+        self.take1_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.take1_transaction.tx().compute_txid()],
+        );
+        self.take2_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.take2_transaction.tx().compute_txid()],
+        );
 
         self.n_of_n_presigned = true; // TODO: set to true after collecting all n of n signatures
     }

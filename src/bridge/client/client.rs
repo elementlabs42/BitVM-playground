@@ -45,7 +45,7 @@ pub struct BitVMClientPublicData {
 }
 
 pub struct BitVMClientPrivateData {
-    pub secret_nonces: HashMap<String, HashMap<Txid, SecNonce>>,
+    pub secret_nonces: HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>,
 }
 
 pub struct BitVMClient {

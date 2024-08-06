@@ -14,8 +14,8 @@ use bitvm::bridge::{
         verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
     graphs::base::{
-        DEPOSITOR_SECRET, EVM_ADDRESS, OPERATOR_SECRET, VERIFIER0_SECRET,
-        VERIFIER1_SECRET, WITHDRAWER_SECRET,
+        DEPOSITOR_SECRET, EVM_ADDRESS, OPERATOR_SECRET, VERIFIER0_SECRET, VERIFIER1_SECRET,
+        WITHDRAWER_SECRET,
     },
 };
 use musig2::{secp::Point, KeyAggContext};
@@ -55,7 +55,7 @@ pub async fn setup_test() -> (
     }
     let key_agg_ctx = KeyAggContext::new(public_keys).unwrap();
     let aggregated_key: Point = key_agg_ctx.aggregated_pubkey();
-    
+
     let n_of_n_public_key = PublicKey::from_str(&aggregated_key.to_string()).unwrap();
     let n_of_n_taproot_public_key = XOnlyPublicKey::from(n_of_n_public_key);
 

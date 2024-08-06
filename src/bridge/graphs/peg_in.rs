@@ -234,21 +234,25 @@ impl PegInGraph {
         }
     }
 
-    pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<Txid, SecNonce> {
+    pub fn push_nonces(
+        &mut self,
+        context: &VerifierContext,
+    ) -> HashMap<Txid, HashMap<usize, SecNonce>> {
         let mut secret_nonces = HashMap::new();
 
-        let secret_nonce = SecNonce::build(&mut rand::rngs::OsRng).build(); // TODO: Double check the use of RNG here.
-        self.peg_in_confirm_transaction
-            .push_nonce(context, secret_nonce.public_nonce());
         secret_nonces.insert(
             self.peg_in_confirm_transaction.tx().compute_txid(),
-            secret_nonce,
+            self.peg_in_confirm_transaction.push_nonces(context),
         );
 
         secret_nonces
     }
 
-    pub fn pre_sign(&mut self, context: &VerifierContext, secret_nonces: &HashMap<Txid, SecNonce>) {
+    pub fn pre_sign(
+        &mut self,
+        context: &VerifierContext,
+        secret_nonces: &HashMap<Txid, HashMap<usize, SecNonce>>,
+    ) {
         self.peg_in_confirm_transaction.pre_sign(
             context,
             &secret_nonces[&self.peg_in_confirm_transaction.tx().compute_txid()],

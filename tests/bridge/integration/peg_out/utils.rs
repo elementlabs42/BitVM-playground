@@ -78,7 +78,7 @@ pub async fn create_and_mine_peg_in_confirm_tx(
     };
     let mut peg_in_confirm =
         PegInConfirmTransaction::new(depositor_context, evm_address, confirm_input);
-    // peg_in_confirm.pre_sign(verifier_context); // TODO fix pre signing
+    peg_in_confirm.pre_sign(verifier_context);
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let peg_in_confirm_tx_id = peg_in_confirm_tx.compute_txid();
 
