@@ -20,6 +20,7 @@ use super::utils::{create_and_mine_kick_off_tx, create_and_mine_peg_in_confirm_t
 async fn test_take1_success() {
     let (
         client,
+        _,
         depositor_context,
         operator_context,
         verifier0_context,

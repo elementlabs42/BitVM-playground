@@ -23,6 +23,7 @@ mod tests {
         let (
             client,
             _,
+            _,
             operator_context,
             verifier0_context,
             verifier1_context,
@@ -81,6 +82,7 @@ mod tests {
     {
         let (
             client,
+            _,
             _,
             operator_context,
             verifier0_context,

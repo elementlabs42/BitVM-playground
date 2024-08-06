@@ -22,6 +22,7 @@ use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
 async fn test_peg_in_success() {
     let (
         client,
+        _,
         depositor_context,
         _,
         verifier0_context,
@@ -119,7 +120,7 @@ async fn test_peg_in_success() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_not_surpassed() {
-    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, _, evm_address) =
+    let (client, _, depositor_context, _, _, _, _, _, _, _, _, _, _, _, _, evm_address) =
         setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
@@ -174,7 +175,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_surpassed() {
-    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, _, evm_address) =
+    let (client, _, depositor_context, _, _, _, _, _, _, _, _, _, _, _, _, evm_address) =
         setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;

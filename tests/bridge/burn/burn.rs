@@ -22,6 +22,7 @@ mod tests {
         let (
             client,
             _,
+            _,
             operator_context,
             verifier0_context,
             verifier1_context,
@@ -63,6 +64,7 @@ mod tests {
     async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
         let (
             client,
+            _,
             _,
             operator_context,
             verifier0_context,

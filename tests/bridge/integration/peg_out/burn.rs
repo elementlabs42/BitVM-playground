@@ -20,6 +20,7 @@ async fn test_burn_success() {
     let (
         client,
         _,
+        _,
         operator_context,
         verifier0_context,
         verifier1_context,

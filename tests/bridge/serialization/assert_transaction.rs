@@ -14,6 +14,7 @@ async fn test_assert_tx_serialization() {
     let (
         client,
         _,
+        _,
         operator_context,
         verifier0_context,
         verifier1_context,

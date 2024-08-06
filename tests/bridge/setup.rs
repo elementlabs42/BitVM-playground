@@ -19,6 +19,7 @@ use bitvm::bridge::{
 
 pub async fn setup_test() -> (
     BitVMClient,
+    BitVMClient,
     DepositorContext,
     OperatorContext,
     VerifierContext,
@@ -50,12 +51,22 @@ pub async fn setup_test() -> (
     let withdrawer_context =
         WithdrawerContext::new(network, WITHDRAWER_SECRET, &n_of_n_public_keys);
 
-    let client = BitVMClient::new(
+    let client0 = BitVMClient::new(
         network,
         &n_of_n_public_keys,
         Some(DEPOSITOR_SECRET),
         Some(OPERATOR_SECRET),
         Some(VERIFIER0_SECRET),
+        Some(WITHDRAWER_SECRET),
+    )
+    .await;
+
+    let client1 = BitVMClient::new(
+        network,
+        &n_of_n_public_keys,
+        Some(DEPOSITOR_SECRET),
+        Some(OPERATOR_SECRET),
+        Some(VERIFIER1_SECRET),
         Some(WITHDRAWER_SECRET),
     )
     .await;
@@ -79,7 +90,8 @@ pub async fn setup_test() -> (
     let connector_3 = Connector3::new(network, &operator_context.n_of_n_public_key);
 
     return (
-        client,
+        client0,
+        client1,
         depositor_context,
         operator_context,
         verifier0_context,

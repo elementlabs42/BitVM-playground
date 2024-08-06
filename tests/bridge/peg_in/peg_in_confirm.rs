@@ -16,6 +16,7 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 async fn test_peg_in_confirm_tx() {
     let (
         client,
+        _,
         depositor_context,
         _,
         verifier0_context,

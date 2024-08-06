@@ -8,6 +8,8 @@ use std::{
 use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid};
 use esplora_client::{AsyncClient, Builder, Utxo};
 
+use crate::bridge::contexts::base::generate_n_of_n_public_key;
+
 use super::{
     super::{
         contexts::{
@@ -39,8 +41,8 @@ pub struct BitVMClientPublicData {
 
 pub struct BitVMClientPrivateData {
     // Peg in and peg out nonces all go into the same file for now
-    // Graph ID -> Tx ID -> Input index
-    pub secret_nonces: HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>,
+    // Verifier public key -> Graph ID -> Tx ID -> Input index
+    pub secret_nonces: HashMap<PublicKey, HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>>,
 }
 
 pub struct BitVMClient {
@@ -103,6 +105,11 @@ impl BitVMClient {
             ));
         }
 
+        // TODO scope data and private data by n of n public keys
+        // Prepend files with prefix
+        let (n_of_n_public_key, _) = generate_n_of_n_public_key(n_of_n_public_keys);
+        let prefix = format!("{}/{}/", network, n_of_n_public_key);
+
         let mut data = BitVMClientPublicData {
             version: 1,
             peg_in_graphs: vec![],
@@ -111,7 +118,7 @@ impl BitVMClient {
 
         let data_store = DataStore::new();
 
-        // get latest data
+        // Get latest data
         let all_file_names_result = data_store.get_file_names().await;
         let mut latest_file_name: Option<String> = None;
         if all_file_names_result.is_ok() {
@@ -581,25 +588,34 @@ impl BitVMClient {
 
         let peg_in_graph =
             PegInGraph::new(self.depositor_context.as_ref().unwrap(), input, evm_address);
-        let ret_val = peg_in_graph.id().clone();
 
-        let id = peg_in_generate_id(&peg_in_graph.peg_in_deposit_transaction);
-        // TODO broadcast peg in txn
+        let peg_in_graph_id = peg_in_generate_id(&peg_in_graph.peg_in_deposit_transaction);
 
         let graph = self
             .data
             .peg_in_graphs
             .iter()
-            .find(|&peg_out_graph| peg_out_graph.id().eq(&id));
+            .find(|&peg_out_graph| peg_out_graph.id().eq(&peg_in_graph_id));
         if graph.is_some() {
             panic!("Peg in graph already exists");
         }
 
         self.data.peg_in_graphs.push(peg_in_graph);
 
-        // self.save().await;
+        peg_in_graph_id
+    }
 
-        return id;
+    pub async fn broadcast_peg_in_deposit(&mut self, peg_in_graph_id: &str) {
+        let peg_in_graph = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_in_graph.unwrap().deposit(&self.esplora).await
     }
 
     pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
@@ -612,10 +628,27 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        // Attempt to broadcast refund tx
+        peg_in_graph.unwrap().refund(&self.esplora).await
     }
 
-    pub async fn create_peg_out_graph(&mut self, peg_in_graph_id: &str, kickoff_input: Input) {
+    pub async fn broadcast_peg_in_confirm(&mut self, peg_in_graph_id: &str) {
+        let peg_in_graph = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_in_graph.unwrap().confirm(&self.esplora).await
+    }
+
+    pub async fn create_peg_out_graph(
+        &mut self,
+        peg_in_graph_id: &str,
+        kickoff_input: Input,
+    ) -> String {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
         }
@@ -646,11 +679,9 @@ impl BitVMClient {
             kickoff_input,
         );
 
-        // peg_out_graph.kick_off(&self.esplora).await;
-
         self.data.peg_out_graphs.push(peg_out_graph);
 
-        // self.save().await;
+        peg_out_graph_id
     }
 
     pub async fn broadcast_kick_off(&mut self, peg_out_graph_id: &str) {
@@ -852,21 +883,7 @@ impl BitVMClient {
             .unwrap()
             .push_nonces(&self.verifier_context.as_ref().unwrap());
 
-        if self
-            .private_data
-            .secret_nonces
-            .get(peg_in_graph_id)
-            .is_none()
-        {
-            self.private_data
-                .secret_nonces
-                .insert(peg_in_graph_id.to_string(), HashMap::new());
-        }
-        self.private_data
-            .secret_nonces
-            .get_mut(peg_in_graph_id)
-            .unwrap()
-            .extend(secret_nonces);
+        self.merge_secret_nonces(peg_in_graph_id, secret_nonces);
 
         // TODO: Save secret nonces for all txs in the graph to the local file system. Later, when pre-signing the tx,
         // we'll need to retrieve these nonces for this graph ID.
@@ -890,26 +907,50 @@ impl BitVMClient {
             .unwrap()
             .push_nonces(&self.verifier_context.as_ref().unwrap());
 
-        if self
-            .private_data
-            .secret_nonces
-            .get(peg_out_graph_id)
-            .is_none()
-        {
-            self.private_data
-                .secret_nonces
-                .insert(peg_out_graph_id.to_string(), HashMap::new());
-        }
-        self.private_data
-            .secret_nonces
-            .get_mut(peg_out_graph_id)
-            .unwrap()
-            .extend(secret_nonces);
+        self.merge_secret_nonces(peg_out_graph_id, secret_nonces);
 
         // TODO: Save secret nonces for all txs in the graph to the local file system. Later, when pre-signing the tx,
         // we'll need to retrieve these nonces for this graph ID.
 
         // TODO: Add public nonces in the remaining txs in this graph.
+    }
+
+    fn merge_secret_nonces(
+        &mut self,
+        graph_id: &str,
+        secret_nonces: HashMap<Txid, HashMap<usize, SecNonce>>,
+    ) {
+        if self
+            .private_data
+            .secret_nonces
+            .get(&self.verifier_context.as_ref().unwrap().verifier_public_key)
+            .is_none()
+        {
+            self.private_data.secret_nonces.insert(
+                self.verifier_context.as_ref().unwrap().verifier_public_key,
+                HashMap::new(),
+            );
+        }
+
+        if self.private_data.secret_nonces
+            [&self.verifier_context.as_ref().unwrap().verifier_public_key]
+            .get(graph_id)
+            .is_none()
+        {
+            self.private_data
+                .secret_nonces
+                .get_mut(&self.verifier_context.as_ref().unwrap().verifier_public_key)
+                .unwrap()
+                .insert(graph_id.to_string(), HashMap::new());
+        }
+
+        self.private_data
+            .secret_nonces
+            .get_mut(&self.verifier_context.as_ref().unwrap().verifier_public_key)
+            .unwrap()
+            .get_mut(graph_id)
+            .unwrap()
+            .extend(secret_nonces);
     }
 
     pub fn pre_sign_peg_in(&mut self, peg_in_graph_id: &str) {
@@ -928,7 +969,8 @@ impl BitVMClient {
 
         peg_in_graph.unwrap().pre_sign(
             &self.verifier_context.as_ref().unwrap(),
-            &self.private_data.secret_nonces[peg_in_graph_id],
+            &self.private_data.secret_nonces
+                [&self.verifier_context.as_ref().unwrap().verifier_public_key][peg_in_graph_id],
         );
     }
 
@@ -948,7 +990,8 @@ impl BitVMClient {
 
         peg_out_graph.unwrap().pre_sign(
             &self.verifier_context.as_ref().unwrap(),
-            &self.private_data.secret_nonces[peg_out_graph_id],
+            &self.private_data.secret_nonces
+                [&self.verifier_context.as_ref().unwrap().verifier_public_key][peg_out_graph_id],
         );
     }
 

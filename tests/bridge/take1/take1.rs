@@ -16,6 +16,7 @@ async fn test_take1_tx() {
     let (
         client,
         _,
+        _,
         operator_context,
         verifier0_context,
         verifier1_context,
