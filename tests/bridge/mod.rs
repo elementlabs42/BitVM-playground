@@ -1,4 +1,5 @@
 pub mod assert;
+pub mod base;
 pub mod burn;
 pub mod challenge;
 pub mod client;
@@ -11,3 +12,4 @@ pub mod peg_in;
 pub mod serialization;
 pub mod setup;
 pub mod take1;
+pub mod validate;
