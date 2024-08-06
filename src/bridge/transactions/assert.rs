@@ -6,6 +6,8 @@ use musig2::{BinaryEncoding, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::bridge::contexts::base::BaseContext;
+
 use super::{
     super::{
         connectors::{
@@ -136,9 +138,13 @@ impl AssertTransaction {
             .get_mut(&input_index)
             .unwrap()
             .insert(context.verifier_public_key, partial_signature);
+
+        // TODO: call finalize automatically on last signature
+        // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
+        self.finalize_input0(context);
     }
 
-    fn finalize_input0(&mut self, context: &VerifierContext) {
+    fn finalize_input0(&mut self, context: &dyn BaseContext) {
         // TODO: Verify we have partial signatures from all verifiers.
         // TODO: Verify each signature against the signers public key.
         // See example here: https://github.com/conduition/musig2/blob/c39bfce58098d337a3ec38b54d93def8306d9953/src/signing.rs#L358C1-L366C65
@@ -195,14 +201,6 @@ impl AssertTransaction {
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
         self.sign_input0(context, &secret_nonces[&0]);
-    }
-
-    /// Generate the final Schnorr signature and push it to the witness in this tx.
-    // TODO: Compare with BaseTransaction::finalize() and refactor as needed.
-    pub fn finalize(&mut self, context: &VerifierContext) {
-        self.finalize_input0(context);
-
-        // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
     }
 
     pub fn merge(&mut self, assert: &AssertTransaction) {

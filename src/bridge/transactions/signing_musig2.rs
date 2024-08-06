@@ -10,7 +10,7 @@ use musig2::{
     sign_partial, AggNonce, KeyAggContext, LiftedSignature, PartialSignature, PubNonce, SecNonce,
 };
 
-use crate::bridge::contexts::verifier::VerifierContext;
+use crate::bridge::contexts::{base::BaseContext, verifier::VerifierContext};
 
 pub fn generate_nonce() -> SecNonce {
     SecNonce::build(&mut rand::rngs::OsRng).build() // TODO: Double check the use of RNG here.
@@ -62,7 +62,7 @@ pub fn get_partial_signature(
 }
 
 pub fn get_aggregated_signature(
-    context: &VerifierContext,
+    context: &dyn BaseContext,
     tx: &Transaction,
     aggregated_nonce: &AggNonce,
     input_index: usize,
@@ -73,7 +73,7 @@ pub fn get_aggregated_signature(
 ) -> Result<LiftedSignature, VerifyError> {
     let pubkeys: Vec<Point> = Vec::from_iter(
         context
-            .n_of_n_public_keys
+            .n_of_n_public_keys()
             .iter()
             .map(|&public_key| public_key.inner.into()),
     );

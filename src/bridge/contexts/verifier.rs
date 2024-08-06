@@ -4,7 +4,7 @@ use bitcoin::{
     Network, PublicKey, XOnlyPublicKey,
 };
 
-use super::base::{generate_keys_from_secret, BaseContext};
+use super::base::{generate_keys_from_secret, generate_n_of_n_public_key, BaseContext};
 
 pub struct VerifierContext {
     pub network: Network,
@@ -21,6 +21,9 @@ pub struct VerifierContext {
 impl BaseContext for VerifierContext {
     fn network(&self) -> Network { self.network }
     fn secp(&self) -> &Secp256k1<All> { &self.secp }
+    fn n_of_n_public_keys(&self) -> &Vec<PublicKey> { &self.n_of_n_public_keys }
+    fn n_of_n_public_key(&self) -> &PublicKey { &self.n_of_n_public_key }
+    fn n_of_n_taproot_public_key(&self) -> &XOnlyPublicKey { &self.n_of_n_taproot_public_key }
 }
 
 impl VerifierContext {
@@ -28,9 +31,10 @@ impl VerifierContext {
         network: Network,
         verifier_secret: &str,
         n_of_n_public_keys: &Vec<PublicKey>,
-        n_of_n_public_key: &PublicKey,
     ) -> Self {
         let (secp, keypair, public_key) = generate_keys_from_secret(network, verifier_secret);
+        let (n_of_n_public_key, n_of_n_taproot_public_key) =
+            generate_n_of_n_public_key(n_of_n_public_keys);
 
         VerifierContext {
             network,
@@ -40,8 +44,8 @@ impl VerifierContext {
             verifier_public_key: public_key,
 
             n_of_n_public_keys: n_of_n_public_keys.clone(),
-            n_of_n_public_key: *n_of_n_public_key,
-            n_of_n_taproot_public_key: XOnlyPublicKey::from(*n_of_n_public_key),
+            n_of_n_public_key,
+            n_of_n_taproot_public_key,
         }
     }
 }

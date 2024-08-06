@@ -23,8 +23,8 @@ mod tests {
             client,
             _,
             operator_context,
-            verifier_context,
-            _,
+            verifier0_context,
+            verifier1_context,
             _,
             _,
             connector_b,
@@ -43,7 +43,12 @@ mod tests {
 
         let mut burn_tx = BurnTransaction::new(&operator_context, Input { outpoint, amount });
 
-        burn_tx.pre_sign(&verifier_context);
+        let secret_nonces0 = burn_tx.push_nonces(&verifier0_context);
+        let secret_nonces1 = burn_tx.push_nonces(&verifier1_context);
+    
+        burn_tx.pre_sign(&verifier0_context, &secret_nonces0);
+        burn_tx.pre_sign(&verifier1_context, &secret_nonces1);
+
         let tx = burn_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
 

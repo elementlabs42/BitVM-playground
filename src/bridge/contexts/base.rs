@@ -1,12 +1,16 @@
 use bitcoin::{
     key::{Keypair, Secp256k1},
-    secp256k1::All,
-    Network, PrivateKey, PublicKey,
+    secp256k1::{All, PublicKey as Secp256k1PublicKey},
+    Network, PrivateKey, PublicKey, XOnlyPublicKey,
 };
+use musig2::{secp::Point, KeyAggContext};
 
 pub trait BaseContext {
     fn network(&self) -> Network;
     fn secp(&self) -> &Secp256k1<All>;
+    fn n_of_n_public_keys(&self) -> &Vec<PublicKey>;
+    fn n_of_n_public_key(&self) -> &PublicKey;
+    fn n_of_n_taproot_public_key(&self) -> &XOnlyPublicKey;
 }
 
 pub fn generate_keys_from_secret(
@@ -19,4 +23,21 @@ pub fn generate_keys_from_secret(
     let public_key = PublicKey::from_private_key(&secp, &private_key);
 
     (secp, keypair, public_key)
+}
+
+pub fn generate_n_of_n_public_key(
+    n_of_n_public_keys: &Vec<PublicKey>,
+) -> (PublicKey, XOnlyPublicKey) {
+    let public_keys: Vec<Point> = n_of_n_public_keys
+        .iter()
+        .map(|&public_key| Point::from(public_key.inner))
+        .collect();
+
+    let key_agg_context = KeyAggContext::new(public_keys).unwrap();
+    let aggregated_key: Secp256k1PublicKey = key_agg_context.aggregated_pubkey();
+
+    let n_of_n_public_key = PublicKey::from(aggregated_key);
+    let n_of_n_taproot_public_key = XOnlyPublicKey::from(n_of_n_public_key);
+
+    (n_of_n_public_key, n_of_n_taproot_public_key)
 }
