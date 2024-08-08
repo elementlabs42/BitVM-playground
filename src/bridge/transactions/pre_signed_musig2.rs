@@ -1,4 +1,4 @@
-use bitcoin::{taproot::TaprootSpendInfo, PublicKey, TapSighashType};
+use bitcoin::{taproot::TaprootSpendInfo, EcdsaSighashType, PublicKey, TapSighashType};
 use musig2::{BinaryEncoding, PartialSignature, PubNonce, SecNonce};
 use std::collections::HashMap;
 
@@ -12,8 +12,12 @@ use super::{
 };
 
 pub trait PreSignedMusig2Transaction {
-    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>>;
-    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>>;
+    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>>;
+    fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>>;
+    fn musig2_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, PartialSignature>>;
+    fn musig2_signatures_mut(
+        &mut self,
+    ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>>;
 }
 
 pub fn push_nonce<T: PreSignedTransaction + PreSignedMusig2Transaction>(
@@ -21,7 +25,7 @@ pub fn push_nonce<T: PreSignedTransaction + PreSignedMusig2Transaction>(
     context: &VerifierContext,
     input_index: usize,
 ) -> SecNonce {
-    let musig2_nonces = tx.musig2_nonces();
+    let musig2_nonces = tx.musig2_nonces_mut();
 
     let secret_nonce = generate_nonce();
     if musig2_nonces.get(&input_index).is_none() {
@@ -35,6 +39,17 @@ pub fn push_nonce<T: PreSignedTransaction + PreSignedMusig2Transaction>(
     secret_nonce
 }
 
+// pub fn pre_sign_musig2_p2wsh_input<T: PreSignedTransaction + PreSignedMusig2Transaction>(
+//     tx: &mut T,
+//     context: &dyn BaseContext,
+//     input_index: usize,
+//     sighash_type: EcdsaSighashType,
+//     secret_nonce: &SecNonce,
+// ) {
+// }
+
+// pub fn pre_sign_musig2_p2wpkh_input() {}
+
 pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Transaction>(
     tx: &mut T,
     context: &VerifierContext,
@@ -46,7 +61,7 @@ pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
 
     let prev_outs = &tx.prev_outs().clone();
     let script = &tx.prev_scripts()[input_index].clone();
-    let musig2_nonces = &tx.musig2_nonces()[&input_index]
+    let musig2_nonces = &tx.musig2_nonces_mut()[&input_index]
         .values()
         .map(|public_nonce| public_nonce.clone())
         .collect();
@@ -63,7 +78,7 @@ pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
     )
     .unwrap(); // TODO: Add error handling.
 
-    let musig2_signatures = tx.musig2_signatures();
+    let musig2_signatures = tx.musig2_signatures_mut();
     if musig2_signatures.get(&input_index).is_none() {
         musig2_signatures.insert(input_index, HashMap::new());
     }
@@ -86,11 +101,11 @@ pub fn finalize_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
 
     let prev_outs = &tx.prev_outs().clone();
     let script = &tx.prev_scripts()[input_index].clone();
-    let musig2_nonces = &tx.musig2_nonces()[&input_index]
+    let musig2_nonces = &tx.musig2_nonces_mut()[&input_index]
         .values()
         .map(|public_nonce| public_nonce.clone())
         .collect();
-    let musig2_signatures = tx.musig2_signatures()[&input_index]
+    let musig2_signatures = tx.musig2_signatures_mut()[&input_index]
         .values()
         .map(|&partial_signature| PartialSignature::from(partial_signature))
         .collect();

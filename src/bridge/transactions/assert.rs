@@ -44,10 +44,16 @@ impl PreSignedTransaction for AssertTransaction {
 }
 
 impl PreSignedMusig2Transaction for AssertTransaction {
-    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
+    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
+    fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
     }
-    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
+    fn musig2_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, PartialSignature>> {
+        &self.musig2_signatures
+    }
+    fn musig2_signatures_mut(
+        &mut self,
+    ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
 }
@@ -168,6 +174,7 @@ impl AssertTransaction {
 
     pub fn merge(&mut self, assert: &AssertTransaction) {
         merge_transactions(&mut self.tx, &assert.tx);
+        merge_musig2_nonces_and_signatures(self, assert);
     }
 }
 

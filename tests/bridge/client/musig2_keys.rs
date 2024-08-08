@@ -4,7 +4,7 @@ use musig2::{
 };
 
 #[tokio::test]
-async fn generate_signer_keys() {
+async fn test_generate_signer_keys() {
     let mut public_keys: Vec<Point> = Vec::new();
     // In tests we use 1 operator + 2 verifiers
     for i in 0..3 {

@@ -40,10 +40,16 @@ impl PreSignedTransaction for Take2Transaction {
 }
 
 impl PreSignedMusig2Transaction for Take2Transaction {
-    fn musig2_nonces(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
+    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
+    fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
     }
-    fn musig2_signatures(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
+    fn musig2_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, PartialSignature>> {
+        &self.musig2_signatures
+    }
+    fn musig2_signatures_mut(
+        &mut self,
+    ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
 }
@@ -177,6 +183,7 @@ impl Take2Transaction {
 
     pub fn merge(&mut self, take2: &Take2Transaction) {
         merge_transactions(&mut self.tx, &take2.tx);
+        merge_musig2_nonces_and_signatures(self, take2);
     }
 }
 
