@@ -40,6 +40,7 @@ pub struct BitVMClientPublicData {
     pub peg_out_graphs: Vec<PegOutGraph>,
 }
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct BitVMClientPrivateData {
     // Peg in and peg out nonces all go into the same file for now
     // Verifier public key -> Graph ID -> Tx ID -> Input index
@@ -875,6 +876,9 @@ impl BitVMClient {
 
         // TODO: Save secret nonces for all txs in the graph to the local file system. Later, when pre-signing the tx,
         // we'll need to retrieve these nonces for this graph ID.
+
+        let json = serialize(&self.private_data);
+        Self::save_local_private_file(&self.file_path, &json);
     }
 
     pub fn push_peg_out_nonces(&mut self, peg_out_graph_id: &str) {
@@ -899,6 +903,8 @@ impl BitVMClient {
 
         // TODO: Save secret nonces for all txs in the graph to the local file system. Later, when pre-signing the tx,
         // we'll need to retrieve these nonces for this graph ID.
+        let json = serialize(&self.private_data);
+        Self::save_local_private_file(&self.file_path, &json);
 
         // TODO: Add public nonces in the remaining txs in this graph.
     }
@@ -989,26 +995,28 @@ impl BitVMClient {
         fs::write(format!("{file_path}/public/{key}"), json).expect("Unable to write a file");
     }
 
-    fn save_local_private_file(file_path: &String, key: &String, json: &String) {
+    fn save_local_private_file(file_path: &String, json: &String) {
         Self::create_directories_if_non_existent(file_path);
-        println!("Saving private local file {}", key);
-        fs::write(format!("{file_path}/private/{key}"), json).expect("Unable to write a file");
+        println!("Saving private local file");
+        fs::write(format!("{file_path}/private/private_nonces.json"), json)
+            .expect("Unable to write a file");
     }
 
     fn create_directories_if_non_existent(file_path: &String) {
         let path_exists = Path::new(file_path).exists();
         if !path_exists {
             fs::create_dir_all(file_path).expect("Failed to create directories");
-            let public_path_exists = Path::new(&format! {"{file_path}/public"}).exists();
-            let private_path_exists = Path::new(&format! {"{file_path}/private"}).exists();
-            if !public_path_exists {
-                fs::create_dir(format! {"{file_path}/public"})
-                    .expect("Failed to create 'public' directory");
-            }
-            if !private_path_exists {
-                fs::create_dir(format! {"{file_path}/private"})
-                    .expect("Failed to create 'private' directory");
-            }
+        }
+
+        let public_path_exists = Path::new(&format! {"{file_path}/public"}).exists();
+        let private_path_exists = Path::new(&format! {"{file_path}/private"}).exists();
+        if !public_path_exists {
+            fs::create_dir(format! {"{file_path}/public"})
+                .expect("Failed to create 'public' directory");
+        }
+        if !private_path_exists {
+            fs::create_dir(format! {"{file_path}/private"})
+                .expect("Failed to create 'private' directory");
         }
     }
 
