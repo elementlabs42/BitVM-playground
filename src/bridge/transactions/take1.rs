@@ -26,6 +26,7 @@ pub struct Take1Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
+    connector_0: Connector0,
     connector_a: ConnectorA,
     connector_b: ConnectorB,
 
@@ -70,7 +71,6 @@ impl Take1Transaction {
             context.network,
             &context.operator_public_key,
             &context.operator_taproot_public_key,
-            &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
             input0,
             input1,
@@ -88,14 +88,13 @@ impl Take1Transaction {
         network: Network,
         operator_public_key: &PublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_public_key: &PublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         input0: Input,
         input1: Input,
         input2: Input,
         input3: Input,
     ) -> Self {
-        let connector_0 = Connector0::new(network, n_of_n_public_key);
+        let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_1 = Connector1::new(network, operator_public_key);
         let connector_a = ConnectorA::new(
             network,
@@ -104,7 +103,7 @@ impl Take1Transaction {
         );
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
 
-        let _input0 = connector_0.generate_tx_in(&input0);
+        let _input0 = connector_0.generate_taproot_leaf_tx_in(0, &input0);
 
         let _input1 = connector_1.generate_tx_in(&input1);
 
@@ -131,7 +130,7 @@ impl Take1Transaction {
             prev_outs: vec![
                 TxOut {
                     value: input0.amount,
-                    script_pubkey: connector_0.generate_address().script_pubkey(),
+                    script_pubkey: connector_0.generate_taproot_address().script_pubkey(),
                 },
                 TxOut {
                     value: input1.amount,
@@ -147,11 +146,12 @@ impl Take1Transaction {
                 },
             ],
             prev_scripts: vec![
-                connector_0.generate_script(),
+                connector_0.generate_taproot_leaf_script(0),
                 connector_1.generate_script(),
                 connector_a.generate_taproot_leaf_script(0),
                 connector_b.generate_taproot_leaf_script(0),
             ],
+            connector_0,
             connector_a,
             connector_b,
             musig2_nonces: HashMap::new(),
@@ -160,13 +160,30 @@ impl Take1Transaction {
     }
 
     fn sign_input0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
-        // pre_sign_p2wsh_input(
-        //     self,
-        //     context,
-        //     0,
-        //     EcdsaSighashType::All,
-        //     &vec![&context.n_of_n_keypair],
-        // );
+        let input_index = 0;
+        pre_sign_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::All,
+            secret_nonce,
+        );
+
+        // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
+        if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
+            self.finalize_input0(context);
+        }
+    }
+
+    fn finalize_input0(&mut self, context: &dyn BaseContext) {
+        let input_index = 0;
+        finalize_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::All,
+            self.connector_0.generate_taproot_spend_info(),
+        );
     }
 
     fn sign_input1(&mut self, context: &OperatorContext) {
@@ -191,15 +208,6 @@ impl Take1Transaction {
     }
 
     fn sign_input3(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
-        // pre_sign_taproot_input(
-        //     self,
-        //     context,
-        //     3,
-        //     TapSighashType::All,
-        //     self.connector_b.generate_taproot_spend_info(),
-        //     &vec![&context.n_of_n_keypair],
-        // );
-
         let input_index = 3;
         pre_sign_musig2_taproot_input(
             self,

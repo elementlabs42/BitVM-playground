@@ -355,7 +355,6 @@ impl PegOutGraph {
             self.network,
             &self.operator_public_key,
             &self.operator_taproot_public_key,
-            &self.n_of_n_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
                 outpoint: OutPoint {
@@ -408,7 +407,6 @@ impl PegOutGraph {
         let assert_transaction = AssertTransaction::new_for_validation(
             self.network,
             &self.operator_public_key,
-            &self.n_of_n_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
                 outpoint: OutPoint {
@@ -426,7 +424,7 @@ impl PegOutGraph {
         let take2_transaction = Take2Transaction::new_for_validation(
             self.network,
             &self.operator_public_key,
-            &self.n_of_n_public_key,
+            &self.n_of_n_taproot_public_key,
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_confirm_txid,
@@ -455,7 +453,6 @@ impl PegOutGraph {
         let disprove_vout1 = 2;
         let disprove_transaction = DisproveTransaction::new_for_validation(
             self.network,
-            &self.n_of_n_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
                 outpoint: OutPoint {

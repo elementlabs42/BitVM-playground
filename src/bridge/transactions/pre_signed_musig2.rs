@@ -7,7 +7,8 @@ use super::{
     pre_signed::PreSignedTransaction,
     signing::push_taproot_leaf_script_and_control_block_to_witness,
     signing_musig2::{
-        generate_nonce, generate_aggregated_nonce, generate_taproot_aggregated_signature, generate_taproot_partial_signature,
+        generate_aggregated_nonce, generate_nonce, generate_taproot_aggregated_signature,
+        generate_taproot_partial_signature,
     },
 };
 
