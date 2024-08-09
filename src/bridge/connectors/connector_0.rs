@@ -49,7 +49,7 @@ impl TaprootConnector for Connector0 {
 
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
         TaprootBuilder::new()
-            .add_leaf(1, self.generate_taproot_leaf0_script())
+            .add_leaf(0, self.generate_taproot_leaf0_script())
             .expect("Unable to add leaf0")
             .finalize(&Secp256k1::new(), self.n_of_n_taproot_public_key)
             .expect("Unable to finalize taproot")
