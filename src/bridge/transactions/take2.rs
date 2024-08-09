@@ -1,6 +1,6 @@
 use bitcoin::{
-    absolute, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, TapSighashType, Transaction,
-    TxOut, XOnlyPublicKey,
+    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, TapSighashType,
+    Transaction, TxOut, XOnlyPublicKey,
 };
 use musig2::{PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,9 @@ use super::{
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Take2Transaction {
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     connector_0: Connector0,
