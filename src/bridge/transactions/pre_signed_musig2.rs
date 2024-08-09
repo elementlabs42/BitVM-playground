@@ -7,7 +7,7 @@ use super::{
     pre_signed::PreSignedTransaction,
     signing::push_taproot_leaf_script_and_control_block_to_witness,
     signing_musig2::{
-        generate_nonce, get_aggregated_nonce, get_aggregated_signature, get_partial_signature,
+        generate_nonce, generate_aggregated_nonce, generate_taproot_aggregated_signature, generate_taproot_partial_signature,
     },
 };
 
@@ -66,11 +66,11 @@ pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
         .map(|public_nonce| public_nonce.clone())
         .collect();
 
-    let partial_signature = get_partial_signature(
+    let partial_signature = generate_taproot_partial_signature(
         context,
         tx.tx_mut(),
         secret_nonce,
-        &get_aggregated_nonce(musig2_nonces),
+        &generate_aggregated_nonce(musig2_nonces),
         input_index,
         prev_outs,
         script,
@@ -112,10 +112,10 @@ pub fn finalize_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
     let tx_mut = tx.tx_mut();
 
     // Aggregate signature
-    let final_signature = get_aggregated_signature(
+    let final_signature = generate_taproot_aggregated_signature(
         context,
         tx_mut,
-        &get_aggregated_nonce(musig2_nonces),
+        &generate_aggregated_nonce(musig2_nonces),
         input_index,
         prev_outs,
         script,

@@ -16,9 +16,9 @@ pub fn generate_nonce() -> SecNonce {
     SecNonce::build(&mut rand::rngs::OsRng).build() // TODO: Double check the use of RNG here.
 }
 
-pub fn get_aggregated_nonce(nonces: &Vec<PubNonce>) -> AggNonce { AggNonce::sum(nonces) }
+pub fn generate_aggregated_nonce(nonces: &Vec<PubNonce>) -> AggNonce { AggNonce::sum(nonces) }
 
-pub fn get_partial_signature(
+pub fn generate_taproot_partial_signature(
     context: &VerifierContext,
     tx: &Transaction,
     secret_nonce: &SecNonce,
@@ -37,7 +37,7 @@ pub fn get_partial_signature(
     let key_agg_ctx = KeyAggContext::new(pubkeys).unwrap();
 
     let leaf_hash = TapLeafHash::from_script(script, LeafVersion::TapScript);
-    let sighash_cache = SighashCache::new(tx)
+    let sighash = SighashCache::new(tx)
         .taproot_script_spend_signature_hash(
             input_index,
             &Prevouts::All(&prevouts),
@@ -51,11 +51,11 @@ pub fn get_partial_signature(
         context.verifier_keypair.secret_key(),
         secret_nonce.clone(),
         &aggregated_nonce,
-        sighash_cache,
+        sighash,
     )
 }
 
-pub fn get_aggregated_signature(
+pub fn generate_taproot_aggregated_signature(
     context: &dyn BaseContext,
     tx: &Transaction,
     aggregated_nonce: &AggNonce,
