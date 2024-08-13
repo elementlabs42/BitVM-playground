@@ -48,6 +48,8 @@ impl Sftp {
             return None;
         }
 
+        println!("SFTP 46");
+
         let credentials = SftpCredentials {
             host: host.unwrap(),
             port: port.unwrap(),
@@ -55,6 +57,8 @@ impl Sftp {
             keyfile_path: keyfile_path.unwrap(),
             base_path: base_path.unwrap(),
         };
+
+        println!("SFTP 55");
 
         match test_connection(&credentials) {
             Ok(_) => Some(Self { credentials }),
@@ -188,8 +192,10 @@ impl DataStoreDriver for Sftp {
 }
 
 fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
+    println!("SFTP 190");
     match executor::block_on(connect(credentials)) {
         Ok(sftp) => {
+            println!("SFTP 192");
             executor::block_on(disconnect(sftp));
             Ok(())
         }
@@ -220,7 +226,7 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
     let result = _Sftp::from_session(ssh_session, Default::default()).await;
     if result.is_err() {
         return Err(format!(
-            "Unable to authenticate via SSH server at {}:{} (error: {})",
+            "Unable to establish to SFTP session from SSH session at {}:{} (error: {})",
             &credentials.host,
             &credentials.port,
             result.err().unwrap()
