@@ -28,9 +28,9 @@ impl DataStore {
     pub fn new() -> Self {
         Self {
             aws_s3: AwsS3::new(),
-            ftp: Ftp::new(),
-            ftps: Ftps::new(),
-            sftp: Sftp::new(),
+            ftp: None,  // Ftp::new(),
+            ftps: None, // Ftps::new(),
+            sftp: None, // Sftp::new(),
         }
     }
 
@@ -151,7 +151,7 @@ impl DataStore {
         return past_max_file_name;
     }
 
-    pub fn create_file_name(timestamp: u128) -> String {
+    fn create_file_name(timestamp: u128) -> String {
         return format!("{}{}", timestamp, CLIENT_DATA_SUFFIX);
     }
 

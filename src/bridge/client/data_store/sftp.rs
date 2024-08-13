@@ -39,9 +39,16 @@ impl Sftp {
         let keyfile_path = dotenv::var("BRIDGE_SFTP_KEYFILE_PATH");
         let base_path = dotenv::var("BRIDGE_SFTP_BASE_PATH");
 
-        if host.is_err() || port.is_err() || username.is_err() || keyfile_path.is_err() || base_path.is_err() {
+        if host.is_err()
+            || port.is_err()
+            || username.is_err()
+            || keyfile_path.is_err()
+            || base_path.is_err()
+        {
             return None;
         }
+
+        println!("SFTP 46");
 
         let credentials = SftpCredentials {
             host: host.unwrap(),
@@ -50,6 +57,8 @@ impl Sftp {
             keyfile_path: keyfile_path.unwrap(),
             base_path: base_path.unwrap(),
         };
+
+        println!("SFTP 55");
 
         match test_connection(&credentials) {
             Ok(_) => Some(Self { credentials }),
@@ -215,8 +224,10 @@ impl client::Handler for Client {
 
 
 fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
+    println!("SFTP 190");
     match executor::block_on(connect(credentials)) {
         Ok(sftp) => {
+            println!("SFTP 192");
             executor::block_on(disconnect(sftp));
             Ok(())
         }
