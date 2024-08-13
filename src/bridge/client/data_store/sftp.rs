@@ -4,10 +4,12 @@ use dotenv;
 use futures::{executor, TryStreamExt};
 use openssh_sftp_client::{
     file::TokioCompatFile,
-    openssh::{KnownHosts, Session as SshSession},
+    openssh::{KnownHosts, Session as SshSession, SessionBuilder as SshSessionBuilder},
     Sftp as _Sftp,
 };
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::{
+    process::{Command},
+    io::{AsyncReadExt, AsyncWriteExt}};
 
 // To use this data store, create a .env file in the base directory with the following values:
 // export BRIDGE_SFTP_HOST="..."
@@ -198,16 +200,34 @@ fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
 }
 
 async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
+    println!("START");
+
+    let mut child = Command::new("echo")
+        .arg("hello")
+        .arg("world")
+        .spawn()
+        .expect("failed to spawn");
+
+    println!("210");
+
+    // Await until the command completes
+    let status = child.wait().await;
+    println!("the command exited with: {:?}", status);
+
+    println!("END");
+
+    return Err("END".to_string());
+
     println!("SFTP 200");
 
-    let result = SshSession::connect_mux(
-        format!(
-            "ssh://{}@{}:{}",
-            &credentials.username, &credentials.host, &credentials.port
-        ),
-        KnownHosts::Add,
-    )
-    .await;
+    let dest = format!(
+        "ssh://{}@{}:{}",
+        &credentials.username, &credentials.host, &credentials.port
+    );
+
+    println!("SFTP 201");
+
+    let result = SshSessionBuilder::default().keyfile("...").connect(&dest).await; // TODO change keyfile
     println!("SFTP 202");
     if result.is_err() {
         return Err(format!(
