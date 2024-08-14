@@ -1,5 +1,6 @@
 use bitcoin::{
-    absolute, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction, TxOut,
+    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, TapSighashType,
+    Transaction, TxOut, XOnlyPublicKey,
 };
 use musig2::{PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
@@ -10,7 +11,7 @@ use super::{
         connectors::{
             connector::*, connector_0::Connector0, connector_2::Connector2, connector_3::Connector3,
         },
-        contexts::{operator::OperatorContext, verifier::VerifierContext},
+        contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         graphs::base::FEE_AMOUNT,
         scripts::*,
     },
@@ -21,9 +22,13 @@ use super::{
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Take2Transaction {
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
+    connector_0: Connector0,
+    connector_3: Connector3,
 
     musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
     musig2_signatures: HashMap<usize, HashMap<PublicKey, PartialSignature>>,
@@ -59,7 +64,7 @@ impl Take2Transaction {
         let mut this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
-            &context.n_of_n_public_key,
+            &context.n_of_n_taproot_public_key,
             input0,
             input1,
             input2,
@@ -73,20 +78,20 @@ impl Take2Transaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
-        n_of_n_public_key: &PublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
         input0: Input,
         input1: Input,
         input2: Input,
     ) -> Self {
-        let connector_0 = Connector0::new(network, n_of_n_public_key);
+        let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_2 = Connector2::new(network, operator_public_key);
-        let connector_3 = Connector3::new(network, n_of_n_public_key);
+        let connector_3 = Connector3::new(network, n_of_n_taproot_public_key);
 
-        let _input0 = connector_0.generate_tx_in(&input0);
+        let _input0 = connector_0.generate_taproot_leaf_tx_in(0, &input0);
 
         let _input1 = connector_2.generate_tx_in(&input1);
 
-        let _input2 = connector_3.generate_tx_in(&input2);
+        let _input2 = connector_3.generate_taproot_leaf_tx_in(0, &input2);
 
         let total_output_amount =
             input0.amount + input1.amount + input2.amount - Amount::from_sat(FEE_AMOUNT);
@@ -107,7 +112,7 @@ impl Take2Transaction {
             prev_outs: vec![
                 TxOut {
                     value: input0.amount,
-                    script_pubkey: connector_0.generate_address().script_pubkey(),
+                    script_pubkey: connector_0.generate_taproot_address().script_pubkey(),
                 },
                 TxOut {
                     value: input1.amount,
@@ -115,27 +120,46 @@ impl Take2Transaction {
                 },
                 TxOut {
                     value: input2.amount,
-                    script_pubkey: connector_3.generate_address().script_pubkey(),
+                    script_pubkey: connector_3.generate_taproot_address().script_pubkey(),
                 },
             ],
             prev_scripts: vec![
-                connector_0.generate_script(),
+                connector_0.generate_taproot_leaf_script(0),
                 connector_2.generate_script(),
-                connector_3.generate_script(),
+                connector_3.generate_taproot_leaf_script(0),
             ],
+            connector_0,
+            connector_3,
             musig2_nonces: HashMap::new(),
             musig2_signatures: HashMap::new(),
         }
     }
 
     fn sign_input0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
-        // pre_sign_p2wsh_input(
-        //     self,
-        //     context,
-        //     0,
-        //     EcdsaSighashType::All,
-        //     &vec![&context.n_of_n_keypair],
-        // );
+        let input_index = 0;
+        pre_sign_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::All,
+            secret_nonce,
+        );
+
+        // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
+        if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
+            self.finalize_input0(context);
+        }
+    }
+
+    fn finalize_input0(&mut self, context: &dyn BaseContext) {
+        let input_index = 0;
+        finalize_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::All,
+            self.connector_0.generate_taproot_spend_info(),
+        );
     }
 
     fn sign_input1(&mut self, context: &OperatorContext) {
@@ -149,13 +173,30 @@ impl Take2Transaction {
     }
 
     fn sign_input2(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
-        // pre_sign_p2wsh_input(
-        //     self,
-        //     context,
-        //     2,
-        //     EcdsaSighashType::All,
-        //     &vec![&context.n_of_n_keypair],
-        // );
+        let input_index = 2;
+        pre_sign_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::All,
+            secret_nonce,
+        );
+
+        // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
+        if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
+            self.finalize_input2(context);
+        }
+    }
+
+    fn finalize_input2(&mut self, context: &dyn BaseContext) {
+        let input_index = 2;
+        finalize_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::All,
+            self.connector_3.generate_taproot_spend_info(),
+        );
     }
 
     pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {

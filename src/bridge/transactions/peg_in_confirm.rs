@@ -61,7 +61,6 @@ impl PegInConfirmTransaction {
         let mut this = Self::new_for_validation(
             context.network,
             &context.depositor_taproot_public_key,
-            &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
             evm_address,
             input0,
@@ -75,12 +74,11 @@ impl PegInConfirmTransaction {
     pub fn new_for_validation(
         network: Network,
         depositor_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_public_key: &PublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         evm_address: &str,
         input0: Input,
     ) -> Self {
-        let connector_0 = Connector0::new(network, n_of_n_public_key);
+        let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_z = ConnectorZ::new(
             network,
             evm_address,
@@ -94,7 +92,7 @@ impl PegInConfirmTransaction {
 
         let _output0 = TxOut {
             value: total_output_amount,
-            script_pubkey: connector_0.generate_address().script_pubkey(),
+            script_pubkey: connector_0.generate_taproot_address().script_pubkey(),
         };
 
         PegInConfirmTransaction {

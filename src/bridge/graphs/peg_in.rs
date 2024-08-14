@@ -206,7 +206,6 @@ impl PegInGraph {
         let peg_in_confirm_transaction = PegInConfirmTransaction::new_for_validation(
             self.network,
             &self.depositor_taproot_public_key,
-            &self.n_of_n_public_key,
             &self.n_of_n_taproot_public_key,
             &self.depositor_evm_address,
             Input {

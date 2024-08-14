@@ -84,10 +84,10 @@ pub async fn setup_test() -> (
         &depositor_context.depositor_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
     );
-    let connector_0 = Connector0::new(network, &operator_context.n_of_n_public_key);
+    let connector_0 = Connector0::new(network, &operator_context.n_of_n_taproot_public_key);
     let connector_1 = Connector1::new(network, &operator_context.operator_public_key);
     let connector_2 = Connector2::new(network, &operator_context.operator_public_key);
-    let connector_3 = Connector3::new(network, &operator_context.n_of_n_public_key);
+    let connector_3 = Connector3::new(network, &operator_context.n_of_n_taproot_public_key);
 
     return (
         client0,

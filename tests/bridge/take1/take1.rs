@@ -33,7 +33,7 @@ async fn test_take1_tx() {
     ) = setup_test().await;
 
     let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let funding_utxo_address0 = connector_0.generate_address();
+    let funding_utxo_address0 = connector_0.generate_taproot_address();
     let funding_outpoint0 =
         generate_stub_outpoint(&client, &funding_utxo_address0, input_value0).await;
 

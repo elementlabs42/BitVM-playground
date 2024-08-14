@@ -1,5 +1,6 @@
 use bitcoin::{
-    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, Transaction, TxOut, XOnlyPublicKey,
+    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
+    XOnlyPublicKey,
 };
 use musig2::{PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
@@ -8,7 +9,7 @@ use std::collections::HashMap;
 use super::{
     super::{
         connectors::{connector::*, connector_3::Connector3, connector_c::ConnectorC},
-        contexts::{operator::OperatorContext, verifier::VerifierContext},
+        contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         graphs::base::FEE_AMOUNT,
         scripts::*,
     },
@@ -25,6 +26,7 @@ pub struct DisproveTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
+    connector_3: Connector3,
     connector_c: ConnectorC,
     reward_output_amount: Amount,
 
@@ -61,7 +63,6 @@ impl DisproveTransaction {
     pub fn new(context: &OperatorContext, input0: Input, input1: Input, script_index: u32) -> Self {
         Self::new_for_validation(
             context.network,
-            &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
             input0,
             input1,
@@ -71,16 +72,15 @@ impl DisproveTransaction {
 
     pub fn new_for_validation(
         network: Network,
-        n_of_n_public_key: &PublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         input0: Input,
         input1: Input,
         script_index: u32,
     ) -> Self {
-        let connector_3 = Connector3::new(network, &n_of_n_public_key);
+        let connector_3 = Connector3::new(network, &n_of_n_taproot_public_key);
         let connector_c = ConnectorC::new(network, &n_of_n_taproot_public_key);
 
-        let _input0 = connector_3.generate_tx_in(&input0);
+        let _input0 = connector_3.generate_taproot_leaf_tx_in(0, &input0);
 
         let _input1 = connector_c.generate_taproot_leaf_tx_in(script_index, &input1);
 
@@ -107,14 +107,15 @@ impl DisproveTransaction {
             prev_outs: vec![
                 TxOut {
                     value: input0.amount,
-                    script_pubkey: connector_3.generate_address().script_pubkey(),
+                    script_pubkey: connector_3.generate_taproot_address().script_pubkey(),
                 },
                 TxOut {
                     value: input1.amount,
                     script_pubkey: connector_c.generate_taproot_address().script_pubkey(),
                 },
             ],
-            prev_scripts: vec![connector_3.generate_script()],
+            prev_scripts: vec![connector_3.generate_taproot_leaf_script(0)],
+            connector_3,
             connector_c,
             reward_output_amount,
             musig2_nonces: HashMap::new(),
@@ -123,13 +124,30 @@ impl DisproveTransaction {
     }
 
     fn sign_input0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
-        // pre_sign_p2wsh_input(
-        //     self,
-        //     context,
-        //     0,
-        //     EcdsaSighashType::Single,
-        //     &vec![&context.n_of_n_keypair],
-        // );
+        let input_index = 0;
+        pre_sign_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::Single,
+            secret_nonce,
+        );
+
+        // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
+        if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
+            self.finalize_input0(context);
+        }
+    }
+
+    fn finalize_input0(&mut self, context: &dyn BaseContext) {
+        let input_index = 0;
+        finalize_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::Single,
+            self.connector_3.generate_taproot_spend_info(),
+        );
     }
 
     pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {

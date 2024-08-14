@@ -63,7 +63,6 @@ impl AssertTransaction {
         Self::new_for_validation(
             context.network,
             &context.operator_public_key,
-            &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
             input0,
         )
@@ -72,12 +71,11 @@ impl AssertTransaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
-        n_of_n_public_key: &PublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         input0: Input,
     ) -> Self {
         let connector_2 = Connector2::new(network, operator_public_key);
-        let connector_3 = Connector3::new(network, n_of_n_public_key);
+        let connector_3 = Connector3::new(network, n_of_n_taproot_public_key);
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
         let connector_c = ConnectorC::new(network, n_of_n_taproot_public_key);
 
@@ -92,7 +90,7 @@ impl AssertTransaction {
 
         let _output1 = TxOut {
             value: total_output_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: connector_3.generate_address().script_pubkey(),
+            script_pubkey: connector_3.generate_taproot_address().script_pubkey(),
         };
 
         let _output2 = TxOut {

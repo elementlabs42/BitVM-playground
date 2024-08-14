@@ -3,7 +3,10 @@ use std::time::Duration;
 use bitcoin::{Amount, OutPoint};
 
 use bitvm::bridge::{
-    connectors::{connector::P2wshConnector, connector_0::Connector0},
+    connectors::{
+        connector::{P2wshConnector, TaprootConnector},
+        connector_0::Connector0,
+    },
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
@@ -95,9 +98,9 @@ async fn test_peg_in_success() {
     // multi-sig balance
     let connector_0 = Connector0::new(
         depositor_context.network,
-        &depositor_context.n_of_n_public_key,
+        &depositor_context.n_of_n_taproot_public_key,
     );
-    let multi_sig_address = connector_0.generate_address();
+    let multi_sig_address = connector_0.generate_taproot_address();
     let multi_sig_utxos = client
         .esplora
         .get_address_utxo(multi_sig_address.clone())
