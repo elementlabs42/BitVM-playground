@@ -271,10 +271,6 @@ impl BitVMClient {
                 .clone()
                 .split_off(previous_max_position.unwrap());
 
-            for file in file_names_to_process.iter() {
-                println!("File to process: {}", file);
-            }
-
             return Ok(file_names_to_process);
         } else {
             return Err(String::from(

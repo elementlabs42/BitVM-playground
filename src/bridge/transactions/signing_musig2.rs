@@ -40,7 +40,7 @@ pub fn generate_taproot_partial_signature(
     let sighash = SighashCache::new(tx)
         .taproot_script_spend_signature_hash(
             input_index,
-            &Prevouts::All(&prevouts),
+            &Prevouts::All(&prevouts), // TODO: add Prevouts::One
             leaf_hash,
             sighash_type,
         )
@@ -77,7 +77,7 @@ pub fn generate_taproot_aggregated_signature(
     let sighash_cache = SighashCache::new(tx)
         .taproot_script_spend_signature_hash(
             input_index,
-            &Prevouts::All(&prevouts),
+            &Prevouts::All(&prevouts), // TODO: add Prevouts::One
             leaf_hash,
             sighash_type,
         )

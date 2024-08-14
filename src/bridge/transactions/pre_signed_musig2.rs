@@ -1,5 +1,5 @@
-use bitcoin::{taproot::TaprootSpendInfo, EcdsaSighashType, PublicKey, TapSighashType};
-use musig2::{BinaryEncoding, PartialSignature, PubNonce, SecNonce};
+use bitcoin::{taproot::TaprootSpendInfo, PublicKey, TapSighashType};
+use musig2::{secp::MaybeScalar, PartialSignature, PubNonce, SecNonce};
 use std::collections::HashMap;
 
 use super::{
@@ -7,7 +7,8 @@ use super::{
     pre_signed::PreSignedTransaction,
     signing::push_taproot_leaf_script_and_control_block_to_witness,
     signing_musig2::{
-        generate_nonce, generate_aggregated_nonce, generate_taproot_aggregated_signature, generate_taproot_partial_signature,
+        generate_aggregated_nonce, generate_nonce, generate_taproot_aggregated_signature,
+        generate_taproot_partial_signature,
     },
 };
 
@@ -39,17 +40,6 @@ pub fn push_nonce<T: PreSignedTransaction + PreSignedMusig2Transaction>(
     secret_nonce
 }
 
-// pub fn pre_sign_musig2_p2wsh_input<T: PreSignedTransaction + PreSignedMusig2Transaction>(
-//     tx: &mut T,
-//     context: &dyn BaseContext,
-//     input_index: usize,
-//     sighash_type: EcdsaSighashType,
-//     secret_nonce: &SecNonce,
-// ) {
-// }
-
-// pub fn pre_sign_musig2_p2wpkh_input() {}
-
 pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Transaction>(
     tx: &mut T,
     context: &VerifierContext,
@@ -61,7 +51,7 @@ pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
 
     let prev_outs = &tx.prev_outs().clone();
     let script = &tx.prev_scripts()[input_index].clone();
-    let musig2_nonces = &tx.musig2_nonces_mut()[&input_index]
+    let musig2_nonces = &tx.musig2_nonces()[&input_index]
         .values()
         .map(|public_nonce| public_nonce.clone())
         .collect();
@@ -101,18 +91,18 @@ pub fn finalize_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
 
     let prev_outs = &tx.prev_outs().clone();
     let script = &tx.prev_scripts()[input_index].clone();
-    let musig2_nonces = &tx.musig2_nonces_mut()[&input_index]
+    let musig2_nonces: &Vec<PubNonce> = &tx.musig2_nonces()[&input_index]
         .values()
         .map(|public_nonce| public_nonce.clone())
         .collect();
-    let musig2_signatures = tx.musig2_signatures_mut()[&input_index]
+    let musig2_signatures: Vec<MaybeScalar> = tx.musig2_signatures()[&input_index]
         .values()
         .map(|&partial_signature| PartialSignature::from(partial_signature))
         .collect();
     let tx_mut = tx.tx_mut();
 
     // Aggregate signature
-    let final_signature = generate_taproot_aggregated_signature(
+    let signature = generate_taproot_aggregated_signature(
         context,
         tx_mut,
         &generate_aggregated_nonce(musig2_nonces),
@@ -124,10 +114,15 @@ pub fn finalize_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
     )
     .unwrap(); // TODO: Add error handling.
 
+    let final_signature = bitcoin::taproot::Signature {
+        signature: signature.into(),
+        sighash_type,
+    };
+
     // Push signature to witness
     tx_mut.input[input_index]
         .witness
-        .push(final_signature.to_bytes());
+        .push(final_signature.serialize());
 
     // Push script + control block
     push_taproot_leaf_script_and_control_block_to_witness(

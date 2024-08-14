@@ -30,7 +30,7 @@ pub fn generate_n_of_n_public_key(
 ) -> (PublicKey, XOnlyPublicKey) {
     let public_keys: Vec<Point> = n_of_n_public_keys
         .iter()
-        .map(|&public_key| Point::from(public_key.inner))
+        .map(|&public_key| public_key.inner.into())
         .collect();
 
     let key_agg_context = KeyAggContext::new(public_keys).unwrap();
