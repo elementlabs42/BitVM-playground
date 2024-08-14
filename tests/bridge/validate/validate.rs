@@ -91,7 +91,7 @@ async fn test_validate_invalid_script_pubkey() {
 }
 
 async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
-    let (_, depositor_context, operator_context, _, _, _, _, _, _, _, _, _, _, evm_address) =
+    let (_, _, depositor_context, operator_context, _, _, _, _, _, _, _, _, _, _, _, evm_address) =
         setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);

@@ -13,8 +13,24 @@ use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_out_success() {
-    let (client, _, operator_context, _, withdrawer_context, _, _, _, _, _, _, _, _, evm_address) =
-        setup_test().await;
+    let (
+        client,
+        _,
+        _,
+        operator_context,
+        _,
+        _,
+        withdrawer_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        evm_address,
+    ) = setup_test().await;
     let timestamp = 1722328130u32;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
