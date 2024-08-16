@@ -1,4 +1,3 @@
-use ark_groth16::verifier;
 use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
