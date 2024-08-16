@@ -6,7 +6,11 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{constants::{num_blocks_per_network, NUM_BLOCKS_PER_3_DAYS}, scripts::*, transactions::base::Input},
+    super::{
+        constants::{num_blocks_per_network, NUM_BLOCKS_PER_3_DAYS},
+        scripts::*,
+        transactions::base::Input,
+    },
     connector::*,
 };
 
@@ -32,9 +36,11 @@ impl ConnectorB {
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 
-
     fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
-        generate_timelock_taproot_script(&self.n_of_n_taproot_public_key, self.num_blocks_timelock_1)
+        generate_timelock_taproot_script(
+            &self.n_of_n_taproot_public_key,
+            self.num_blocks_timelock_1,
+        )
     }
 
     fn generate_taproot_leaf_1_tx_in(&self, input: &Input) -> TxIn {

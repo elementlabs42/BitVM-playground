@@ -58,16 +58,22 @@ impl KickOff1Transaction {
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         operator_input: Input,
     ) -> Self {
-        let connector_1 = Connector1::new(network, operator_taproot_public_key, n_of_n_taproot_public_key);
+        let connector_1 = Connector1::new(
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
+        );
         let connector_a = ConnectorA::new(
             network,
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
         );
-        let connector_2 = Connector2::new(network, operator_taproot_public_key, n_of_n_taproot_public_key);
+        let connector_2 = Connector2::new(
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
+        );
 
-        // TODO: Include commit y
-        // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?
         let _input_0 = TxIn {
             previous_output: operator_input.outpoint,
             script_sig: ScriptBuf::new(),
@@ -75,24 +81,24 @@ impl KickOff1Transaction {
             witness: Witness::default(),
         };
 
-        let available_input_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output_0 = TxOut {
-            value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: connector_1.generate_address().script_pubkey(),
-        };
-
-        let _output_1 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
             script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
         };
 
-        let _output_2 = TxOut {
-            value: available_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
+        let _output_1 = TxOut {
+            value: total_output_amount - Amount::from_sat(DUST_AMOUNT) * 2,
+            script_pubkey: connector_1.generate_taproot_address().script_pubkey(),
         };
 
-        KickOffTransaction {
+        let _output_2 = TxOut {
+            value: Amount::from_sat(DUST_AMOUNT),
+            script_pubkey: connector_2.generate_taproot_address().script_pubkey(),
+        };
+
+        KickOff1Transaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -119,6 +125,6 @@ impl KickOff1Transaction {
     }
 }
 
-impl BaseTransaction for KickOffTransaction {
+impl BaseTransaction for KickOff1Transaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
 }

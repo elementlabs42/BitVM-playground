@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use super::{
     super::{
         connectors::{
-            connector::*, connector_0::Connector0, connector_1::Connector1,
+            connector::*, connector_0::Connector0, connector_3::Connector3,
             connector_a::ConnectorA, connector_b::ConnectorB,
         },
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
@@ -97,7 +97,7 @@ impl Take1Transaction {
         input_3: Input,
     ) -> Self {
         let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
-        let connector_1 = Connector1::new(network, operator_public_key);
+        let connector_3 = Connector3::new(network, operator_public_key);
         let connector_a = ConnectorA::new(
             network,
             operator_taproot_public_key,
@@ -105,13 +105,16 @@ impl Take1Transaction {
         );
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
 
-        let _input_0 = connector_0.generate_taproot_leaf_tx_in(0, &input_0);
+        let input_0_leaf = 0;
+        let _input_0 = connector_0.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let _input_1 = connector_1.generate_tx_in(&input_1);
+        let input_1_leaf = 0;
+        let _input_1 = connector_a.generate_taproot_leaf_tx_in(input_1_leaf, &input_1);
 
-        let _input_2 = connector_a.generate_taproot_leaf_tx_in(0, &input_2);
+        let _input_2 = connector_3.generate_tx_in(&input_2);
 
-        let _input_3 = connector_b.generate_taproot_leaf_tx_in(0, &input_3);
+        let input_3_leaf = 0;
+        let _input_3 = connector_b.generate_taproot_leaf_tx_in(input_3_leaf, &input_3);
 
         let total_output_amount = input_0.amount + input_1.amount + input_2.amount + input_3.amount
             - Amount::from_sat(FEE_AMOUNT);
@@ -136,11 +139,11 @@ impl Take1Transaction {
                 },
                 TxOut {
                     value: input_1.amount,
-                    script_pubkey: connector_1.generate_address().script_pubkey(),
+                    script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
                 },
                 TxOut {
                     value: input_2.amount,
-                    script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
+                    script_pubkey: connector_3.generate_address().script_pubkey(),
                 },
                 TxOut {
                     value: input_3.amount,
@@ -148,10 +151,10 @@ impl Take1Transaction {
                 },
             ],
             prev_scripts: vec![
-                connector_0.generate_taproot_leaf_script(0),
-                connector_1.generate_script(),
-                connector_a.generate_taproot_leaf_script(0),
-                connector_b.generate_taproot_leaf_script(0),
+                connector_0.generate_taproot_leaf_script(input_0_leaf),
+                connector_a.generate_taproot_leaf_script(input_1_leaf),
+                connector_3.generate_script(),
+                connector_b.generate_taproot_leaf_script(input_3_leaf),
             ],
             connector_0,
             connector_a,
@@ -189,22 +192,24 @@ impl Take1Transaction {
     }
 
     fn sign_input_1(&mut self, context: &OperatorContext) {
-        pre_sign_p2wsh_input(
+        let input_index = 1;
+        pre_sign_taproot_input(
             self,
             context,
-            1,
-            EcdsaSighashType::All,
+            input_index,
+            TapSighashType::All,
+            self.connector_a.generate_taproot_spend_info(),
             &vec![&context.operator_keypair],
         );
     }
 
     fn sign_input_2(&mut self, context: &OperatorContext) {
-        pre_sign_taproot_input(
+        let input_index = 2;
+        pre_sign_p2wsh_input(
             self,
             context,
-            2,
-            TapSighashType::All,
-            self.connector_a.generate_taproot_spend_info(),
+            input_index,
+            EcdsaSighashType::All,
             &vec![&context.operator_keypair],
         );
     }

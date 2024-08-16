@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use super::{
     super::{
-        connectors::{connector::*, connector_3::Connector3, connector_c::ConnectorC},
+        connectors::{connector::*, connector_5::Connector5, connector_c::ConnectorC},
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         graphs::base::FEE_AMOUNT,
         scripts::*,
@@ -26,7 +26,7 @@ pub struct DisproveTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
-    connector_3: Connector3,
+    connector_5: Connector5,
     connector_c: ConnectorC,
     reward_output_amount: Amount,
 
@@ -60,9 +60,15 @@ impl PreSignedMusig2Transaction for DisproveTransaction {
 }
 
 impl DisproveTransaction {
-    pub fn new(context: &OperatorContext, input_0: Input, input_1: Input, script_index: u32) -> Self {
+    pub fn new(
+        context: &OperatorContext,
+        input_0: Input,
+        input_1: Input,
+        script_index: u32,
+    ) -> Self {
         Self::new_for_validation(
             context.network,
+            &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             input_0,
             input_1,
@@ -72,17 +78,20 @@ impl DisproveTransaction {
 
     pub fn new_for_validation(
         network: Network,
+        operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         input_0: Input,
         input_1: Input,
         script_index: u32,
     ) -> Self {
-        let connector_3 = Connector3::new(network, &n_of_n_taproot_public_key);
+        let connector_5 = Connector5::new(network, &n_of_n_taproot_public_key);
         let connector_c = ConnectorC::new(network, &operator_taproot_public_key);
 
-        let _input_0 = connector_3.generate_taproot_leaf_tx_in(0, &input_0);
+        let input_0_leaf = 1;
+        let _input_0 = connector_5.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let _input_1 = connector_c.generate_taproot_leaf_tx_in(script_index, &input_1);
+        let input_1_leaf = script_index;
+        let _input_1 = connector_c.generate_taproot_leaf_tx_in(input_1_leaf, &input_1);
 
         let total_output_amount = input_0.amount + input_1.amount - Amount::from_sat(FEE_AMOUNT);
 
@@ -107,15 +116,18 @@ impl DisproveTransaction {
             prev_outs: vec![
                 TxOut {
                     value: input_0.amount,
-                    script_pubkey: connector_3.generate_taproot_address().script_pubkey(),
+                    script_pubkey: connector_5.generate_taproot_address().script_pubkey(),
                 },
                 TxOut {
                     value: input_1.amount,
                     script_pubkey: connector_c.generate_taproot_address().script_pubkey(),
                 },
             ],
-            prev_scripts: vec![connector_3.generate_taproot_leaf_script(0)],
-            connector_3,
+            prev_scripts: vec![
+                connector_5.generate_taproot_leaf_script(input_0_leaf),
+                connector_c.generate_taproot_leaf_script(input_1_leaf),
+            ],
+            connector_5,
             connector_c,
             reward_output_amount,
             musig2_nonces: HashMap::new(),

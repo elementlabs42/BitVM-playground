@@ -66,7 +66,8 @@ impl PegInRefundTransaction {
             n_of_n_taproot_public_key,
         );
 
-        let _input_0 = connector_z.generate_taproot_leaf_tx_in(0, &input_0);
+        let input_0_leaf = 0;
+        let _input_0 = connector_z.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
         let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
 
@@ -87,7 +88,7 @@ impl PegInRefundTransaction {
                 value: input_0.amount,
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
             }],
-            prev_scripts: vec![connector_z.generate_taproot_leaf_script(0)],
+            prev_scripts: vec![connector_z.generate_taproot_leaf_script(input_0_leaf)],
             connector_z,
         }
     }

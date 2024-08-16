@@ -11,9 +11,9 @@ pub const NUM_BLOCKS_PER_2_WEEKS: u32 = NUM_BLOCKS_PER_WEEK * 2;
 pub const NUM_BLOCKS_PER_4_WEEKS: u32 = NUM_BLOCKS_PER_WEEK * 4;
 
 pub fn num_blocks_per_network(network: Network, num_blocks: u32) -> u32 {
-  if network == Network::Bitcoin {
-    num_blocks
-  } else {
-      1
-  }
+    if network == Network::Bitcoin {
+        num_blocks
+    } else {
+        1
+    }
 }

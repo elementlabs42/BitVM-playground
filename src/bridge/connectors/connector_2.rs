@@ -20,9 +20,11 @@ pub struct Connector2 {
 }
 
 impl Connector2 {
-    pub fn new(network: Network,
+    pub fn new(
+        network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+    ) -> Self {
         Connector2 {
             network,
             operator_taproot_public_key: operator_taproot_public_key.clone(),
@@ -36,7 +38,6 @@ impl Connector2 {
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
-
 
     fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
         generate_pay_to_pubkey_taproot_script(&self.operator_taproot_public_key)

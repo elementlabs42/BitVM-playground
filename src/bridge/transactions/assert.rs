@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use super::{
     super::{
         connectors::{
-            connector::*, connector_2::Connector2, connector_3::Connector3,
+            connector::*, connector_4::Connector4, connector_5::Connector5,
             connector_b::ConnectorB, connector_c::ConnectorC,
         },
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
@@ -63,6 +63,7 @@ impl AssertTransaction {
         Self::new_for_validation(
             context.network,
             &context.operator_public_key,
+            &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             input_0,
         )
@@ -71,26 +72,28 @@ impl AssertTransaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
+        operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         input_0: Input,
     ) -> Self {
-        let connector_2 = Connector2::new(network, operator_public_key);
-        let connector_3 = Connector3::new(network, n_of_n_taproot_public_key);
+        let connector_4 = Connector4::new(network, operator_public_key);
+        let connector_5 = Connector5::new(network, n_of_n_taproot_public_key);
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
         let connector_c = ConnectorC::new(network, operator_taproot_public_key);
 
-        let _input_0 = connector_b.generate_taproot_leaf_tx_in(1, &input_0);
+        let input_0_leaf = 1;
+        let _input_0 = connector_b.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
         let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: connector_2.generate_address().script_pubkey(),
+            script_pubkey: connector_4.generate_address().script_pubkey(),
         };
 
         let _output_1 = TxOut {
             value: total_output_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: connector_3.generate_taproot_address().script_pubkey(),
+            script_pubkey: connector_5.generate_taproot_address().script_pubkey(),
         };
 
         let _output_2 = TxOut {
@@ -109,7 +112,7 @@ impl AssertTransaction {
                 value: input_0.amount,
                 script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
             }],
-            prev_scripts: vec![connector_b.generate_taproot_leaf_script(1)],
+            prev_scripts: vec![connector_b.generate_taproot_leaf_script(input_0_leaf)],
             connector_b,
             musig2_nonces: HashMap::new(),
             musig2_signatures: HashMap::new(),
@@ -117,15 +120,6 @@ impl AssertTransaction {
     }
 
     fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
-        // pre_sign_taproot_input(
-        //     self,
-        //     context,
-        //     0,
-        //     TapSighashType::All,
-        //     self.connector_b.generate_taproot_spend_info(),
-        //     &vec![&context.n_of_n_keypair],
-        // );
-
         let input_index = 0;
         pre_sign_musig2_taproot_input(
             self,

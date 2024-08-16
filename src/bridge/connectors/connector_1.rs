@@ -6,7 +6,14 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{constants::{num_blocks_per_network, NUM_BLOCKS_PER_6_HOURS, NUM_BLOCKS_PER_DAY, NUM_BLOCKS_PER_2_WEEKS}, scripts::*, transactions::base::Input},
+    super::{
+        constants::{
+            num_blocks_per_network, NUM_BLOCKS_PER_2_WEEKS, NUM_BLOCKS_PER_6_HOURS,
+            NUM_BLOCKS_PER_DAY,
+        },
+        scripts::*,
+        transactions::base::Input,
+    },
     connector::*,
 };
 
@@ -21,21 +28,29 @@ pub struct Connector1 {
 }
 
 impl Connector1 {
-    pub fn new(network: Network,
+    pub fn new(
+        network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+    ) -> Self {
         Connector1 {
             network,
             operator_taproot_public_key: operator_taproot_public_key.clone(),
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
             num_blocks_timelock_0: num_blocks_per_network(network, NUM_BLOCKS_PER_2_WEEKS),
-            num_blocks_timelock_1: num_blocks_per_network(network, NUM_BLOCKS_PER_2_WEEKS + NUM_BLOCKS_PER_DAY),
+            num_blocks_timelock_1: num_blocks_per_network(
+                network,
+                NUM_BLOCKS_PER_2_WEEKS + NUM_BLOCKS_PER_DAY,
+            ),
             num_blocks_timelock_2: num_blocks_per_network(network, NUM_BLOCKS_PER_6_HOURS),
         }
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        generate_timelock_taproot_script(&self.operator_taproot_public_key, self.num_blocks_timelock_0)
+        generate_timelock_taproot_script(
+            &self.operator_taproot_public_key,
+            self.num_blocks_timelock_0,
+        )
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
@@ -43,7 +58,10 @@ impl Connector1 {
     }
 
     fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
-        generate_timelock_taproot_script(&self.n_of_n_taproot_public_key, self.num_blocks_timelock_1)
+        generate_timelock_taproot_script(
+            &self.n_of_n_taproot_public_key,
+            self.num_blocks_timelock_1,
+        )
     }
 
     fn generate_taproot_leaf_1_tx_in(&self, input: &Input) -> TxIn {
@@ -51,7 +69,10 @@ impl Connector1 {
     }
 
     fn generate_taproot_leaf_2_script(&self) -> ScriptBuf {
-        generate_timelock_taproot_script(&self.n_of_n_taproot_public_key, self.num_blocks_timelock_2)
+        generate_timelock_taproot_script(
+            &self.n_of_n_taproot_public_key,
+            self.num_blocks_timelock_2,
+        )
     }
 
     fn generate_taproot_leaf_2_tx_in(&self, input: &Input) -> TxIn {
