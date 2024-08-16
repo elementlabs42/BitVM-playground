@@ -24,11 +24,12 @@ mod tests {
             _,
             _,
             operator_context,
-            verifier0_context,
-            verifier1_context,
+            verifier_0_context,
+            verifier_1_context,
             _,
             _,
             connector_b,
+            _,
             _,
             _,
             _,
@@ -44,11 +45,11 @@ mod tests {
 
         let mut burn_tx = BurnTransaction::new(&operator_context, Input { outpoint, amount });
 
-        let secret_nonces0 = burn_tx.push_nonces(&verifier0_context);
-        let secret_nonces1 = burn_tx.push_nonces(&verifier1_context);
+        let secret_nonces_0 = burn_tx.push_nonces(&verifier_0_context);
+        let secret_nonces_1 = burn_tx.push_nonces(&verifier_1_context);
 
-        burn_tx.pre_sign(&verifier0_context, &secret_nonces0);
-        burn_tx.pre_sign(&verifier1_context, &secret_nonces1);
+        burn_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
+        burn_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
 
         let tx = burn_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
@@ -67,11 +68,12 @@ mod tests {
             _,
             _,
             operator_context,
-            verifier0_context,
-            verifier1_context,
+            verifier_0_context,
+            verifier_1_context,
             _,
             _,
             connector_b,
+            _,
             _,
             _,
             _,
@@ -87,20 +89,20 @@ mod tests {
 
         let mut burn_tx = BurnTransaction::new(&operator_context, Input { outpoint, amount });
 
-        let secret_nonces0 = burn_tx.push_nonces(&verifier0_context);
-        let secret_nonces1 = burn_tx.push_nonces(&verifier1_context);
+        let secret_nonces_0 = burn_tx.push_nonces(&verifier_0_context);
+        let secret_nonces_1 = burn_tx.push_nonces(&verifier_1_context);
 
-        burn_tx.pre_sign(&verifier0_context, &secret_nonces0);
-        burn_tx.pre_sign(&verifier1_context, &secret_nonces1);
+        burn_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
+        burn_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
 
         let mut tx = burn_tx.finalize();
 
-        let secp = verifier0_context.secp;
+        let secp = verifier_0_context.secp;
         let verifier_secret: &str =
             "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
         let verifier_keypair = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();
         let verifier_private_key =
-            PrivateKey::new(verifier_keypair.secret_key(), verifier0_context.network);
+            PrivateKey::new(verifier_keypair.secret_key(), verifier_0_context.network);
         let verifier_pubkey = PublicKey::from_private_key(&secp, &verifier_private_key);
 
         let verifier_output = TxOut {

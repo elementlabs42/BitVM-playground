@@ -29,7 +29,8 @@ async fn test_peg_out_success() {
         _,
         _,
         _,
-        evm_address,
+        _,
+        withdrawer_evm_address,
     ) = setup_test().await;
     let timestamp = 1722328130u32;
 
@@ -62,7 +63,7 @@ async fn test_peg_out_success() {
     let peg_out = PegOutTransaction::new(
         &operator_context,
         &withdrawer_context.withdrawer_public_key,
-        &evm_address,
+        &withdrawer_evm_address,
         timestamp,
         operator_input,
     );

@@ -26,8 +26,8 @@ async fn test_take_2_success() {
         _,
         depositor_context,
         operator_context,
-        verifier0_context,
-        verifier1_context,
+        verifier_0_context,
+        verifier_1_context,
         _,
         _,
         connector_b,
@@ -37,7 +37,8 @@ async fn test_take_2_success() {
         _,
         _,
         _,
-        evm_address,
+        depositor_evm_address,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs
@@ -57,9 +58,9 @@ async fn test_take_2_success() {
     let (peg_in_confirm_tx, peg_in_confirm_tx_id) = create_and_mine_peg_in_confirm_tx(
         &client,
         &depositor_context,
-        &verifier0_context,
-        &verifier1_context,
-        &evm_address,
+        &verifier_0_context,
+        &verifier_1_context,
+        &depositor_evm_address,
         &peg_in_confirm_funding_address,
         deposit_input_amount,
     )
@@ -69,8 +70,8 @@ async fn test_take_2_success() {
     let (assert_tx, assert_tx_id) = create_and_mine_assert_tx(
         &client,
         &operator_context,
-        &verifier0_context,
-        &verifier1_context,
+        &verifier_0_context,
+        &verifier_1_context,
         &assert_funding_address,
         assert_input_amount,
     )
@@ -106,11 +107,17 @@ async fn test_take_2_success() {
         connector_3_input,
     );
 
-    let secret_nonces0 = take_2.push_nonces(&verifier0_context);
-    let secret_nonces1 = take_2.push_nonces(&verifier1_context);
+    let secret_nonces_0 = take_2.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = take_2.push_nonces(&verifier_1_context);
 
-    take_2.pre_sign(&verifier0_context, &secret_nonces0);
-    take_2.pre_sign(&verifier1_context, &secret_nonces1);
+    take_2.pre_sign(&verifier_0_context, &secret_nonces_0);
+    take_2.pre_sign(&verifier_1_context, &secret_nonces_1);
+
+    let take_2_tx = take_2.finalize();
+    let take_2_tx_id = take_2_tx.compute_txid();
+
+    take_2.pre_sign(&verifier_0_context, &secret_nonces_0);
+    take_2.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let take_2_tx = take_2.finalize();
     let take_2_tx_id = take_2_tx.compute_txid();

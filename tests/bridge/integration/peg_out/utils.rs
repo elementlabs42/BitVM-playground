@@ -38,8 +38,8 @@ pub async fn create_and_mine_kick_off_tx(
 pub async fn create_and_mine_assert_tx(
     client: &BitVMClient,
     operator_context: &OperatorContext,
-    verifier0_context: &VerifierContext,
-    verifier1_context: &VerifierContext,
+    verifier_0_context: &VerifierContext,
+    verifier_1_context: &VerifierContext,
     assert_funding_utxo_address: &Address,
     input_amount: Amount,
 ) -> (Transaction, Txid) {
@@ -52,11 +52,11 @@ pub async fn create_and_mine_assert_tx(
     };
     let mut assert = AssertTransaction::new(&operator_context, assert_input);
 
-    let secret_nonces0 = assert.push_nonces(&verifier0_context);
-    let secret_nonces1 = assert.push_nonces(&verifier1_context);
+    let secret_nonces_0 = assert.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = assert.push_nonces(&verifier_1_context);
 
-    assert.pre_sign(&verifier0_context, &secret_nonces0);
-    assert.pre_sign(&verifier1_context, &secret_nonces1);
+    assert.pre_sign(&verifier_0_context, &secret_nonces_0);
+    assert.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let assert_tx = assert.finalize();
     let assert_tx_id = assert_tx.compute_txid();
@@ -71,8 +71,8 @@ pub async fn create_and_mine_assert_tx(
 pub async fn create_and_mine_peg_in_confirm_tx(
     client: &BitVMClient,
     depositor_context: &DepositorContext,
-    verifier0_context: &VerifierContext,
-    verifier1_context: &VerifierContext,
+    verifier_0_context: &VerifierContext,
+    verifier_1_context: &VerifierContext,
     evm_address: &str,
     funding_address: &Address,
     input_amount: Amount,
@@ -87,11 +87,11 @@ pub async fn create_and_mine_peg_in_confirm_tx(
     let mut peg_in_confirm =
         PegInConfirmTransaction::new(depositor_context, evm_address, confirm_input);
 
-    let secret_nonces0 = peg_in_confirm.push_nonces(&verifier0_context);
-    let secret_nonces1 = peg_in_confirm.push_nonces(&verifier1_context);
+    let secret_nonces_0 = peg_in_confirm.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = peg_in_confirm.push_nonces(&verifier_1_context);
 
-    peg_in_confirm.pre_sign(&verifier0_context, &secret_nonces0);
-    peg_in_confirm.pre_sign(&verifier1_context, &secret_nonces1);
+    peg_in_confirm.pre_sign(&verifier_0_context, &secret_nonces_0);
+    peg_in_confirm.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let peg_in_confirm_tx_id = peg_in_confirm_tx.compute_txid();

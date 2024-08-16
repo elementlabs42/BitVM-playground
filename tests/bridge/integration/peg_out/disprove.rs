@@ -20,9 +20,10 @@ async fn test_disprove_success() {
         _,
         _,
         operator_context,
-        verifier0_context,
-        verifier1_context,
+        verifier_0_context,
+        verifier_1_context,
         withdrawer_context,
+        _,
         _,
         _,
         _,
@@ -65,11 +66,11 @@ async fn test_disprove_success() {
     };
     let mut assert = AssertTransaction::new(&operator_context, assert_kick_off_input);
 
-    let secret_nonces0 = assert.push_nonces(&verifier0_context);
-    let secret_nonces1 = assert.push_nonces(&verifier1_context);
+    let secret_nonces_0 = assert.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = assert.push_nonces(&verifier_1_context);
 
-    assert.pre_sign(&verifier0_context, &secret_nonces0);
-    assert.pre_sign(&verifier1_context, &secret_nonces1);
+    assert.pre_sign(&verifier_0_context, &secret_nonces_0);
+    assert.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let assert_tx = assert.finalize();
     let assert_tx_id = assert_tx.compute_txid();
@@ -102,11 +103,11 @@ async fn test_disprove_success() {
         script_index,
     );
 
-    let secret_nonces0 = disprove.push_nonces(&verifier0_context);
-    let secret_nonces1 = disprove.push_nonces(&verifier1_context);
+    let secret_nonces_0 = disprove.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = disprove.push_nonces(&verifier_1_context);
 
-    disprove.pre_sign(&verifier0_context, &secret_nonces0);
-    disprove.pre_sign(&verifier1_context, &secret_nonces1);
+    disprove.pre_sign(&verifier_0_context, &secret_nonces_0);
+    disprove.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let reward_address = generate_pay_to_pubkey_script_address(
         withdrawer_context.network,

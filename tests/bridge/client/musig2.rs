@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bitcoin::Amount;
 
 use bitvm::bridge::{
@@ -5,6 +7,8 @@ use bitvm::bridge::{
     scripts::generate_pay_to_pubkey_script_address,
     transactions::base::Input,
 };
+
+use tokio::time::sleep;
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
@@ -26,7 +30,8 @@ async fn test_musig2_peg_in() {
         _,
         _,
         _,
-        evm_address,
+        depositor_evm_address,
+        _,
     ) = setup_test().await;
 
     // Depositor: generate graph
@@ -42,7 +47,7 @@ async fn test_musig2_peg_in() {
     .await;
 
     let graph_id = depositor_operator_verifier0_client
-        .create_peg_in_graph(Input { outpoint, amount }, &evm_address)
+        .create_peg_in_graph(Input { outpoint, amount }, &depositor_evm_address)
         .await;
     println!("Depositor: Created new graph {graph_id}");
 
@@ -97,6 +102,9 @@ async fn test_musig2_peg_in() {
     // Operator: finalize & verify
     println!("Operator: Reading state from remote...");
     depositor_operator_verifier0_client.sync().await;
+
+    // Wait for peg-in deposit transaction to be mined
+    sleep(Duration::from_secs(60)).await; // TODO: check if this can be refactored to drop waiting
 
     println!("Depositor: Mining peg in confirm...");
     depositor_operator_verifier0_client

@@ -23,8 +23,8 @@ async fn test_take_1_success() {
         _,
         depositor_context,
         operator_context,
-        verifier0_context,
-        verifier1_context,
+        verifier_0_context,
+        verifier_1_context,
         _,
         _,
         _,
@@ -34,7 +34,8 @@ async fn test_take_1_success() {
         _,
         _,
         _,
-        evm_address,
+        depositor_evm_address,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs
@@ -57,9 +58,9 @@ async fn test_take_1_success() {
     let (peg_in_confirm_tx, peg_in_confirm_tx_id) = create_and_mine_peg_in_confirm_tx(
         &client,
         &depositor_context,
-        &verifier0_context,
-        &verifier1_context,
-        &evm_address,
+        &verifier_0_context,
+        &verifier_1_context,
+        &depositor_evm_address,
         &peg_in_confirm_funding_address,
         deposit_input_amount,
     )
@@ -112,16 +113,16 @@ async fn test_take_1_success() {
         connector_b_input,
     );
 
-    let secret_nonces0 = take_1.push_nonces(&verifier0_context);
-    let secret_nonces1 = take_1.push_nonces(&verifier1_context);
+    let secret_nonces_0 = take_1.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = take_1.push_nonces(&verifier_1_context);
 
-    take_1.pre_sign(&verifier0_context, &secret_nonces0);
-    take_1.pre_sign(&verifier1_context, &secret_nonces1);
+    take_1.pre_sign(&verifier_0_context, &secret_nonces_0);
+    take_1.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let take_1_tx = take_1.finalize();
     let take_1_tx_id = take_1_tx.compute_txid();
 
-    // mine take1
+    // mine take 1
     sleep(Duration::from_secs(60)).await;
     let take_1_result = client.esplora.broadcast(&take_1_tx).await;
     assert!(take_1_result.is_ok());

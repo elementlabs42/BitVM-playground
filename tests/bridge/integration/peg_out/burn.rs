@@ -22,9 +22,10 @@ async fn test_burn_success() {
         _,
         _,
         operator_context,
-        verifier0_context,
-        verifier1_context,
+        verifier_0_context,
+        verifier_1_context,
         withdrawer_context,
+        _,
         _,
         _,
         _,
@@ -68,11 +69,11 @@ async fn test_burn_success() {
 
     let mut burn = BurnTransaction::new(&operator_context, burn_kick_off_input);
 
-    let secret_nonces0 = burn.push_nonces(&verifier0_context);
-    let secret_nonces1 = burn.push_nonces(&verifier1_context);
+    let secret_nonces_0 = burn.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = burn.push_nonces(&verifier_1_context);
 
-    burn.pre_sign(&verifier0_context, &secret_nonces0);
-    burn.pre_sign(&verifier1_context, &secret_nonces1);
+    burn.pre_sign(&verifier_0_context, &secret_nonces_0);
+    burn.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let reward_address = generate_pay_to_pubkey_script_address(
         withdrawer_context.network,

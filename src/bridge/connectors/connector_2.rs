@@ -6,7 +6,9 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{scripts::*, transactions::base::Input},
+    super::{
+        super::bridge::constants::NUM_BLOCKS_PER_2_WEEKS, scripts::*, transactions::base::Input,
+    },
     connector::*,
 };
 

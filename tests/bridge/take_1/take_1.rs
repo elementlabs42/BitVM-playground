@@ -18,8 +18,8 @@ async fn test_take_1_tx() {
         _,
         _,
         operator_context,
-        verifier0_context,
-        verifier1_context,
+        verifier_0_context,
+        verifier_1_context,
         _,
         connector_a,
         connector_b,
@@ -27,6 +27,7 @@ async fn test_take_1_tx() {
         _,
         connector_0,
         connector_1,
+        _,
         _,
         _,
         _,
@@ -72,11 +73,11 @@ async fn test_take_1_tx() {
         },
     );
 
-    let secret_nonces0 = take_1_tx.push_nonces(&verifier0_context);
-    let secret_nonces1 = take_1_tx.push_nonces(&verifier1_context);
+    let secret_nonces_0 = take_1_tx.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = take_1_tx.push_nonces(&verifier_1_context);
 
-    take_1_tx.pre_sign(&verifier0_context, &secret_nonces0);
-    take_1_tx.pre_sign(&verifier1_context, &secret_nonces1);
+    take_1_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
+    take_1_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let tx = take_1_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);

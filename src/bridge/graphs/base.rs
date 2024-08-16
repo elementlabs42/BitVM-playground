@@ -13,10 +13,10 @@ pub const ONE_HUNDRED: u64 = 2 << 26; // 134217728
 pub const OPERATOR_SECRET: &str =
     "3076ca1dfc1e383be26d5dd3c0c427340f96139fa8c2520862cf551ec2d670ac";
 
-pub const VERIFIER0_SECRET: &str =
+pub const VERIFIER_0_SECRET: &str =
     "ee0817eac0c13aa8ee2dd3256304041f09f0499d1089b56495310ae8093583e2";
 
-pub const VERIFIER1_SECRET: &str =
+pub const VERIFIER_1_SECRET: &str =
     "fc294c70faf210d4d0807ea7a3dba8f7e41700d90c119e1ae82a0687d89d297f";
 
 pub const DEPOSITOR_SECRET: &str =
@@ -25,7 +25,8 @@ pub const DEPOSITOR_SECRET: &str =
 pub const WITHDRAWER_SECRET: &str =
     "fffd54f6d8f8ad470cb507fd4b6e9b3ea26b4221a4900cc5ad5916ce67c02f1e";
 
-pub const EVM_ADDRESS: &str = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+pub const DEPOSITOR_EVM_ADDRESS: &str = "0xDDdDddDdDdddDDddDDddDDDDdDdDDdDDdDDDDDDd";
+pub const WITHDRAWER_EVM_ADDRESS: &str = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
 pub trait BaseGraph {
     fn network(&self) -> Network;
