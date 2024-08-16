@@ -32,7 +32,7 @@ impl ConnectorZ {
     }
 
     // leaf[0] is TimeLock script that the depositor can spend after timelock, if leaf[1] has not been spent
-    fn generate_taproot_leaf0_script(&self) -> ScriptBuf {
+    fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
         script! {
         { NUM_BLOCKS_PER_2_WEEKS }
         OP_CSV
@@ -43,7 +43,7 @@ impl ConnectorZ {
         .compile()
     }
 
-    fn generate_taproot_leaf0_tx_in(&self, input: &Input) -> TxIn {
+    fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
         let mut tx_in = generate_default_tx_in(input);
         tx_in.sequence = Sequence(NUM_BLOCKS_PER_2_WEEKS);
         tx_in
@@ -51,7 +51,7 @@ impl ConnectorZ {
 
     // leaf[1] is spendable by a multisig of depositor and OPK and VPK[1…N]
     // the transaction script contains an [evm_address] (inscription data)
-    fn generate_taproot_leaf1_script(&self) -> ScriptBuf {
+    fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
         script! {
         OP_FALSE
         OP_IF
@@ -65,32 +65,32 @@ impl ConnectorZ {
         .compile()
     }
 
-    fn generate_taproot_leaf1_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
+    fn generate_taproot_leaf_1_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 }
 
 impl TaprootConnector for ConnectorZ {
     fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
         match leaf_index {
-            0 => self.generate_taproot_leaf0_script(),
-            1 => self.generate_taproot_leaf1_script(),
+            0 => self.generate_taproot_leaf_0_script(),
+            1 => self.generate_taproot_leaf_1_script(),
             _ => panic!("Invalid leaf index."),
         }
     }
 
     fn generate_taproot_leaf_tx_in(&self, leaf_index: u32, input: &Input) -> TxIn {
         match leaf_index {
-            0 => self.generate_taproot_leaf0_tx_in(input),
-            1 => self.generate_taproot_leaf1_tx_in(input),
+            0 => self.generate_taproot_leaf_0_tx_in(input),
+            1 => self.generate_taproot_leaf_1_tx_in(input),
             _ => panic!("Invalid leaf index."),
         }
     }
 
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
         TaprootBuilder::new()
-            .add_leaf(1, self.generate_taproot_leaf0_script())
-            .expect("Unable to add leaf0")
-            .add_leaf(1, self.generate_taproot_leaf1_script())
-            .expect("Unable to add leaf1")
+            .add_leaf(1, self.generate_taproot_leaf_0_script())
+            .expect("Unable to add leaf 0")
+            .add_leaf(1, self.generate_taproot_leaf_1_script())
+            .expect("Unable to add leaf 1")
             .finalize(&Secp256k1::new(), self.depositor_taproot_public_key) // TODO: should this be depositor or n-of-n
             .expect("Unable to finalize ttaproot")
     }
