@@ -58,29 +58,29 @@ impl PreSignedMusig2Transaction for BurnTransaction {
 }
 
 impl BurnTransaction {
-    pub fn new(context: &OperatorContext, input0: Input) -> Self {
-        Self::new_for_validation(context.network, &context.n_of_n_taproot_public_key, input0)
+    pub fn new(context: &OperatorContext, input_0: Input) -> Self {
+        Self::new_for_validation(context.network, &context.n_of_n_taproot_public_key, input_0)
     }
 
     pub fn new_for_validation(
         network: Network,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        input0: Input,
+        input_0: Input,
     ) -> Self {
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
 
-        let _input0 = connector_b.generate_taproot_leaf_tx_in(2, &input0);
+        let _input_0 = connector_b.generate_taproot_leaf_tx_in(2, &input_0);
 
-        let total_output_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
 
         // Output[0]: value=V*2%*95% to burn
-        let _output0 = TxOut {
+        let _output_0 = TxOut {
             value: total_output_amount * 95 / 100,
             script_pubkey: generate_burn_script_address(network).script_pubkey(),
         };
 
         let reward_output_amount = total_output_amount - (total_output_amount * 95 / 100);
-        let _output1 = TxOut {
+        let _output_1 = TxOut {
             value: reward_output_amount,
             script_pubkey: ScriptBuf::default(),
         };
@@ -89,11 +89,11 @@ impl BurnTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![_input0],
-                output: vec![_output0, _output1],
+                input: vec![_input_0],
+                output: vec![_output_0, _output_1],
             },
             prev_outs: vec![TxOut {
-                value: input0.amount,
+                value: input_0.amount,
                 script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_b.generate_taproot_leaf_script(2)],
@@ -104,7 +104,7 @@ impl BurnTransaction {
         }
     }
 
-    fn sign_input0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+    fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
         // pre_sign_taproot_input(
         //     self,
         //     context,
@@ -125,11 +125,11 @@ impl BurnTransaction {
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
-            self.finalize_input0(context);
+            self.finalize_input_0(context);
         }
     }
 
-    fn finalize_input0(&mut self, context: &dyn BaseContext) {
+    fn finalize_input_0(&mut self, context: &dyn BaseContext) {
         let input_index = 0;
         finalize_musig2_taproot_input(
             self,
@@ -155,7 +155,7 @@ impl BurnTransaction {
         context: &VerifierContext,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
-        self.sign_input0(context, &secret_nonces[&0]);
+        self.sign_input_0(context, &secret_nonces[&0]);
     }
 
     pub fn add_output(&mut self, output_script_pubkey: ScriptBuf) {

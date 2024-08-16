@@ -130,29 +130,29 @@ impl PegInGraph {
             PegInDepositTransaction::new(context, evm_address, deposit_input);
         let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();
 
-        let peg_in_refund_vout0: usize = 0;
+        let peg_in_refund_vout_0: usize = 0;
         let peg_in_refund_transaction = PegInRefundTransaction::new(
             context,
             evm_address,
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
-                    vout: peg_in_refund_vout0.to_u32().unwrap(),
+                    vout: peg_in_refund_vout_0.to_u32().unwrap(),
                 },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout0].value,
+                amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout_0].value,
             },
         );
 
-        let peg_in_confirm_vout0: usize = 0;
+        let peg_in_confirm_vout_0: usize = 0;
         let peg_in_confirm_transaction = PegInConfirmTransaction::new(
             context,
             evm_address,
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
-                    vout: peg_in_confirm_vout0.to_u32().unwrap(),
+                    vout: peg_in_confirm_vout_0.to_u32().unwrap(),
                 },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout0].value,
+                amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout_0].value,
             },
         );
 
@@ -186,7 +186,7 @@ impl PegInGraph {
         );
         let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();
 
-        let peg_in_refund_vout0: usize = 0;
+        let peg_in_refund_vout_0: usize = 0;
         let peg_in_refund_transaction = PegInRefundTransaction::new_for_validation(
             self.network,
             &self.depositor_public_key,
@@ -196,13 +196,13 @@ impl PegInGraph {
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
-                    vout: peg_in_refund_vout0.to_u32().unwrap(),
+                    vout: peg_in_refund_vout_0.to_u32().unwrap(),
                 },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout0].value,
+                amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout_0].value,
             },
         );
 
-        let peg_in_confirm_vout0: usize = 0;
+        let peg_in_confirm_vout_0: usize = 0;
         let peg_in_confirm_transaction = PegInConfirmTransaction::new_for_validation(
             self.network,
             &self.depositor_taproot_public_key,
@@ -211,9 +211,9 @@ impl PegInGraph {
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
-                    vout: peg_in_confirm_vout0.to_u32().unwrap(),
+                    vout: peg_in_confirm_vout_0.to_u32().unwrap(),
                 },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout0].value,
+                amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout_0].value,
             },
         );
 

@@ -64,24 +64,24 @@ impl PreSignedMusig2Transaction for Take1Transaction {
 impl Take1Transaction {
     pub fn new(
         context: &OperatorContext,
-        input0: Input,
-        input1: Input,
-        input2: Input,
-        input3: Input,
+        input_0: Input,
+        input_1: Input,
+        input_2: Input,
+        input_3: Input,
     ) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
-            input0,
-            input1,
-            input2,
-            input3,
+            input_0,
+            input_1,
+            input_2,
+            input_3,
         );
 
-        this.sign_input1(context);
-        this.sign_input2(context);
+        this.sign_input_1(context);
+        this.sign_input_2(context);
 
         this
     }
@@ -91,10 +91,10 @@ impl Take1Transaction {
         operator_public_key: &PublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        input0: Input,
-        input1: Input,
-        input2: Input,
-        input3: Input,
+        input_0: Input,
+        input_1: Input,
+        input_2: Input,
+        input_3: Input,
     ) -> Self {
         let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_1 = Connector1::new(network, operator_public_key);
@@ -105,18 +105,18 @@ impl Take1Transaction {
         );
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
 
-        let _input0 = connector_0.generate_taproot_leaf_tx_in(0, &input0);
+        let _input_0 = connector_0.generate_taproot_leaf_tx_in(0, &input_0);
 
-        let _input1 = connector_1.generate_tx_in(&input1);
+        let _input_1 = connector_1.generate_tx_in(&input_1);
 
-        let _input2 = connector_a.generate_taproot_leaf_tx_in(0, &input2);
+        let _input_2 = connector_a.generate_taproot_leaf_tx_in(0, &input_2);
 
-        let _input3 = connector_b.generate_taproot_leaf_tx_in(0, &input3);
+        let _input_3 = connector_b.generate_taproot_leaf_tx_in(0, &input_3);
 
-        let total_output_amount = input0.amount + input1.amount + input2.amount + input3.amount
+        let total_output_amount = input_0.amount + input_1.amount + input_2.amount + input_3.amount
             - Amount::from_sat(FEE_AMOUNT);
 
-        let _output0 = TxOut {
+        let _output_0 = TxOut {
             value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(network, operator_public_key)
                 .script_pubkey(),
@@ -126,24 +126,24 @@ impl Take1Transaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![_input0, _input1, _input2, _input3],
-                output: vec![_output0],
+                input: vec![_input_0, _input_1, _input_2, _input_3],
+                output: vec![_output_0],
             },
             prev_outs: vec![
                 TxOut {
-                    value: input0.amount,
+                    value: input_0.amount,
                     script_pubkey: connector_0.generate_taproot_address().script_pubkey(),
                 },
                 TxOut {
-                    value: input1.amount,
+                    value: input_1.amount,
                     script_pubkey: connector_1.generate_address().script_pubkey(),
                 },
                 TxOut {
-                    value: input2.amount,
+                    value: input_2.amount,
                     script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
                 },
                 TxOut {
-                    value: input3.amount,
+                    value: input_3.amount,
                     script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
                 },
             ],
@@ -161,7 +161,7 @@ impl Take1Transaction {
         }
     }
 
-    fn sign_input0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+    fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
         let input_index = 0;
         pre_sign_musig2_taproot_input(
             self,
@@ -173,11 +173,11 @@ impl Take1Transaction {
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
-            self.finalize_input0(context);
+            self.finalize_input_0(context);
         }
     }
 
-    fn finalize_input0(&mut self, context: &dyn BaseContext) {
+    fn finalize_input_0(&mut self, context: &dyn BaseContext) {
         let input_index = 0;
         finalize_musig2_taproot_input(
             self,
@@ -188,7 +188,7 @@ impl Take1Transaction {
         );
     }
 
-    fn sign_input1(&mut self, context: &OperatorContext) {
+    fn sign_input_1(&mut self, context: &OperatorContext) {
         pre_sign_p2wsh_input(
             self,
             context,
@@ -198,7 +198,7 @@ impl Take1Transaction {
         );
     }
 
-    fn sign_input2(&mut self, context: &OperatorContext) {
+    fn sign_input_2(&mut self, context: &OperatorContext) {
         pre_sign_taproot_input(
             self,
             context,
@@ -209,7 +209,7 @@ impl Take1Transaction {
         );
     }
 
-    fn sign_input3(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+    fn sign_input_3(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
         let input_index = 3;
         pre_sign_musig2_taproot_input(
             self,
@@ -221,11 +221,11 @@ impl Take1Transaction {
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
-            self.finalize_input3(context);
+            self.finalize_input_3(context);
         }
     }
 
-    fn finalize_input3(&mut self, context: &dyn BaseContext) {
+    fn finalize_input_3(&mut self, context: &dyn BaseContext) {
         let input_index = 3;
         finalize_musig2_taproot_input(
             self,
@@ -255,13 +255,13 @@ impl Take1Transaction {
         context: &VerifierContext,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
-        self.sign_input0(context, &secret_nonces[&0]);
-        self.sign_input3(context, &secret_nonces[&3]);
+        self.sign_input_0(context, &secret_nonces[&0]);
+        self.sign_input_3(context, &secret_nonces[&3]);
     }
 
-    pub fn merge(&mut self, take1: &Take1Transaction) {
-        merge_transactions(&mut self.tx, &take1.tx);
-        merge_musig2_nonces_and_signatures(self, take1);
+    pub fn merge(&mut self, take_1: &Take1Transaction) {
+        merge_transactions(&mut self.tx, &take_1.tx);
+        merge_musig2_nonces_and_signatures(self, take_1);
     }
 }
 

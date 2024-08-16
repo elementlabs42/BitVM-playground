@@ -798,7 +798,7 @@ impl BitVMClient {
             .await;
     }
 
-    pub async fn broadcast_take1(&mut self, peg_out_graph_id: &str) {
+    pub async fn broadcast_take_1(&mut self, peg_out_graph_id: &str) {
         let peg_out_graph = self
             .data
             .peg_out_graphs
@@ -808,10 +808,10 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().take1(&self.esplora).await;
+        peg_out_graph.unwrap().take_1(&self.esplora).await;
     }
 
-    pub async fn broadcast_take2(&mut self, peg_out_graph_id: &str) {
+    pub async fn broadcast_take_2(&mut self, peg_out_graph_id: &str) {
         let peg_out_graph = self
             .data
             .peg_out_graphs
@@ -821,7 +821,7 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().take2(&self.esplora).await;
+        peg_out_graph.unwrap().take_2(&self.esplora).await;
     }
 
     pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {

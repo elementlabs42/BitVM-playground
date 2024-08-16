@@ -5,7 +5,7 @@ use bitvm::bridge::{
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
-        kick_off1::KickOffTransaction,
+        kick_off_1::KickOffTransaction,
     },
 };
 

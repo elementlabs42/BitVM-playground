@@ -5,14 +5,14 @@ use bitvm::bridge::{
     graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
     transactions::{
         base::{BaseTransaction, Input},
-        take1::Take1Transaction,
+        take_1::Take1Transaction,
     },
 };
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
-async fn test_take1_tx() {
+async fn test_take_1_tx() {
     let (
         client,
         _,
@@ -52,7 +52,7 @@ async fn test_take1_tx() {
     let funding_outpoint3 =
         generate_stub_outpoint(&client, &funding_utxo_address3, input_value3).await;
 
-    let mut take1_tx = Take1Transaction::new(
+    let mut take_1_tx = Take1Transaction::new(
         &operator_context,
         Input {
             outpoint: funding_outpoint0,
@@ -72,13 +72,13 @@ async fn test_take1_tx() {
         },
     );
 
-    let secret_nonces0 = take1_tx.push_nonces(&verifier0_context);
-    let secret_nonces1 = take1_tx.push_nonces(&verifier1_context);
+    let secret_nonces0 = take_1_tx.push_nonces(&verifier0_context);
+    let secret_nonces1 = take_1_tx.push_nonces(&verifier1_context);
 
-    take1_tx.pre_sign(&verifier0_context, &secret_nonces0);
-    take1_tx.pre_sign(&verifier1_context, &secret_nonces1);
+    take_1_tx.pre_sign(&verifier0_context, &secret_nonces0);
+    take_1_tx.pre_sign(&verifier1_context, &secret_nonces1);
 
-    let tx = take1_tx.finalize();
+    let tx = take_1_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

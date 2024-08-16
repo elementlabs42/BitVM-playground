@@ -36,7 +36,7 @@ impl PreSignedTransaction for KickOff2Transaction {
   fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
-impl KickOff12ransaction {
+impl KickOff2Transaction {
   pub fn new(context: &OperatorContext, operator_input: Input) -> Self {
       let mut this = Self::new_for_validation(
           context.network,
@@ -46,7 +46,7 @@ impl KickOff12ransaction {
           operator_input,
       );
 
-      this.sign_input0(context);
+      this.sign_input_0(context);
 
       this
   }
@@ -68,7 +68,7 @@ impl KickOff12ransaction {
 
       // TODO: Include commit y
       // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?
-      let _input0 = TxIn {
+      let _input_0 = TxIn {
           previous_output: operator_input.outpoint,
           script_sig: ScriptBuf::new(),
           sequence: Sequence::MAX,
@@ -77,17 +77,17 @@ impl KickOff12ransaction {
 
       let available_input_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
 
-      let _output0 = TxOut {
+      let _output_0 = TxOut {
           value: Amount::from_sat(DUST_AMOUNT),
           script_pubkey: connector_1.generate_address().script_pubkey(),
       };
 
-      let _output1 = TxOut {
+      let _output_1 = TxOut {
           value: Amount::from_sat(DUST_AMOUNT),
           script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
       };
 
-      let _output2 = TxOut {
+      let _output_2 = TxOut {
           value: available_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
           script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
       };
@@ -96,8 +96,8 @@ impl KickOff12ransaction {
           tx: Transaction {
               version: bitcoin::transaction::Version(2),
               lock_time: absolute::LockTime::ZERO,
-              input: vec![_input0],
-              output: vec![_output0, _output1, _output2],
+              input: vec![_input_0],
+              output: vec![_output_0, _output_1, _output_2],
           },
           prev_outs: vec![TxOut {
               value: operator_input.amount,
@@ -108,7 +108,7 @@ impl KickOff12ransaction {
       }
   }
 
-  fn sign_input0(&mut self, context: &OperatorContext) {
+  fn sign_input_0(&mut self, context: &OperatorContext) {
       pre_sign_p2wsh_input(
           self,
           context,

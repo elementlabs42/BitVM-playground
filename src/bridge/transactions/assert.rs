@@ -59,12 +59,12 @@ impl PreSignedMusig2Transaction for AssertTransaction {
 }
 
 impl AssertTransaction {
-    pub fn new(context: &OperatorContext, input0: Input) -> Self {
+    pub fn new(context: &OperatorContext, input_0: Input) -> Self {
         Self::new_for_validation(
             context.network,
             &context.operator_public_key,
             &context.n_of_n_taproot_public_key,
-            input0,
+            input_0,
         )
     }
 
@@ -72,28 +72,28 @@ impl AssertTransaction {
         network: Network,
         operator_public_key: &PublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        input0: Input,
+        input_0: Input,
     ) -> Self {
         let connector_2 = Connector2::new(network, operator_public_key);
         let connector_3 = Connector3::new(network, n_of_n_taproot_public_key);
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
         let connector_c = ConnectorC::new(network, operator_taproot_public_key);
 
-        let _input0 = connector_b.generate_taproot_leaf_tx_in(1, &input0);
+        let _input_0 = connector_b.generate_taproot_leaf_tx_in(1, &input_0);
 
-        let total_output_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
 
-        let _output0 = TxOut {
+        let _output_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
             script_pubkey: connector_2.generate_address().script_pubkey(),
         };
 
-        let _output1 = TxOut {
+        let _output_1 = TxOut {
             value: total_output_amount - Amount::from_sat(DUST_AMOUNT) * 2,
             script_pubkey: connector_3.generate_taproot_address().script_pubkey(),
         };
 
-        let _output2 = TxOut {
+        let _output_2 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
             script_pubkey: connector_c.generate_taproot_address().script_pubkey(),
         };
@@ -102,11 +102,11 @@ impl AssertTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![_input0],
-                output: vec![_output0, _output1, _output2],
+                input: vec![_input_0],
+                output: vec![_output_0, _output_1, _output_2],
             },
             prev_outs: vec![TxOut {
-                value: input0.amount,
+                value: input_0.amount,
                 script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_b.generate_taproot_leaf_script(1)],
@@ -116,7 +116,7 @@ impl AssertTransaction {
         }
     }
 
-    fn sign_input0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+    fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
         // pre_sign_taproot_input(
         //     self,
         //     context,
@@ -137,11 +137,11 @@ impl AssertTransaction {
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
-            self.finalize_input0(context);
+            self.finalize_input_0(context);
         }
     }
 
-    fn finalize_input0(&mut self, context: &dyn BaseContext) {
+    fn finalize_input_0(&mut self, context: &dyn BaseContext) {
         let input_index = 0;
         finalize_musig2_taproot_input(
             self,
@@ -167,7 +167,7 @@ impl AssertTransaction {
         context: &VerifierContext,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
-        self.sign_input0(context, &secret_nonces[&0]);
+        self.sign_input_0(context, &secret_nonces[&0]);
     }
 
     pub fn merge(&mut self, assert: &AssertTransaction) {
