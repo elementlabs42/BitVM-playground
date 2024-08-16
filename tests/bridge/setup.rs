@@ -12,8 +12,8 @@ use bitvm::bridge::{
         verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
     graphs::base::{
-        DEPOSITOR_SECRET, EVM_ADDRESS, OPERATOR_SECRET, VERIFIER0_SECRET, VERIFIER1_SECRET,
-        WITHDRAWER_SECRET,
+        DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, N_OF_N_SECRET, OPERATOR_SECRET, VERIFIER0_SECRET,
+        VERIFIER1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
     },
 };
 
@@ -33,6 +33,7 @@ pub async fn setup_test() -> (
     Connector1,
     Connector2,
     Connector3,
+    String,
     String,
 ) {
     let network = Network::Testnet;
@@ -80,7 +81,7 @@ pub async fn setup_test() -> (
     let connector_c = ConnectorC::new(network, &operator_context.n_of_n_taproot_public_key);
     let connector_z = ConnectorZ::new(
         network,
-        EVM_ADDRESS,
+        DEPOSITOR_EVM_ADDRESS,
         &depositor_context.depositor_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
     );
@@ -105,6 +106,7 @@ pub async fn setup_test() -> (
         connector_1,
         connector_2,
         connector_3,
-        EVM_ADDRESS.to_string(),
+        DEPOSITOR_EVM_ADDRESS.to_string(),
+        WITHDRAWER_EVM_ADDRESS.to_string(),
     );
 }

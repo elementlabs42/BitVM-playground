@@ -29,15 +29,19 @@ async fn test_peg_in_confirm_tx() {
         _,
         _,
         _,
-        evm_address,
+        depositor_evm_address,
+        _,
     ) = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let outpoint =
         generate_stub_outpoint(&client, &connector_z.generate_taproot_address(), amount).await;
 
-    let mut peg_in_confirm_tx =
-        PegInConfirmTransaction::new(&depositor_context, &evm_address, Input { outpoint, amount });
+    let mut peg_in_confirm_tx = PegInConfirmTransaction::new(
+        &depositor_context,
+        &depositor_evm_address,
+        Input { outpoint, amount },
+    );
 
     let secret_nonces0 = peg_in_confirm_tx.push_nonces(&verifier0_context);
     let secret_nonces1 = peg_in_confirm_tx.push_nonces(&verifier1_context);

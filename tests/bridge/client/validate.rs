@@ -90,8 +90,25 @@ async fn test_validate_invalid_script_pubkey() {
 }
 
 async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
-    let (_, _, depositor_context, operator_context, _, _, _, _, _, _, _, _, _, _, _, evm_address) =
-        setup_test().await;
+    let (
+        _,
+        _,
+        depositor_context,
+        operator_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        depositor_evm_address,
+        _,
+    ) = setup_test().await;
 
     let amount_0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
     let amount_1 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT - 1);
@@ -112,7 +129,7 @@ async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
             outpoint: peg_in_outpoint,
             amount: amount_0,
         },
-        &evm_address,
+        &depositor_evm_address,
     );
 
     let peg_in_graph_1 = PegInGraph::new(
@@ -121,7 +138,7 @@ async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
             outpoint: peg_in_outpoint,
             amount: amount_1,
         },
-        &evm_address,
+        &depositor_evm_address,
     );
 
     let peg_out_graph = PegOutGraph::new(

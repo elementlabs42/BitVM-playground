@@ -34,7 +34,8 @@ async fn test_take1_success() {
         _,
         _,
         _,
-        evm_address,
+        depositor_evm_address,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs
@@ -59,7 +60,7 @@ async fn test_take1_success() {
         &depositor_context,
         &verifier0_context,
         &verifier1_context,
-        &evm_address,
+        &depositor_evm_address,
         &peg_in_confirm_funding_address,
         deposit_input_amount,
     )
