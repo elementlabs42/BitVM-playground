@@ -29,7 +29,8 @@ async fn test_musig2_peg_in() {
         _,
         _,
         _,
-        evm_address,
+        depositor_evm_address,
+        _,
     ) = setup_test().await;
 
     // Depositor: generate graph
@@ -45,7 +46,7 @@ async fn test_musig2_peg_in() {
     .await;
 
     let graph_id = depositor_operator_verifier0_client
-        .create_peg_in_graph(Input { outpoint, amount }, &evm_address)
+        .create_peg_in_graph(Input { outpoint, amount }, &depositor_evm_address)
         .await;
     println!("Depositor: Created new graph {graph_id}");
 

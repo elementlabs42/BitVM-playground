@@ -12,7 +12,7 @@ use bitvm::bridge::{
         verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
     graphs::base::{
-        DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, N_OF_N_SECRET, OPERATOR_SECRET, VERIFIER0_SECRET,
+        DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER0_SECRET,
         VERIFIER1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
     },
 };
