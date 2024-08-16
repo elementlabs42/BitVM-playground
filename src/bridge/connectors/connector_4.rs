@@ -1,9 +1,9 @@
-use bitcoin::{Address, Network, PublicKey, ScriptBuf, Sequence, TxIn};
+use bitcoin::{Address, Network, PublicKey, ScriptBuf, TxIn};
 use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        super::bridge::constants::NUM_BLOCKS_PER_2_WEEKS, scripts::*, transactions::base::Input,
+        super::bridge::constants::{num_blocks_per_network, NUM_BLOCKS_PER_2_WEEKS}, scripts::*, transactions::base::Input,
     },
     connector::*,
 };
@@ -20,11 +20,7 @@ impl Connector4 {
         Connector4 {
             network,
             operator_public_key: operator_public_key.clone(),
-            num_blocks_timelock: if network == Network::Bitcoin {
-                NUM_BLOCKS_PER_2_WEEKS
-            } else {
-                1
-            },
+            num_blocks_timelock: num_blocks_per_network(network, NUM_BLOCKS_PER_2_WEEKS),
         }
     }
 }
@@ -43,8 +39,6 @@ impl P2wshConnector for Connector4 {
     }
 
     fn generate_tx_in(&self, input: &Input) -> TxIn {
-        let mut tx_in = generate_default_tx_in(input);
-        tx_in.sequence = Sequence(u32::try_from(NUM_BLOCKS_PER_2_WEEKS).ok().unwrap() & 0xFFFFFFFF);
-        tx_in
+        generate_timelock_tx_in(input, self.num_blocks_timelock)
     }
 }

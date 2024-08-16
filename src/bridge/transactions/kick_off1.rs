@@ -18,7 +18,7 @@ use super::{
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct KickOffTransaction {
+pub struct KickOff1Transaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
@@ -26,7 +26,7 @@ pub struct KickOffTransaction {
     prev_scripts: Vec<ScriptBuf>,
 }
 
-impl PreSignedTransaction for KickOffTransaction {
+impl PreSignedTransaction for KickOff1Transaction {
     fn tx(&self) -> &Transaction { &self.tx }
 
     fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
@@ -36,7 +36,7 @@ impl PreSignedTransaction for KickOffTransaction {
     fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
-impl KickOffTransaction {
+impl KickOff1Transaction {
     pub fn new(context: &OperatorContext, operator_input: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
@@ -64,7 +64,7 @@ impl KickOffTransaction {
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
         );
-        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
+        let connector_2 = Connector2::new(network, n_of_n_taproot_public_key);
 
         // TODO: Include commit y
         // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?

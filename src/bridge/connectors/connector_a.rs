@@ -30,14 +30,12 @@ impl ConnectorA {
         }
     }
 
-    // leaf[0]: spendable by operator
     fn generate_taproot_leaf0_script(&self) -> ScriptBuf {
         generate_pay_to_pubkey_taproot_script(&self.operator_taproot_public_key)
     }
 
     fn generate_taproot_leaf0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 
-    // leaf[1]: spendable by operator with sighash flag=“Single|AnyoneCanPay”, spendable along with any other inputs such that the output value exceeds V*1%
     fn generate_taproot_leaf1_script(&self) -> ScriptBuf {
         generate_pay_to_pubkey_taproot_script(&self.operator_taproot_public_key)
     }

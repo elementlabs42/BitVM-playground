@@ -77,7 +77,7 @@ pub async fn setup_test() -> (
         &operator_context.n_of_n_taproot_public_key,
     );
     let connector_b = ConnectorB::new(network, &operator_context.n_of_n_taproot_public_key);
-    let connector_c = ConnectorC::new(network, &operator_context.n_of_n_taproot_public_key);
+    let connector_c = ConnectorC::new(network, &operator_context.operator_taproot_public_key);
     let connector_z = ConnectorZ::new(
         network,
         EVM_ADDRESS,

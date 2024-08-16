@@ -23,7 +23,7 @@ use super::{
             burn::BurnTransaction,
             challenge::ChallengeTransaction,
             disprove::DisproveTransaction,
-            kick_off::KickOffTransaction,
+            kick_off1::KickOffTransaction,
             peg_out::PegOutTransaction,
             pre_signed::PreSignedTransaction,
             take1::Take1Transaction,

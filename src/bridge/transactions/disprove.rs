@@ -78,7 +78,7 @@ impl DisproveTransaction {
         script_index: u32,
     ) -> Self {
         let connector_3 = Connector3::new(network, &n_of_n_taproot_public_key);
-        let connector_c = ConnectorC::new(network, &n_of_n_taproot_public_key);
+        let connector_c = ConnectorC::new(network, &operator_taproot_public_key);
 
         let _input0 = connector_3.generate_taproot_leaf_tx_in(0, &input0);
 

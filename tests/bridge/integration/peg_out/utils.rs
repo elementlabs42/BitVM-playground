@@ -5,7 +5,7 @@ use bitvm::bridge::{
     transactions::{
         assert::AssertTransaction,
         base::{BaseTransaction, Input},
-        kick_off::KickOffTransaction,
+        kick_off1::KickOffTransaction,
         peg_in_confirm::PegInConfirmTransaction,
     },
 };

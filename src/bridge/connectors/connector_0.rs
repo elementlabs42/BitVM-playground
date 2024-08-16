@@ -24,7 +24,6 @@ impl Connector0 {
         }
     }
 
-    // leaf[0]: spendable by VPK[1…N]
     fn generate_taproot_leaf0_script(&self) -> ScriptBuf {
         generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)
     }
