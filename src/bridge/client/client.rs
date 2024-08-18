@@ -203,7 +203,7 @@ impl BitVMClient {
                         Self::process_files_by_timestamp(self, latest_file_names, TEN_MINUTES)
                             .await;
                     match result {
-                        Ok(_) => println!("Ok"),
+                        Ok(_) => (), // println!("Ok"),
                         Err(err) => println!("Error: {}", err),
                     }
 
@@ -305,7 +305,7 @@ impl BitVMClient {
     async fn process_files(&mut self, file_names: Vec<String>) -> Option<String> {
         let mut latest_valid_file_name: Option<String> = None;
         if file_names.len() == 0 {
-            println!("No additional files to process")
+            // println!("No additional files to process")
         } else {
             // TODO: can be optimized to fetch all data at once?
             for file_name in file_names.iter() {
@@ -342,10 +342,14 @@ impl BitVMClient {
             let file_name_result = file_names.pop();
             if file_name_result.is_some() {
                 let file_name = file_name_result.unwrap();
-                let latest_data = Self::fetch_by_key(data_store, &file_name).await;
+                let (latest_data, latest_data_len) =
+                    Self::fetch_by_key(data_store, &file_name).await;
                 if latest_data.is_some() && Self::validate_data(&latest_data.as_ref().unwrap()) {
                     // data is valid
-                    println!("Fetched valid file: {}", file_name);
+                    println!(
+                        "Fetched valid file: {} (size: {})",
+                        file_name, latest_data_len
+                    );
                     latest_valid_file = latest_data;
                     latest_valid_file_name = Some(file_name);
                     break;
@@ -359,19 +363,21 @@ impl BitVMClient {
         return (latest_valid_file, latest_valid_file_name);
     }
 
-    async fn fetch_by_key(data_store: &DataStore, key: &String) -> Option<BitVMClientPublicData> {
+    async fn fetch_by_key(
+        data_store: &DataStore,
+        key: &String,
+    ) -> (Option<BitVMClientPublicData>, usize) {
         let result = data_store.fetch_data_by_key(key).await;
         if result.is_ok() {
-            let json = result.unwrap();
-            if json.is_some() {
-                let data = try_deserialize::<BitVMClientPublicData>(&json.unwrap());
+            if let Some(json) = result.unwrap() {
+                let data = try_deserialize::<BitVMClientPublicData>(&json);
                 if data.is_ok() {
-                    return Some(data.unwrap());
+                    return (Some(data.unwrap()), json.len());
                 }
             }
         }
 
-        None
+        (None, 0)
     }
 
     async fn save(&mut self) {
@@ -393,10 +399,10 @@ impl BitVMClient {
         let result = self.data_store.write_data(json.clone()).await;
         match result {
             Ok(key) => {
-                println!("Saved successfully to {}", key);
+                println!("Pushed new file: {} (size: {})", key, json.len());
                 Self::save_local_public_file(&self.file_path, &key, &json);
             }
-            Err(err) => println!("Failed to save: {}", err),
+            Err(err) => println!("Failed to push: {}", err),
         }
     }
 
@@ -420,7 +426,7 @@ impl BitVMClient {
             }
         }
 
-        println!("All graph data is valid");
+        // println!("All graph data is valid");
         true
     }
 
@@ -987,13 +993,13 @@ impl BitVMClient {
 
     fn save_local_public_file(file_path: &String, key: &String, json: &String) {
         Self::create_directories_if_non_existent(file_path);
-        println!("Saving public local file {}", key);
+        println!("Saving public data in local file: {}...", key);
         fs::write(format!("{file_path}/public/{key}"), json).expect("Unable to write a file");
     }
 
     fn save_local_private_file(file_path: &String, json: &String) {
         Self::create_directories_if_non_existent(file_path);
-        println!("Saving private local file");
+        println!("Saving private data in local file...");
         fs::write(format!("{file_path}/private/private_nonces.json"), json)
             .expect("Unable to write a file");
     }

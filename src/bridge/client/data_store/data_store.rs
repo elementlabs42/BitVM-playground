@@ -77,7 +77,7 @@ impl DataStore {
             Ok(driver) => {
                 let json = driver.fetch_json(key).await;
                 if json.is_ok() {
-                    println!("Fetched data file: {}", key);
+                    // println!("Fetched data file: {}", key);
                     return Ok(Some(json.unwrap()));
                 }
 
@@ -88,40 +88,41 @@ impl DataStore {
         }
     }
 
-    pub async fn fetch_latest_data(&self) -> Result<Option<String>, String> {
-        match self.get_driver() {
-            Ok(driver) => match driver.list_objects().await {
-                Ok(keys) => {
-                    let mut data_keys: Vec<String> = keys
-                        .iter()
-                        .filter(|key| CLIENT_DATA_REGEX.is_match(key))
-                        .cloned()
-                        .collect();
-                    data_keys.sort_by(|x, y| {
-                        if x < y {
-                            return Ordering::Less;
-                        }
-                        return Ordering::Greater;
-                    });
+    // TODO: Remove this as it appears to be unused.
+    // pub async fn fetch_latest_data(&self) -> Result<Option<String>, String> {
+    //     match self.get_driver() {
+    //         Ok(driver) => match driver.list_objects().await {
+    //             Ok(keys) => {
+    //                 let mut data_keys: Vec<String> = keys
+    //                     .iter()
+    //                     .filter(|key| CLIENT_DATA_REGEX.is_match(key))
+    //                     .cloned()
+    //                     .collect();
+    //                 data_keys.sort_by(|x, y| {
+    //                     if x < y {
+    //                         return Ordering::Less;
+    //                     }
+    //                     return Ordering::Greater;
+    //                 });
 
-                    while let Some(key) = data_keys.pop() {
-                        let json = driver.fetch_json(&key).await;
-                        if json.is_ok() {
-                            println!("Fetched latest data file: {}", key);
-                            return Ok(Some(json.unwrap()));
-                        } else {
-                            eprintln!("Unable to fetch json: {}", json.unwrap_err());
-                        }
-                    }
+    //                 while let Some(key) = data_keys.pop() {
+    //                     let json = driver.fetch_json(&key).await;
+    //                     if json.is_ok() {
+    //                         println!("Fetched latest data file: {}", key);
+    //                         return Ok(Some(json.unwrap()));
+    //                     } else {
+    //                         eprintln!("Unable to fetch json: {}", json.unwrap_err());
+    //                     }
+    //                 }
 
-                    println!("No data file found");
-                    Ok(None)
-                }
-                Err(err) => Err(err.to_string()),
-            },
-            Err(err) => Err(err.to_string()),
-        }
-    }
+    //                 println!("No data file found");
+    //                 Ok(None)
+    //             }
+    //             Err(err) => Err(err.to_string()),
+    //         },
+    //         Err(err) => Err(err.to_string()),
+    //     }
+    // }
 
     pub async fn write_data(&self, json: String) -> Result<String, String> {
         match self.get_driver() {
