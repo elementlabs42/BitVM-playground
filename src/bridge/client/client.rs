@@ -140,10 +140,7 @@ impl BitVMClient {
             }
         }
 
-        // TODO: load from local machine
-        let private_data = BitVMClientPrivateData {
-            secret_nonces: HashMap::new(),
-        };
+        let private_data = Self::get_private_data(&file_path);
 
         Self {
             esplora: Builder::new(ESPLORA_URL)
@@ -991,6 +988,19 @@ impl BitVMClient {
         );
     }
 
+    fn get_private_data(file_path: &String) -> BitVMClientPrivateData {
+        match Self::read_local_private_file(file_path) {
+            Some(data) => try_deserialize::<BitVMClientPrivateData>(&data)
+                .expect("Could not deserialize private data"),
+            None => {
+                println!("New private data will be generated.");
+                BitVMClientPrivateData {
+                    secret_nonces: HashMap::new(),
+                }
+            }
+        }
+    }
+
     fn save_local_public_file(file_path: &String, key: &String, json: &String) {
         Self::create_directories_if_non_existent(file_path);
         println!("Saving public data in local file: {}...", key);
@@ -1002,6 +1012,17 @@ impl BitVMClient {
         println!("Saving private data in local file...");
         fs::write(format!("{file_path}/private/private_nonces.json"), json)
             .expect("Unable to write a file");
+    }
+
+    fn read_local_private_file(file_path: &String) -> Option<String> {
+        println!("Reading private data from local file...");
+        match fs::read_to_string(format!("{file_path}/private/private_nonces.json")) {
+            Ok(content) => Some(content),
+            Err(e) => {
+                eprintln!("Could not read file {file_path} due to error: {e}");
+                None
+            }
+        }
     }
 
     fn create_directories_if_non_existent(file_path: &String) {
