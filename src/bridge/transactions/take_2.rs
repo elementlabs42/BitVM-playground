@@ -187,10 +187,11 @@ impl Take2Transaction {
     }
 
     fn sign_input_1(&mut self, context: &OperatorContext) {
+        let input_index = 1;
         pre_sign_p2wsh_input(
             self,
             context,
-            1,
+            input_index,
             EcdsaSighashType::All,
             &vec![&context.operator_keypair],
         );

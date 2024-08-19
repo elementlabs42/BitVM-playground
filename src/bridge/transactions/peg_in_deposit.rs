@@ -91,10 +91,11 @@ impl PegInDepositTransaction {
     }
 
     fn sign_input_0(&mut self, context: &DepositorContext) {
+        let input_index = 0;
         pre_sign_p2wsh_input(
             self,
             context,
-            0,
+            input_index,
             EcdsaSighashType::All,
             &vec![&context.depositor_keypair],
         );
