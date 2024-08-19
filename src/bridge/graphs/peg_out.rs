@@ -20,12 +20,16 @@ use super::{
         transactions::{
             assert::AssertTransaction,
             base::{validate_transaction, BaseTransaction, Input, InputWithScript},
-            burn::BurnTransaction,
             challenge::ChallengeTransaction,
             disprove::DisproveTransaction,
+            disprove_chain::DisproveChainTransaction,
             kick_off_1::KickOff1Transaction,
+            kick_off_2::KickOff2Transaction,
+            kick_off_timeout::KickOffTimeoutTransaction,
             peg_out::PegOutTransaction,
             pre_signed::PreSignedTransaction,
+            start_time::StartTimeTransaction,
+            start_time_timeout::StartTimeTimeoutTransaction,
             take_1::Take1Transaction,
             take_2::Take2Transaction,
         },
@@ -150,13 +154,18 @@ pub struct PegOutGraph {
 
     pub peg_in_graph_id: String,
     peg_in_confirm_txid: Txid,
-    kick_off_transaction: KickOffTransaction,
-    take_1_transaction: Take1Transaction,
-    challenge_transaction: ChallengeTransaction,
+
     assert_transaction: AssertTransaction,
-    take_2_transaction: Take2Transaction,
+    challenge_transaction: ChallengeTransaction,
+    disprove_chain_transaction: DisproveChainTransaction,
     disprove_transaction: DisproveTransaction,
-    burn_transaction: BurnTransaction,
+    kick_off_1_transaction: KickOff1Transaction,
+    kick_off_2_transaction: KickOff2Transaction,
+    kick_off_timeout_transaction: KickOffTimeoutTransaction,
+    start_time_transaction: StartTimeTransaction,
+    start_time_timeout_transaction: StartTimeTimeoutTransaction,
+    take_1_transaction: Take1Transaction,
+    take_2_transaction: Take2Transaction,
 
     operator_public_key: PublicKey,
     operator_taproot_public_key: XOnlyPublicKey,
@@ -176,15 +185,87 @@ impl BaseGraph for PegOutGraph {
 
 impl PegOutGraph {
     pub fn new(context: &OperatorContext, peg_in_graph: &PegInGraph, kickoff_input: Input) -> Self {
-        let kick_off_transaction = KickOffTransaction::new(context, kickoff_input);
-        let kick_off_txid = kick_off_transaction.tx().compute_txid();
-
         let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
+
+        let kick_off_1_transaction = KickOff1Transaction::new(context, kickoff_input);
+        let kick_off_1_txid = kick_off_1_transaction.tx().compute_txid();
+
+        let start_time_vout_0 = 2;
+        let start_time_transaction = StartTimeTransaction::new(
+            context,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: start_time_vout_0.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[start_time_vout_0].value,
+            },
+        );
+
+        let start_time_timeout_vout_0 = 2;
+        let start_time_timeout_vout_1 = 1;
+        let start_time_timeout_transaction = StartTimeTimeoutTransaction::new(
+            context,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: start_time_timeout_vout_0.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[start_time_timeout_vout_0].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: start_time_timeout_vout_1.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[start_time_timeout_vout_1].value,
+            },
+        );
+
+        let kick_off_2_vout_0 = 1;
+        let kick_off_2_transaction = KickOff2Transaction::new(
+            context,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: kick_off_2_vout_0.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[kick_off_2_vout_0].value,
+            },
+        );
+        let kick_off_2_txid = kick_off_2_transaction.tx().compute_txid();
+
+        let kick_off_timeout_vout_0 = 1;
+        let kick_off_timeout_transaction = KickOffTimeoutTransaction::new(
+            context,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: kick_off_timeout_vout_0.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[kick_off_timeout_vout_0].value,
+            },
+        );
+
+        let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
+        let challenge_vout_0 = 0;
+        let challenge_transaction = ChallengeTransaction::new(
+            context,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: challenge_vout_0.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[challenge_vout_0].value,
+            },
+            input_amount_crowdfunding,
+        );
+
         let take_1_vout_0 = 0;
         let take_1_vout_1 = 0;
-        let take_1_vout_2 = 1;
-        let take_1_vout_3 = 2;
+        let take_1_vout_2 = 0;
+        let take_1_vout_3 = 1;
         let take_1_transaction = Take1Transaction::new(
             context,
             Input {
@@ -196,57 +277,44 @@ impl PegOutGraph {
             },
             Input {
                 outpoint: OutPoint {
-                    txid: kick_off_txid,
+                    txid: kick_off_1_txid,
                     vout: take_1_vout_1.to_u32().unwrap(),
                 },
-                amount: kick_off_transaction.tx().output[take_1_vout_1].value,
+                amount: kick_off_1_transaction.tx().output[take_1_vout_1].value,
             },
             Input {
                 outpoint: OutPoint {
-                    txid: kick_off_txid,
+                    txid: kick_off_2_txid,
                     vout: take_1_vout_2.to_u32().unwrap(),
                 },
-                amount: kick_off_transaction.tx().output[take_1_vout_2].value,
+                amount: kick_off_2_transaction.tx().output[take_1_vout_2].value,
             },
             Input {
                 outpoint: OutPoint {
-                    txid: kick_off_txid,
+                    txid: kick_off_2_txid,
                     vout: take_1_vout_3.to_u32().unwrap(),
                 },
-                amount: kick_off_transaction.tx().output[take_1_vout_3].value,
+                amount: kick_off_2_transaction.tx().output[take_1_vout_3].value,
             },
         );
 
-        let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
-        let challenge_vout_0 = 1;
-        let challenge_transaction = ChallengeTransaction::new(
-            context,
-            Input {
-                outpoint: OutPoint {
-                    txid: kick_off_txid,
-                    vout: challenge_vout_0.to_u32().unwrap(),
-                },
-                amount: kick_off_transaction.tx().output[challenge_vout_0].value,
-            },
-            input_amount_crowdfunding,
-        );
-
-        let assert_vout_0 = 2;
+        let assert_vout_0 = 1;
         let assert_transaction = AssertTransaction::new(
             context,
             Input {
                 outpoint: OutPoint {
-                    txid: kick_off_txid,
+                    txid: kick_off_2_txid,
                     vout: assert_vout_0.to_u32().unwrap(),
                 },
-                amount: kick_off_transaction.tx().output[assert_vout_0].value,
+                amount: kick_off_2_transaction.tx().output[assert_vout_0].value,
             },
         );
-        let assert_txid = kick_off_transaction.tx().compute_txid();
+        let assert_txid = assert_transaction.tx().compute_txid();
 
         let take_2_vout_0 = 0;
         let take_2_vout_1 = 0;
         let take_2_vout_2 = 1;
+        let take_2_vout_3 = 2;
         let take_2_transaction = Take2Transaction::new(
             context,
             Input {
@@ -269,6 +337,13 @@ impl PegOutGraph {
                     vout: take_2_vout_2.to_u32().unwrap(),
                 },
                 amount: assert_transaction.tx().output[take_2_vout_2].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_txid,
+                    vout: take_2_vout_3.to_u32().unwrap(),
+                },
+                amount: assert_transaction.tx().output[take_2_vout_3].value,
             },
         );
 
@@ -294,15 +369,15 @@ impl PegOutGraph {
             script_index,
         );
 
-        let burn_vout_0 = 2;
-        let burn_transaction = BurnTransaction::new(
+        let disprove_chain_vout_0 = 2;
+        let disprove_chain_transaction = DisproveChainTransaction::new(
             context,
             Input {
                 outpoint: OutPoint {
-                    txid: kick_off_txid,
-                    vout: burn_vout_0.to_u32().unwrap(),
+                    txid: kick_off_2_txid,
+                    vout: disprove_chain_vout_0.to_u32().unwrap(),
                 },
-                amount: kick_off_transaction.tx().output[burn_vout_0].value,
+                amount: kick_off_2_transaction.tx().output[disprove_chain_vout_0].value,
             },
         );
 
@@ -315,13 +390,17 @@ impl PegOutGraph {
             n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
             peg_in_graph_id: peg_in_graph.id().clone(),
             peg_in_confirm_txid,
-            kick_off_transaction,
-            take_1_transaction,
-            challenge_transaction,
             assert_transaction,
-            take_2_transaction,
+            challenge_transaction,
+            disprove_chain_transaction,
             disprove_transaction,
-            burn_transaction,
+            kick_off_1_transaction,
+            kick_off_2_transaction,
+            kick_off_timeout_transaction,
+            start_time_transaction,
+            start_time_timeout_transaction,
+            take_1_transaction,
+            take_2_transaction,
             operator_public_key: context.operator_public_key,
             operator_taproot_public_key: context.operator_taproot_public_key,
             withdrawer_public_key: None,
@@ -332,25 +411,108 @@ impl PegOutGraph {
     }
 
     pub fn new_for_validation(&self) -> Self {
-        let kick_off_transaction = KickOffTransaction::new_for_validation(
+        let peg_in_confirm_txid = self.take_1_transaction.tx().input[0].previous_output.txid; // Self-referencing
+
+        let kick_off_1_vout_0 = 0;
+        let kick_off_1_transaction = KickOff1Transaction::new_for_validation(
             self.network,
             &self.operator_public_key,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
-                outpoint: self.kick_off_transaction.tx().input[0].previous_output,
-                amount: self.kick_off_transaction.prev_outs()[0].value,
+                outpoint: self.kick_off_1_transaction.tx().input[kick_off_1_vout_0].previous_output, // Self-referencing
+                amount: self.kick_off_1_transaction.prev_outs()[kick_off_1_vout_0].value, // Self-referencing
             },
         );
-        let kick_off_txid = kick_off_transaction.tx().compute_txid();
+        let kick_off_1_txid = kick_off_1_transaction.tx().compute_txid();
 
-        // let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
-        // let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
-        let peg_in_confirm_txid = self.take_1_transaction.tx().input[0].previous_output.txid; // Self-referencing
+        let start_time_vout_0 = 2;
+        let start_time_transaction = StartTimeTransaction::new_for_validation(
+            self.network,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_taproot_public_key,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: start_time_vout_0.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[start_time_vout_0].value,
+            },
+        );
+
+        let start_time_timeout_vout_0 = 2;
+        let start_time_timeout_vout_1 = 1;
+        let start_time_timeout_transaction = StartTimeTimeoutTransaction::new_for_validation(
+            self.network,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_taproot_public_key,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: start_time_timeout_vout_0.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[start_time_timeout_vout_0].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: start_time_timeout_vout_1.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[start_time_timeout_vout_1].value,
+            },
+        );
+
+        let kick_off_2_vout_0 = 1;
+        let kick_off_2_transaction = KickOff2Transaction::new_for_validation(
+            self.network,
+            &self.operator_public_key,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_taproot_public_key,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: kick_off_2_vout_0.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[kick_off_2_vout_0].value,
+            },
+        );
+        let kick_off_2_txid = kick_off_2_transaction.tx().compute_txid();
+
+        let kick_off_timeout_vout_0 = 1;
+        let kick_off_timeout_transaction = KickOffTimeoutTransaction::new_for_validation(
+            self.network,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_taproot_public_key,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: kick_off_timeout_vout_0.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[kick_off_timeout_vout_0].value,
+            },
+        );
+
+        let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
+        let challenge_vout_0 = 0;
+        let challenge_transaction = ChallengeTransaction::new_for_validation(
+            self.network,
+            &self.operator_public_key,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_taproot_public_key,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_1_txid,
+                    vout: challenge_vout_0.to_u32().unwrap(),
+                },
+                amount: kick_off_1_transaction.tx().output[challenge_vout_0].value,
+            },
+            input_amount_crowdfunding,
+        );
+
         let take_1_vout_0 = 0;
         let take_1_vout_1 = 0;
-        let take_1_vout_2 = 1;
-        let take_1_vout_3 = 2;
+        let take_1_vout_2 = 0;
+        let take_1_vout_3 = 1;
         let take_1_transaction = Take1Transaction::new_for_validation(
             self.network,
             &self.operator_public_key,
@@ -361,76 +523,62 @@ impl PegOutGraph {
                     txid: peg_in_confirm_txid,
                     vout: take_1_vout_0.to_u32().unwrap(),
                 },
-                amount: self.take_1_transaction.prev_outs()[0].value, // Self-referencing
+                amount: self.take_1_transaction.prev_outs()[take_1_vout_0].value, // Self-referencing
             },
             Input {
                 outpoint: OutPoint {
-                    txid: kick_off_txid,
+                    txid: kick_off_1_txid,
                     vout: take_1_vout_1.to_u32().unwrap(),
                 },
-                amount: kick_off_transaction.tx().output[take_1_vout_1].value,
+                amount: kick_off_1_transaction.tx().output[take_1_vout_1].value,
             },
             Input {
                 outpoint: OutPoint {
-                    txid: kick_off_txid,
+                    txid: kick_off_2_txid,
                     vout: take_1_vout_2.to_u32().unwrap(),
                 },
-                amount: kick_off_transaction.tx().output[take_1_vout_2].value,
+                amount: kick_off_2_transaction.tx().output[take_1_vout_2].value,
             },
             Input {
                 outpoint: OutPoint {
-                    txid: kick_off_txid,
+                    txid: kick_off_2_txid,
                     vout: take_1_vout_3.to_u32().unwrap(),
                 },
-                amount: kick_off_transaction.tx().output[take_1_vout_3].value,
+                amount: kick_off_2_transaction.tx().output[take_1_vout_3].value,
             },
         );
 
-        let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
-        let challenge_vout_0 = 1;
-        let challenge_transaction = ChallengeTransaction::new_for_validation(
+        let assert_vout_0 = 1;
+        let assert_transaction = AssertTransaction::new_for_validation(
             self.network,
             &self.operator_public_key,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
                 outpoint: OutPoint {
-                    txid: kick_off_txid,
-                    vout: challenge_vout_0.to_u32().unwrap(),
-                },
-                amount: kick_off_transaction.tx().output[challenge_vout_0].value,
-            },
-            input_amount_crowdfunding,
-        );
-
-        let assert_vout_0 = 2;
-        let assert_transaction = AssertTransaction::new_for_validation(
-            self.network,
-            &self.operator_public_key,
-            &self.n_of_n_taproot_public_key,
-            Input {
-                outpoint: OutPoint {
-                    txid: kick_off_txid,
+                    txid: kick_off_2_txid,
                     vout: assert_vout_0.to_u32().unwrap(),
                 },
-                amount: kick_off_transaction.tx().output[assert_vout_0].value,
+                amount: kick_off_2_transaction.tx().output[assert_vout_0].value,
             },
         );
-        let assert_txid = kick_off_transaction.tx().compute_txid();
+        let assert_txid = assert_transaction.tx().compute_txid();
 
         let take_2_vout_0 = 0;
         let take_2_vout_1 = 0;
         let take_2_vout_2 = 1;
+        let take_2_vout_3 = 2;
         let take_2_transaction = Take2Transaction::new_for_validation(
             self.network,
             &self.operator_public_key,
+            &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_confirm_txid,
                     vout: take_2_vout_0.to_u32().unwrap(),
                 },
-                amount: self.take_2_transaction.prev_outs()[0].value, // Self-referencing
+                amount: self.take_2_transaction.prev_outs()[take_2_vout_0].value, // Self-referencing
             },
             Input {
                 outpoint: OutPoint {
@@ -446,6 +594,13 @@ impl PegOutGraph {
                 },
                 amount: assert_transaction.tx().output[take_2_vout_2].value,
             },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_txid,
+                    vout: take_2_vout_3.to_u32().unwrap(),
+                },
+                amount: assert_transaction.tx().output[take_2_vout_3].value,
+            },
         );
 
         let script_index = 1; // TODO replace placeholder
@@ -453,6 +608,7 @@ impl PegOutGraph {
         let disprove_vout_1 = 2;
         let disprove_transaction = DisproveTransaction::new_for_validation(
             self.network,
+            &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
                 outpoint: OutPoint {
@@ -471,16 +627,16 @@ impl PegOutGraph {
             script_index,
         );
 
-        let burn_vout_0 = 2;
-        let burn_transaction = BurnTransaction::new_for_validation(
+        let disprove_chain_vout_0 = 2;
+        let disprove_chain_transaction = DisproveChainTransaction::new_for_validation(
             self.network,
             &self.n_of_n_taproot_public_key,
             Input {
                 outpoint: OutPoint {
-                    txid: kick_off_txid,
-                    vout: burn_vout_0.to_u32().unwrap(),
+                    txid: kick_off_2_txid,
+                    vout: disprove_chain_vout_0.to_u32().unwrap(),
                 },
-                amount: kick_off_transaction.tx().output[burn_vout_0].value,
+                amount: kick_off_2_transaction.tx().output[disprove_chain_vout_0].value,
             },
         );
 
@@ -493,13 +649,17 @@ impl PegOutGraph {
             n_of_n_taproot_public_key: self.n_of_n_taproot_public_key,
             peg_in_graph_id: self.peg_in_graph_id.clone(),
             peg_in_confirm_txid,
-            kick_off_transaction,
-            take_1_transaction,
-            challenge_transaction,
             assert_transaction,
-            take_2_transaction,
+            challenge_transaction,
+            disprove_chain_transaction,
             disprove_transaction,
-            burn_transaction,
+            kick_off_1_transaction,
+            kick_off_2_transaction,
+            kick_off_timeout_transaction,
+            start_time_transaction,
+            start_time_timeout_transaction,
+            take_1_transaction,
+            take_2_transaction,
             operator_public_key: self.operator_public_key,
             operator_taproot_public_key: self.operator_taproot_public_key,
             withdrawer_public_key: None,
@@ -516,24 +676,32 @@ impl PegOutGraph {
         let mut secret_nonces = HashMap::new();
 
         secret_nonces.insert(
-            self.take_1_transaction.tx().compute_txid(),
-            self.take_1_transaction.push_nonces(context),
-        );
-        secret_nonces.insert(
             self.assert_transaction.tx().compute_txid(),
             self.assert_transaction.push_nonces(context),
         );
         secret_nonces.insert(
-            self.take_2_transaction.tx().compute_txid(),
-            self.take_2_transaction.push_nonces(context),
+            self.disprove_chain_transaction.tx().compute_txid(),
+            self.disprove_chain_transaction.push_nonces(context),
         );
         secret_nonces.insert(
             self.disprove_transaction.tx().compute_txid(),
             self.disprove_transaction.push_nonces(context),
         );
         secret_nonces.insert(
-            self.burn_transaction.tx().compute_txid(),
-            self.burn_transaction.push_nonces(context),
+            self.kick_off_timeout_transaction.tx().compute_txid(),
+            self.kick_off_timeout_transaction.push_nonces(context),
+        );
+        secret_nonces.insert(
+            self.start_time_timeout_transaction.tx().compute_txid(),
+            self.start_time_timeout_transaction.push_nonces(context),
+        );
+        secret_nonces.insert(
+            self.take_1_transaction.tx().compute_txid(),
+            self.take_1_transaction.push_nonces(context),
+        );
+        secret_nonces.insert(
+            self.take_2_transaction.tx().compute_txid(),
+            self.take_2_transaction.push_nonces(context),
         );
 
         secret_nonces
@@ -548,13 +716,21 @@ impl PegOutGraph {
             context,
             &secret_nonces[&self.assert_transaction.tx().compute_txid()],
         );
-        self.burn_transaction.pre_sign(
+        self.disprove_chain_transaction.pre_sign(
             context,
-            &secret_nonces[&self.burn_transaction.tx().compute_txid()],
+            &secret_nonces[&self.disprove_chain_transaction.tx().compute_txid()],
         );
         self.disprove_transaction.pre_sign(
             context,
             &secret_nonces[&self.disprove_transaction.tx().compute_txid()],
+        );
+        self.kick_off_timeout_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.kick_off_timeout_transaction.tx().compute_txid()],
+        );
+        self.start_time_timeout_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.start_time_timeout_transaction.tx().compute_txid()],
         );
         self.take_1_transaction.pre_sign(
             context,
@@ -951,21 +1127,27 @@ impl PegOutGraph {
         let kick_off_status = client
             .get_tx_status(&self.kick_off_transaction.tx().compute_txid())
             .await;
+
         let challenge_status = client
             .get_tx_status(&self.challenge_transaction.tx().compute_txid())
             .await;
+
         let assert_status = client
             .get_tx_status(&self.assert_transaction.tx().compute_txid())
             .await;
+
         let disprove_status = client
             .get_tx_status(&self.disprove_transaction.tx().compute_txid())
             .await;
+
         let burn_status = client
             .get_tx_status(&self.burn_transaction.tx().compute_txid())
             .await;
+
         let take_1_status = client
             .get_tx_status(&self.take_1_transaction.tx().compute_txid())
             .await;
+
         let take_2_status = client
             .get_tx_status(&self.take_2_transaction.tx().compute_txid())
             .await;
@@ -992,37 +1174,40 @@ impl PegOutGraph {
     }
 
     pub fn validate(&self) -> bool {
-        // kick_off_transaction: KickOffTransaction,
-        // take_1_transaction: Take1Transaction,
-        // challenge_transaction: ChallengeTransaction,
-        // assert_transaction: AssertTransaction,
-        // take_2_transaction: Take2Transaction,
-        // disprove_transaction: DisproveTransaction,
-        // burn_transaction: BurnTransaction,
-        // peg_out_transaction
-
         let peg_out_graph = self.new_for_validation();
         if !validate_transaction(
-            self.kick_off_transaction.tx(),
-            peg_out_graph.kick_off_transaction.tx(),
-        ) || !validate_transaction(
-            self.take_1_transaction.tx(),
-            peg_out_graph.take_1_transaction.tx(),
+            self.assert_transaction.tx(),
+            peg_out_graph.assert_transaction.tx(),
         ) || !validate_transaction(
             self.challenge_transaction.tx(),
             peg_out_graph.challenge_transaction.tx(),
         ) || !validate_transaction(
-            self.assert_transaction.tx(),
-            peg_out_graph.assert_transaction.tx(),
-        ) || !validate_transaction(
-            self.take_2_transaction.tx(),
-            peg_out_graph.take_2_transaction.tx(),
+            self.disprove_chain_transaction.tx(),
+            peg_out_graph.disprove_chain_transaction.tx(),
         ) || !validate_transaction(
             self.disprove_transaction.tx(),
             peg_out_graph.disprove_transaction.tx(),
         ) || !validate_transaction(
-            self.burn_transaction.tx(),
-            peg_out_graph.burn_transaction.tx(),
+            self.kick_off_1_transaction.tx(),
+            peg_out_graph.kick_off_1_transaction.tx(),
+        ) || !validate_transaction(
+            self.kick_off_2_transaction.tx(),
+            peg_out_graph.kick_off_2_transaction.tx(),
+        ) || !validate_transaction(
+            self.kick_off_timeout_transaction.tx(),
+            peg_out_graph.kick_off_timeout_transaction.tx(),
+        ) || !validate_transaction(
+            self.start_time_transaction.tx(),
+            peg_out_graph.start_time_transaction.tx(),
+        ) || !validate_transaction(
+            self.start_time_timeout_transaction.tx(),
+            peg_out_graph.start_time_timeout_transaction.tx(),
+        ) || !validate_transaction(
+            self.take_1_transaction.tx(),
+            peg_out_graph.take_1_transaction.tx(),
+        ) || !validate_transaction(
+            self.take_2_transaction.tx(),
+            peg_out_graph.take_2_transaction.tx(),
         ) {
             return false;
         }
@@ -1031,16 +1216,36 @@ impl PegOutGraph {
     }
 
     pub fn merge(&mut self, source_peg_out_graph: &PegOutGraph) {
-        self.challenge_transaction
-            .merge(&source_peg_out_graph.challenge_transaction);
         self.assert_transaction
             .merge(&source_peg_out_graph.assert_transaction);
+
+        self.challenge_transaction
+            .merge(&source_peg_out_graph.challenge_transaction);
+
+        self.disprove_chain_transaction
+            .merge(&source_peg_out_graph.disprove_chain_transaction);
+
         self.disprove_transaction
             .merge(&source_peg_out_graph.disprove_transaction);
-        self.burn_transaction
-            .merge(&source_peg_out_graph.burn_transaction);
+
+        self.kick_off_1_transaction
+            .merge(&source_peg_out_graph.kick_off_1_transaction);
+
+        self.kick_off_2_transaction
+            .merge(&source_peg_out_graph.kick_off_2_transaction);
+
+        self.kick_off_timeout_transaction
+            .merge(&source_peg_out_graph.kick_off_timeout_transaction);
+
+        self.start_time_transaction
+            .merge(&source_peg_out_graph.start_time_transaction);
+
+        self.start_time_timeout_transaction
+            .merge(&source_peg_out_graph.start_time_timeout_transaction);
+
         self.take_1_transaction
             .merge(&source_peg_out_graph.take_1_transaction);
+
         self.take_2_transaction
             .merge(&source_peg_out_graph.take_2_transaction);
     }

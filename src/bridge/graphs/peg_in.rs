@@ -415,9 +415,11 @@ impl PegInGraph {
         let peg_in_deposit_status = client
             .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
             .await;
+
         let peg_in_confirm_status = client
             .get_tx_status(&self.peg_in_confirm_transaction.tx().compute_txid())
             .await;
+
         let peg_in_refund_status = client
             .get_tx_status(&self.peg_in_refund_transaction.tx().compute_txid())
             .await;
@@ -448,7 +450,6 @@ impl PegInGraph {
     }
 
     pub fn merge(&mut self, source_peg_in_graph: &PegInGraph) {
-        // merge peg_in_confirm tx
         self.peg_in_confirm_transaction
             .merge(&source_peg_in_graph.peg_in_confirm_transaction);
     }
