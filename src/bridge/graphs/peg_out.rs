@@ -747,14 +747,18 @@ impl PegOutGraph {
     pub async fn verifier_status(&self, client: &AsyncClient) -> PegOutVerifierStatus {
         if self.n_of_n_presigned {
             let (
-                kick_off_status,
-                challenge_status,
                 assert_status,
+                challenge_status,
+                disprove_chain_status,
                 disprove_status,
-                burn_status,
+                kick_off_1_status,
+                kick_off_2_status,
+                kick_off_timeout_status,
+                peg_out_status,
+                start_time_timeout_status,
+                start_time_status,
                 take_1_status,
                 take_2_status,
-                _,
             ) = Self::get_peg_out_statuses(self, client).await;
             let blockchain_height = get_block_height(client).await;
 
@@ -814,14 +818,18 @@ impl PegOutGraph {
     pub async fn operator_status(&self, client: &AsyncClient) -> PegOutOperatorStatus {
         if self.n_of_n_presigned {
             let (
-                kick_off_status,
-                challenge_status,
                 assert_status,
+                challenge_status,
+                disprove_chain_status,
                 disprove_status,
-                burn_status,
+                kick_off_1_status,
+                kick_off_2_status,
+                kick_off_timeout_status,
+                peg_out_status,
+                start_time_timeout_status,
+                start_time_status,
                 take_1_status,
                 take_2_status,
-                peg_out_status,
             ) = Self::get_peg_out_statuses(self, client).await;
             let blockchain_height = get_block_height(client).await;
 
@@ -1037,24 +1045,25 @@ impl PegOutGraph {
         verify_if_not_mined(&client, self.take_1_transaction.tx().compute_txid()).await;
         verify_if_not_mined(&client, self.challenge_transaction.tx().compute_txid()).await;
         verify_if_not_mined(&client, self.assert_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(&client, self.burn_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(&client, self.disprove_chain_transaction.tx().compute_txid()).await;
 
         let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
-        let kick_off_txid = self.kick_off_transaction.tx().compute_txid();
-        let kick_off_status = client.get_tx_status(&kick_off_txid).await;
+
+        let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
+        let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
 
         let blockchain_height = get_block_height(client).await;
 
         if peg_in_confirm_status.is_ok_and(|status| status.confirmed)
-            && kick_off_status
+            && kick_off_1_status
                 .as_ref()
                 .is_ok_and(|status| status.confirmed)
         {
-            if kick_off_status
+            if kick_off_1_status
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height
+                    block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height // TODO refactor this so we can read it from the TX itself
                 })
             {
                 // complete take 1 tx
@@ -1077,7 +1086,6 @@ impl PegOutGraph {
         verify_if_not_mined(&client, self.take_2_transaction.tx().compute_txid()).await;
         verify_if_not_mined(&client, self.take_1_transaction.tx().compute_txid()).await;
         verify_if_not_mined(&client, self.disprove_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(&client, self.burn_transaction.tx().compute_txid()).await;
 
         let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
         let assert_txid = self.assert_transaction.tx().compute_txid();
@@ -1123,33 +1131,37 @@ impl PegOutGraph {
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
         Option<Result<TxStatus, Error>>,
+        Result<TxStatus, Error>,
+        Result<TxStatus, Error>,
+        Result<TxStatus, Error>,
+        Result<TxStatus, Error>,
     ) {
-        let kick_off_status = client
-            .get_tx_status(&self.kick_off_transaction.tx().compute_txid())
+        let assert_status = client
+            .get_tx_status(&self.assert_transaction.tx().compute_txid())
             .await;
 
         let challenge_status = client
             .get_tx_status(&self.challenge_transaction.tx().compute_txid())
             .await;
 
-        let assert_status = client
-            .get_tx_status(&self.assert_transaction.tx().compute_txid())
+        let disprove_chain_status = client
+            .get_tx_status(&self.disprove_chain_transaction.tx().compute_txid())
             .await;
 
         let disprove_status = client
             .get_tx_status(&self.disprove_transaction.tx().compute_txid())
             .await;
 
-        let burn_status = client
-            .get_tx_status(&self.burn_transaction.tx().compute_txid())
+        let kick_off_1_status = client
+            .get_tx_status(&self.kick_off_1_transaction.tx().compute_txid())
             .await;
 
-        let take_1_status = client
-            .get_tx_status(&self.take_1_transaction.tx().compute_txid())
+        let kick_off_2_status = client
+            .get_tx_status(&self.kick_off_2_transaction.tx().compute_txid())
             .await;
 
-        let take_2_status = client
-            .get_tx_status(&self.take_2_transaction.tx().compute_txid())
+        let kick_off_timeout_status = client
+            .get_tx_status(&self.kick_off_timeout_transaction.tx().compute_txid())
             .await;
 
         let mut peg_out_status: Option<Result<TxStatus, Error>> = None;
@@ -1161,15 +1173,35 @@ impl PegOutGraph {
             );
         }
 
+        let start_time_timeout_status = client
+            .get_tx_status(&self.start_time_timeout_transaction.tx().compute_txid())
+            .await;
+
+        let start_time_status = client
+            .get_tx_status(&self.start_time_transaction.tx().compute_txid())
+            .await;
+
+        let take_1_status = client
+            .get_tx_status(&self.take_1_transaction.tx().compute_txid())
+            .await;
+
+        let take_2_status = client
+            .get_tx_status(&self.take_2_transaction.tx().compute_txid())
+            .await;
+
         return (
-            kick_off_status,
-            challenge_status,
             assert_status,
+            challenge_status,
+            disprove_chain_status,
             disprove_status,
-            burn_status,
+            kick_off_1_status,
+            kick_off_2_status,
+            kick_off_timeout_status,
+            peg_out_status,
+            start_time_timeout_status,
+            start_time_status,
             take_1_status,
             take_2_status,
-            peg_out_status,
         );
     }
 
@@ -1227,12 +1259,6 @@ impl PegOutGraph {
 
         self.disprove_transaction
             .merge(&source_peg_out_graph.disprove_transaction);
-
-        self.kick_off_1_transaction
-            .merge(&source_peg_out_graph.kick_off_1_transaction);
-
-        self.kick_off_2_transaction
-            .merge(&source_peg_out_graph.kick_off_2_transaction);
 
         self.kick_off_timeout_transaction
             .merge(&source_peg_out_graph.kick_off_timeout_transaction);
