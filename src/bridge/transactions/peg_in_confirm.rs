@@ -173,7 +173,8 @@ impl PegInConfirmTransaction {
         context: &VerifierContext,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
-        self.push_verifier_signature_input_0(context, &secret_nonces[&0]);
+        let input_index = 0;
+        self.push_verifier_signature_input_0(context, &secret_nonces[&input_index]);
     }
 
     pub fn merge(&mut self, peg_in_confirm: &PegInConfirmTransaction) {

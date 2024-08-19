@@ -161,7 +161,8 @@ impl AssertTransaction {
         context: &VerifierContext,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
-        self.sign_input_0(context, &secret_nonces[&0]);
+        let input_index = 0;
+        self.sign_input_0(context, &secret_nonces[&input_index]);
     }
 
     pub fn merge(&mut self, assert: &AssertTransaction) {

@@ -158,9 +158,11 @@ impl DisproveTransaction {
             context,
             input_index,
             TapSighashType::Single,
-            self.connector_3.generate_taproot_spend_info(),
+            self.connector_5.generate_taproot_spend_info(),
         );
     }
+
+    // TODO sign input 1
 
     pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
         let mut secret_nonces = HashMap::new();
@@ -177,7 +179,8 @@ impl DisproveTransaction {
         context: &VerifierContext,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
-        self.sign_input_0(context, &secret_nonces[&0]);
+        let input_index = 0;
+        self.sign_input_0(context, &secret_nonces[&input_index]);
     }
 
     pub fn add_input_output(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {

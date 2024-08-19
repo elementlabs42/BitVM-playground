@@ -71,7 +71,8 @@ impl ChallengeTransaction {
             n_of_n_taproot_public_key,
         );
 
-        let _input_0 = connector_a.generate_taproot_leaf_tx_in(1, &input_0);
+        let input_0_leaf = 1;
+        let _input_0 = connector_a.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
         let total_output_amount =
             input_0.amount + input_amount_crowdfunding - Amount::from_sat(FEE_AMOUNT);
@@ -97,7 +98,7 @@ impl ChallengeTransaction {
                 // input 1 will be added later
             ],
             prev_scripts: vec![
-                connector_a.generate_taproot_leaf_script(1),
+                connector_a.generate_taproot_leaf_script(input_0_leaf),
                 // input 1's script will be added later
             ],
             input_amount_crowdfunding,

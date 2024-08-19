@@ -254,8 +254,11 @@ impl Take2Transaction {
         context: &VerifierContext,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
-        self.sign_input_0(context, &secret_nonces[&0]);
-        self.sign_input_2(context, &secret_nonces[&2]);
+        let input_index = 0;
+        self.sign_input_0(context, &secret_nonces[&input_index]);
+
+        let input_index = 2;
+        self.sign_input_2(context, &secret_nonces[&input_index]);
     }
 
     pub fn merge(&mut self, take_2: &Take2Transaction) {
