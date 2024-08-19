@@ -162,8 +162,6 @@ impl DisproveTransaction {
         );
     }
 
-    // TODO sign input 1
-
     pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
         let mut secret_nonces = HashMap::new();
 
