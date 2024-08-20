@@ -29,6 +29,7 @@ pub struct Take1Transaction {
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     connector_0: Connector0,
+    connector_3: Connector3,
     connector_a: ConnectorA,
     connector_b: ConnectorB,
 
@@ -157,12 +158,15 @@ impl Take1Transaction {
                 connector_b.generate_taproot_leaf_script(input_3_leaf),
             ],
             connector_0,
+            connector_3,
             connector_a,
             connector_b,
             musig2_nonces: HashMap::new(),
             musig2_signatures: HashMap::new(),
         }
     }
+
+    pub fn num_blocks_timelock_2(&self) -> u32 { self.connector_3.num_blocks_timelock }
 
     fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
         let input_index = 0;

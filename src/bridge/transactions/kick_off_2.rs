@@ -97,6 +97,8 @@ impl KickOff2Transaction {
         }
     }
 
+    pub fn num_blocks_timelock_0(&self) -> u32 { self.connector_1.num_blocks_timelock_0 }
+
     fn sign_input_0(&mut self, context: &OperatorContext) {
         let input_index = 0;
         pre_sign_taproot_input(

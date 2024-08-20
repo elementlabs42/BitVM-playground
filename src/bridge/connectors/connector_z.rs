@@ -1,12 +1,18 @@
-use crate::{bridge::constants::NUM_BLOCKS_PER_2_WEEKS, treepp::*};
+use crate::{
+    bridge::constants::{num_blocks_per_network, NUM_BLOCKS_PER_2_WEEKS},
+    treepp::*,
+};
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, ScriptBuf, Sequence, TxIn, XOnlyPublicKey,
+    Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
 
-use super::{super::transactions::base::Input, connector::*};
+use super::{
+    super::{scripts::*, transactions::base::Input},
+    connector::*,
+};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ConnectorZ {
@@ -14,6 +20,7 @@ pub struct ConnectorZ {
     pub depositor_taproot_public_key: XOnlyPublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
     pub evm_address: String,
+    pub num_blocks_timelock_0: u32,
 }
 
 impl ConnectorZ {
@@ -28,25 +35,19 @@ impl ConnectorZ {
             depositor_taproot_public_key: depositor_taproot_public_key.clone(),
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
             evm_address: evm_address.to_string(),
+            num_blocks_timelock_0: num_blocks_per_network(network, NUM_BLOCKS_PER_2_WEEKS),
         }
     }
 
-    // leaf[0] is TimeLock script that the depositor can spend after timelock, if leaf[1] has not been spent
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        script! {
-        { NUM_BLOCKS_PER_2_WEEKS }
-        OP_CSV
-        OP_DROP
-        { self.depositor_taproot_public_key }
-        OP_CHECKSIG
-        }
-        .compile()
+        generate_timelock_taproot_script(
+            &self.depositor_taproot_public_key,
+            self.num_blocks_timelock_0,
+        )
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
-        let mut tx_in = generate_default_tx_in(input);
-        tx_in.sequence = Sequence(NUM_BLOCKS_PER_2_WEEKS);
-        tx_in
+        generate_timelock_tx_in(input, self.num_blocks_timelock_0)
     }
 
     // leaf[1] is spendable by a multisig of depositor and OPK and VPK[1…N]

@@ -14,7 +14,6 @@ use std::{
 
 use super::{
     super::{
-        constants::NUM_BLOCKS_PER_2_WEEKS,
         contexts::{depositor::DepositorContext, verifier::VerifierContext},
         graphs::base::get_block_height,
         transactions::{
@@ -328,7 +327,8 @@ impl PegInGraph {
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
-                        block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height
+                        block_height + self.peg_in_refund_transaction.num_blocks_timelock_0()
+                            <= blockchain_height
                     })
                 {
                     if peg_in_refund_status.is_ok_and(|status| status.confirmed) {
@@ -379,7 +379,7 @@ impl PegInGraph {
             // verify confirm result
             verify_tx_result(&confirm_result);
         } else {
-            panic!("Deposit tx has not been yet confirmed!");
+            panic!("Deposit tx has not been confirmed!");
         }
     }
 
@@ -400,7 +400,7 @@ impl PegInGraph {
             // verify refund result
             verify_tx_result(&refund_result);
         } else {
-            panic!("Deposit tx has not been yet confirmed!");
+            panic!("Deposit tx has not been confirmed!");
         }
     }
 

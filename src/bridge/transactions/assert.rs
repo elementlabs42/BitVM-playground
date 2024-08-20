@@ -119,6 +119,8 @@ impl AssertTransaction {
         }
     }
 
+    pub fn num_blocks_timelock_0(&self) -> u32 { self.connector_b.num_blocks_timelock_1 }
+
     fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
         let input_index = 0;
         pre_sign_musig2_taproot_input(
