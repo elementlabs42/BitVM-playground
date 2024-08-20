@@ -773,9 +773,17 @@ impl PegOutGraph {
                     return PegOutVerifierStatus::PegOutComplete;
                 }
 
-                // check burn and disprove
-                if burn_status.as_ref().is_ok_and(|status| status.confirmed)
+                // check start time timeout, kick off timeout, disprove and disprove chain
+                if start_time_timeout_status
+                    .as_ref()
+                    .is_ok_and(|status| status.confirmed)
+                    || kick_off_timeout_status
+                        .as_ref()
+                        .is_ok_and(|status| status.confirmed)
                     || disprove_status
+                        .as_ref()
+                        .is_ok_and(|status| status.confirmed)
+                    || disprove_chain_status
                         .as_ref()
                         .is_ok_and(|status| status.confirmed)
                 {
