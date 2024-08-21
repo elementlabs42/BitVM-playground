@@ -15,7 +15,6 @@ use std::{
 
 use super::{
     super::{
-        constants::{NUM_BLOCKS_PER_2_WEEKS, NUM_BLOCKS_PER_4_WEEKS},
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         transactions::{
             assert::AssertTransaction,
@@ -57,13 +56,15 @@ impl Display for PegOutDepositorStatus {
 }
 
 pub enum PegOutVerifierStatus {
-    PegOutPresign,           // should presign peg-out graph
-    PegOutComplete,          // peg-out complete
-    PegOutWait,              // no action required, wait
-    PegOutChallengeAvailabe, // can challenge
-    PegOutBurnAvailable,
+    PegOutPresign,            // should presign peg-out graph
+    PegOutComplete,           // peg-out complete
+    PegOutWait,               // no action required, wait
+    PegOutChallengeAvailable, // can call challenge
+    PegOutStartTimeTimeoutAvailable,
+    PegOutKickOffTimeoutAvailable,
+    PegOutDisproveChainAvailable,
     PegOutDisproveAvailable,
-    PegOutFailed, // burn or disprove executed
+    PegOutFailed, // timeouts or disproves executed
 }
 
 impl Display for PegOutVerifierStatus {
@@ -76,14 +77,23 @@ impl Display for PegOutVerifierStatus {
                 write!(f, "Peg-out complete, reimbursement succeded. Done.")
             }
             PegOutVerifierStatus::PegOutWait => write!(f, "No action available. Wait..."),
-            PegOutVerifierStatus::PegOutChallengeAvailabe => {
+            PegOutVerifierStatus::PegOutChallengeAvailable => {
                 write!(
                     f,
-                    "Kick-off transaction confirmed, dispute available. Broadcast challenge transaction?"
+                    "Kick-off 1 transaction confirmed, dispute available. Broadcast challenge transaction?"
                 )
             }
-            PegOutVerifierStatus::PegOutBurnAvailable => {
-                write!(f, "Kick-off timed out. Broadcast burn transaction?")
+            PegOutVerifierStatus::PegOutStartTimeTimeoutAvailable => {
+                write!(f, "Start time timed out. Broadcast timeout transaction?")
+            }
+            PegOutVerifierStatus::PegOutKickOffTimeoutAvailable => {
+                write!(f, "Kick-off 1 timed out. Broadcast timeout transaction?")
+            }
+            PegOutVerifierStatus::PegOutDisproveChainAvailable => {
+                write!(
+                    f,
+                    "Kick-off 2 transaction confirmed. Broadcast disprove chain transaction?"
+                )
             }
             PegOutVerifierStatus::PegOutDisproveAvailable => {
                 write!(
@@ -101,9 +111,11 @@ impl Display for PegOutVerifierStatus {
 pub enum PegOutOperatorStatus {
     PegOutWait,
     PegOutComplete,    // peg-out complete
-    PegOutFailed,      // burn or disprove executed
+    PegOutFailed,      // timeouts or disproves executed
     PegOutStartPegOut, // should execute peg-out tx
-    PegOutKickOffAvailable,
+    PegOutKickOff1Available,
+    PegOutStartTimeAvailable,
+    PegOutKickOff2Available,
     PegOutAssertAvailable,
     PegOutTake1Available,
     PegOutTake2Available,
@@ -122,8 +134,14 @@ impl Display for PegOutOperatorStatus {
             PegOutOperatorStatus::PegOutStartPegOut => {
                 write!(f, "Peg-out requested. Broadcast peg-out transaction?")
             }
-            PegOutOperatorStatus::PegOutKickOffAvailable => {
-                write!(f, "Peg-out confirmed. Broadcast kick-off transaction?")
+            PegOutOperatorStatus::PegOutKickOff1Available => {
+                write!(f, "Peg-out confirmed. Broadcast kick-off 1 transaction?")
+            }
+            PegOutOperatorStatus::PegOutStartTimeAvailable => {
+                write!(f, "Kick-off confirmed. Broadcast start time transaction?")
+            }
+            PegOutOperatorStatus::PegOutKickOff2Available => {
+                write!(f, "Start time confirmed. Broadcast kick-off 2 transaction?")
             }
             PegOutOperatorStatus::PegOutAssertAvailable => {
                 write!(f, "Dispute raised. Broadcast assert transaction?")
@@ -771,8 +789,19 @@ impl PegOutGraph {
                     || take_2_status.as_ref().is_ok_and(|status| status.confirmed)
                 {
                     return PegOutVerifierStatus::PegOutComplete;
+                } else if disprove_status
+                    .as_ref()
+                    .is_ok_and(|status| status.confirmed)
+                    || disprove_chain_status
+                        .as_ref()
+                        .is_ok_and(|status| status.confirmed)
+                {
+                    return PegOutVerifierStatus::PegOutFailed; // TODO: can be also `PegOutVerifierStatus::PegOutComplete`
                 }
-
+            } else if kick_off_1_status
+                .as_ref()
+                .is_ok_and(|status| status.confirmed)
+            {
                 // check start time timeout, kick off timeout, disprove and disprove chain
                 if start_time_timeout_status
                     .as_ref()
@@ -780,17 +809,11 @@ impl PegOutGraph {
                     || kick_off_timeout_status
                         .as_ref()
                         .is_ok_and(|status| status.confirmed)
-                    || disprove_status
-                        .as_ref()
-                        .is_ok_and(|status| status.confirmed)
-                    || disprove_chain_status
-                        .as_ref()
-                        .is_ok_and(|status| status.confirmed)
                 {
                     return PegOutVerifierStatus::PegOutFailed; // TODO: can be also `PegOutVerifierStatus::PegOutComplete`
                 }
 
-                if kick_off_status
+                if kick_off_1_status
                     .as_ref()
                     .unwrap()
                     .block_height
@@ -802,7 +825,7 @@ impl PegOutGraph {
                         .as_ref()
                         .is_ok_and(|status| !status.confirmed)
                     {
-                        return PegOutVerifierStatus::PegOutChallengeAvailabe;
+                        return PegOutVerifierStatus::PegOutChallengeAvailable;
                     } else if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
                         return PegOutVerifierStatus::PegOutDisproveAvailable;
                     } else {
@@ -842,60 +865,93 @@ impl PegOutGraph {
             let blockchain_height = get_block_height(client).await;
 
             if peg_out_status.is_some_and(|status| status.unwrap().confirmed) {
-                if kick_off_status
+                if kick_off_2_status
                     .as_ref()
                     .is_ok_and(|status| status.confirmed)
                 {
-                    // check take 1 and take 2
                     if take_1_status.as_ref().is_ok_and(|status| status.confirmed)
                         || take_2_status.as_ref().is_ok_and(|status| status.confirmed)
                     {
                         return PegOutOperatorStatus::PegOutComplete;
-                    }
-
-                    // check burn and disprove
-                    if burn_status.as_ref().is_ok_and(|status| status.confirmed)
+                    } else if disprove_chain_status
+                        .as_ref()
+                        .is_ok_and(|status| status.confirmed)
                         || disprove_status
                             .as_ref()
                             .is_ok_and(|status| status.confirmed)
                     {
                         return PegOutOperatorStatus::PegOutFailed; // TODO: can be also `PegOutOperatorStatus::PegOutComplete`
-                    }
-
-                    if challenge_status.is_ok_and(|status| status.confirmed) {
-                        if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
-                            if assert_status.as_ref().unwrap().block_height.is_some_and(
-                                |block_height| {
-                                    block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height
-                                },
-                            ) {
-                                return PegOutOperatorStatus::PegOutTake2Available;
-                            } else {
-                                return PegOutOperatorStatus::PegOutWait;
-                            }
-                        } else {
-                            return PegOutOperatorStatus::PegOutAssertAvailable;
-                        }
-                    } else {
-                        if kick_off_status.as_ref().unwrap().block_height.is_some_and(
+                    } else if !assert_status.as_ref().is_ok_and(|status| status.confirmed) {
+                        // TODO check inverse
+                        return PegOutOperatorStatus::PegOutAssertAvailable;
+                    } else if challenge_status.is_ok_and(|status| status.confirmed) {
+                        if assert_status.as_ref().unwrap().block_height.is_some_and(
                             |block_height| {
-                                block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height
+                                block_height + self.take_2_transaction.num_blocks_timelock_1()
+                                    <= blockchain_height
                             },
                         ) {
+                            return PegOutOperatorStatus::PegOutTake2Available;
+                        } else {
+                            return PegOutOperatorStatus::PegOutWait;
+                        }
+                    } else {
+                        if kick_off_2_status
+                            .as_ref()
+                            .unwrap()
+                            .block_height
+                            .is_some_and(|block_height| {
+                                block_height
+                                    + self.kick_off_2_transaction.num_blocks_timelock_0()
+                                    + self.take_1_transaction.num_blocks_timelock_2()
+                                    <= blockchain_height
+                            })
+                        {
                             return PegOutOperatorStatus::PegOutTake1Available;
                         } else {
                             return PegOutOperatorStatus::PegOutWait;
                         }
                     }
+                } else if kick_off_1_status
+                    .as_ref()
+                    .is_ok_and(|status| status.confirmed)
+                {
+                    if start_time_timeout_status
+                        .as_ref()
+                        .is_ok_and(|status| status.confirmed)
+                        || kick_off_timeout_status
+                            .as_ref()
+                            .is_ok_and(|status| status.confirmed)
+                    {
+                        return PegOutOperatorStatus::PegOutFailed; // TODO: can be also `PegOutOperatorStatus::PegOutComplete`
+                    } else if !start_time_status
+                        .as_ref()
+                        .is_ok_and(|status| status.confirmed)
+                    {
+                        // TODO check inverse
+                        return PegOutOperatorStatus::PegOutStartTimeAvailable;
+                    } else if kick_off_2_status
+                        .as_ref()
+                        .unwrap()
+                        .block_height
+                        .is_some_and(|block_height| {
+                            block_height + self.kick_off_2_transaction.num_blocks_timelock_0()
+                                <= blockchain_height
+                        })
+                    {
+                        return PegOutOperatorStatus::PegOutKickOff2Available;
+                    } else {
+                        return PegOutOperatorStatus::PegOutWait;
+                    }
                 } else {
-                    return PegOutOperatorStatus::PegOutKickOffAvailable;
+                    return PegOutOperatorStatus::PegOutKickOff1Available;
                 }
             } else {
                 return PegOutOperatorStatus::PegOutStartPegOut;
             }
-        } else {
-            return PegOutOperatorStatus::PegOutWait;
         }
+
+        return PegOutOperatorStatus::PegOutWait;
     }
 
     pub async fn depositor_status(&self, client: &AsyncClient) -> PegOutDepositorStatus {
