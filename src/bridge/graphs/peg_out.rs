@@ -772,7 +772,7 @@ impl PegOutGraph {
                 kick_off_1_status,
                 kick_off_2_status,
                 kick_off_timeout_status,
-                peg_out_status,
+                _,
                 start_time_timeout_status,
                 start_time_status,
                 take_1_status,
@@ -780,11 +780,10 @@ impl PegOutGraph {
             ) = Self::get_peg_out_statuses(self, client).await;
             let blockchain_height = get_block_height(client).await;
 
-            if kick_off_1_status
+            if kick_off_2_status
                 .as_ref()
                 .is_ok_and(|status| status.confirmed)
             {
-                // check take 1 and take 2
                 if take_1_status.as_ref().is_ok_and(|status| status.confirmed)
                     || take_2_status.as_ref().is_ok_and(|status| status.confirmed)
                 {
@@ -797,12 +796,15 @@ impl PegOutGraph {
                         .is_ok_and(|status| status.confirmed)
                 {
                     return PegOutVerifierStatus::PegOutFailed; // TODO: can be also `PegOutVerifierStatus::PegOutComplete`
+                } else if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
+                    return PegOutVerifierStatus::PegOutDisproveAvailable;
+                } else {
+                    return PegOutVerifierStatus::PegOutDisproveChainAvailable;
                 }
             } else if kick_off_1_status
                 .as_ref()
                 .is_ok_and(|status| status.confirmed)
             {
-                // check start time timeout, kick off timeout, disprove and disprove chain
                 if start_time_timeout_status
                     .as_ref()
                     .is_ok_and(|status| status.confirmed)
@@ -811,32 +813,41 @@ impl PegOutGraph {
                         .is_ok_and(|status| status.confirmed)
                 {
                     return PegOutVerifierStatus::PegOutFailed; // TODO: can be also `PegOutVerifierStatus::PegOutComplete`
-                }
-
-                if kick_off_1_status
+                } else if start_time_status
+                    .as_ref()
+                    .is_ok_and(|status| !status.confirmed)
+                {
+                    if kick_off_1_status
+                        .as_ref()
+                        .unwrap()
+                        .block_height
+                        .is_some_and(|block_height| {
+                            block_height
+                                + self.start_time_timeout_transaction.num_blocks_timelock_1()
+                                > blockchain_height
+                        })
+                    {
+                        return PegOutVerifierStatus::PegOutStartTimeTimeoutAvailable;
+                    } else {
+                        return PegOutVerifierStatus::PegOutWait;
+                    }
+                } else if kick_off_1_status
                     .as_ref()
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
-                        block_height + NUM_BLOCKS_PER_4_WEEKS > blockchain_height
+                        block_height + self.kick_off_timeout_transaction.num_blocks_timelock_0()
+                            > blockchain_height
                     })
                 {
-                    if challenge_status
-                        .as_ref()
-                        .is_ok_and(|status| !status.confirmed)
-                    {
-                        return PegOutVerifierStatus::PegOutChallengeAvailable;
-                    } else if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
-                        return PegOutVerifierStatus::PegOutDisproveAvailable;
-                    } else {
-                        return PegOutVerifierStatus::PegOutWait;
-                    }
+                    return PegOutVerifierStatus::PegOutKickOffTimeoutAvailable;
+                } else if challenge_status
+                    .as_ref()
+                    .is_ok_and(|status| !status.confirmed)
+                {
+                    return PegOutVerifierStatus::PegOutChallengeAvailable;
                 } else {
-                    if assert_status.is_ok_and(|status| !status.confirmed) {
-                        return PegOutVerifierStatus::PegOutBurnAvailable; // TODO: challange and burn available here
-                    } else {
-                        return PegOutVerifierStatus::PegOutDisproveAvailable;
-                    }
+                    return PegOutVerifierStatus::PegOutWait;
                 }
             } else {
                 return PegOutVerifierStatus::PegOutWait;
@@ -881,19 +892,32 @@ impl PegOutGraph {
                             .is_ok_and(|status| status.confirmed)
                     {
                         return PegOutOperatorStatus::PegOutFailed; // TODO: can be also `PegOutOperatorStatus::PegOutComplete`
-                    } else if !assert_status.as_ref().is_ok_and(|status| status.confirmed) {
-                        // TODO check inverse
-                        return PegOutOperatorStatus::PegOutAssertAvailable;
                     } else if challenge_status.is_ok_and(|status| status.confirmed) {
-                        if assert_status.as_ref().unwrap().block_height.is_some_and(
-                            |block_height| {
-                                block_height + self.take_2_transaction.num_blocks_timelock_1()
-                                    <= blockchain_height
-                            },
-                        ) {
-                            return PegOutOperatorStatus::PegOutTake2Available;
+                        if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
+                            if assert_status.as_ref().unwrap().block_height.is_some_and(
+                                |block_height| {
+                                    block_height + self.take_2_transaction.num_blocks_timelock_1()
+                                        <= blockchain_height
+                                },
+                            ) {
+                                return PegOutOperatorStatus::PegOutTake2Available;
+                            } else {
+                                return PegOutOperatorStatus::PegOutWait;
+                            }
                         } else {
-                            return PegOutOperatorStatus::PegOutWait;
+                            if kick_off_2_status
+                                .as_ref()
+                                .unwrap()
+                                .block_height
+                                .is_some_and(|block_height| {
+                                    block_height + self.assert_transaction.num_blocks_timelock_0()
+                                        <= blockchain_height
+                                })
+                            {
+                                return PegOutOperatorStatus::PegOutAssertAvailable;
+                            } else {
+                                return PegOutOperatorStatus::PegOutWait;
+                            }
                         }
                     } else {
                         if kick_off_2_status
@@ -901,9 +925,7 @@ impl PegOutGraph {
                             .unwrap()
                             .block_height
                             .is_some_and(|block_height| {
-                                block_height
-                                    + self.kick_off_2_transaction.num_blocks_timelock_0()
-                                    + self.take_1_transaction.num_blocks_timelock_2()
+                                block_height + self.take_1_transaction.num_blocks_timelock_2()
                                     <= blockchain_height
                             })
                         {
@@ -924,24 +946,25 @@ impl PegOutGraph {
                             .is_ok_and(|status| status.confirmed)
                     {
                         return PegOutOperatorStatus::PegOutFailed; // TODO: can be also `PegOutOperatorStatus::PegOutComplete`
-                    } else if !start_time_status
+                    } else if start_time_status
                         .as_ref()
                         .is_ok_and(|status| status.confirmed)
                     {
-                        // TODO check inverse
-                        return PegOutOperatorStatus::PegOutStartTimeAvailable;
-                    } else if kick_off_2_status
-                        .as_ref()
-                        .unwrap()
-                        .block_height
-                        .is_some_and(|block_height| {
-                            block_height + self.kick_off_2_transaction.num_blocks_timelock_0()
-                                <= blockchain_height
-                        })
-                    {
-                        return PegOutOperatorStatus::PegOutKickOff2Available;
+                        if kick_off_1_status
+                            .as_ref()
+                            .unwrap()
+                            .block_height
+                            .is_some_and(|block_height| {
+                                block_height + self.kick_off_2_transaction.num_blocks_timelock_0()
+                                    <= blockchain_height
+                            })
+                        {
+                            return PegOutOperatorStatus::PegOutKickOff2Available;
+                        } else {
+                            return PegOutOperatorStatus::PegOutWait;
+                        }
                     } else {
-                        return PegOutOperatorStatus::PegOutWait;
+                        return PegOutOperatorStatus::PegOutStartTimeAvailable;
                     }
                 } else {
                     return PegOutOperatorStatus::PegOutKickOff1Available;

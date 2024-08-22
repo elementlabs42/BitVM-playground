@@ -603,6 +603,34 @@ impl BitVMClient {
         peg_in_graph.unwrap().deposit(&self.esplora).await
     }
 
+    pub async fn get_peg_in_graph_from_peg_in_confirm_txid(&mut self, peg_in_confirm_txid: &str) {
+        let peg_in_graph = self.data.peg_in_graphs.iter().find(|&peg_in_graph| {
+            peg_in_graph
+                .peg_in_confirm_transaction_ref()
+                .tx()
+                .txid()
+                .eq(peg_in_confirm_txid)
+        });
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_in_graph.unwrap()
+    }
+
+    pub async fn get_peg_in_graph_from_peg_in_deposit_txid(&mut self, peg_in_deposit_txid: &str) {
+        let peg_in_graph = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_confirm_txid));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_in_graph.unwrap()
+    }
+
     pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
         let peg_in_graph = self
             .data
