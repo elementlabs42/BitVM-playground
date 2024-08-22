@@ -5,14 +5,14 @@ use bitvm::bridge::{
     transactions::{
         assert::AssertTransaction,
         base::{BaseTransaction, Input},
-        kick_off_1::KickOffTransaction,
+        kick_off_1::KickOff1Transaction,
         peg_in_confirm::PegInConfirmTransaction,
     },
 };
 
 use crate::bridge::helper::generate_stub_outpoint;
 
-pub async fn create_and_mine_kick_off_tx(
+pub async fn create_and_mine_kick_off_1_tx(
     client: &BitVMClient,
     operator_context: &OperatorContext,
     kick_off_funding_utxo_address: &Address,
@@ -24,15 +24,15 @@ pub async fn create_and_mine_kick_off_tx(
         outpoint: kick_off_funding_outpoint,
         amount: input_amount,
     };
-    let kick_off = KickOffTransaction::new(&operator_context, kick_off_input);
-    let kick_off_tx = kick_off.finalize();
-    let kick_off_tx_id = kick_off_tx.compute_txid();
+    let kick_off_1 = KickOff1Transaction::new(&operator_context, kick_off_input);
+    let kick_off_1_tx = kick_off_1.finalize();
+    let kick_off_1_tx_id = kick_off_1_tx.compute_txid();
 
-    // mine kick-off tx
-    let kick_off_result = client.esplora.broadcast(&kick_off_tx).await;
-    assert!(kick_off_result.is_ok());
+    // mine kick-off 1 tx
+    let kick_off_1_result = client.esplora.broadcast(&kick_off_1_tx).await;
+    assert!(kick_off_1_result.is_ok());
 
-    return (kick_off_tx, kick_off_tx_id);
+    return (kick_off_1_tx, kick_off_1_tx_id);
 }
 
 pub async fn create_and_mine_assert_tx(

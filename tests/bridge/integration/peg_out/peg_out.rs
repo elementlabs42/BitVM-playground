@@ -30,6 +30,8 @@ async fn test_peg_out_success() {
         _,
         _,
         _,
+        _,
+        _,
         withdrawer_evm_address,
     ) = setup_test().await;
     let timestamp = 1722328130u32;

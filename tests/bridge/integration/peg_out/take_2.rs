@@ -37,6 +37,8 @@ async fn test_take_2_success() {
         _,
         _,
         _,
+        _,
+        _,
         depositor_evm_address,
         _,
     ) = setup_test().await;

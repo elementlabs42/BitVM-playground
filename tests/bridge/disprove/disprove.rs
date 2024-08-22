@@ -38,6 +38,8 @@ mod tests {
             _,
             _,
             _,
+            _,
+            _,
         ) = setup_test().await;
 
         let amount_0 = Amount::from_sat(DUST_AMOUNT);
@@ -92,6 +94,8 @@ mod tests {
             _,
             _,
             connector_c,
+            _,
+            _,
             _,
             _,
             _,

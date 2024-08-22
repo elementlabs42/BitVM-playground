@@ -17,8 +17,27 @@ use crate::bridge::{
 
 #[tokio::test]
 async fn test_challenge_success() {
-    let (client, _, depositor_context, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _) =
-        setup_test().await;
+    let (
+        client,
+        _,
+        depositor_context,
+        operator_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = setup_test().await;
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];

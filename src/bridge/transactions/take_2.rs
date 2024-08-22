@@ -82,6 +82,7 @@ impl Take2Transaction {
         );
 
         this.sign_input_1(context);
+        this.sign_input_3(context);
 
         this
     }

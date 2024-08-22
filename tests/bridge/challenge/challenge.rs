@@ -22,10 +22,12 @@ async fn test_challenge_tx() {
         _,
         _,
         _,
-        connector_a,
         _,
         _,
         _,
+        _,
+        _,
+        connector_1,
         _,
         _,
         _,
@@ -40,7 +42,7 @@ async fn test_challenge_tx() {
 
     let amount_0 = Amount::from_sat(DUST_AMOUNT);
     let outpoint_0 =
-        generate_stub_outpoint(&client, &connector_a.generate_taproot_address(), amount_0).await;
+        generate_stub_outpoint(&client, &connector_1.generate_taproot_address(), amount_0).await;
 
     // Create two inputs that exceed the crowdfunding total
     let input_amount_crowdfunding_total = Amount::from_sat(INITIAL_AMOUNT);

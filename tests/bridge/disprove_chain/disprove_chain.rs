@@ -11,14 +11,14 @@ mod tests {
         scripts::generate_pay_to_pubkey_script,
         transactions::{
             base::{BaseTransaction, Input},
-            burn::*,
+            disprove_chain::DisproveChainTransaction,
         },
     };
 
     use super::super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
     #[tokio::test]
-    async fn test_should_be_able_to_submit_burn_tx_successfully() {
+    async fn test_should_be_able_to_submit_disprove_chain_tx_successfully() {
         let (
             client,
             _,
@@ -37,21 +37,24 @@ mod tests {
             _,
             _,
             _,
+            _,
+            _,
         ) = setup_test().await;
 
         let amount = Amount::from_sat(INITIAL_AMOUNT);
         let outpoint =
             generate_stub_outpoint(&client, &connector_b.generate_taproot_address(), amount).await;
 
-        let mut burn_tx = BurnTransaction::new(&operator_context, Input { outpoint, amount });
+        let mut disprove_chain_tx =
+            DisproveChainTransaction::new(&operator_context, Input { outpoint, amount });
 
-        let secret_nonces_0 = burn_tx.push_nonces(&verifier_0_context);
-        let secret_nonces_1 = burn_tx.push_nonces(&verifier_1_context);
+        let secret_nonces_0 = disprove_chain_tx.push_nonces(&verifier_0_context);
+        let secret_nonces_1 = disprove_chain_tx.push_nonces(&verifier_1_context);
 
-        burn_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
-        burn_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
+        disprove_chain_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
+        disprove_chain_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
 
-        let tx = burn_tx.finalize();
+        let tx = disprove_chain_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
 
         let result = client.esplora.broadcast(&tx).await;
@@ -62,7 +65,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
+    async fn test_should_be_able_to_submit_disprove_chain_tx_with_verifier_added_to_output_successfully(
+    ) {
         let (
             client,
             _,
@@ -81,21 +85,24 @@ mod tests {
             _,
             _,
             _,
+            _,
+            _,
         ) = setup_test().await;
 
         let amount = Amount::from_sat(INITIAL_AMOUNT);
         let outpoint =
             generate_stub_outpoint(&client, &connector_b.generate_taproot_address(), amount).await;
 
-        let mut burn_tx = BurnTransaction::new(&operator_context, Input { outpoint, amount });
+        let mut disprove_chain_tx =
+            DisproveChainTransaction::new(&operator_context, Input { outpoint, amount });
 
-        let secret_nonces_0 = burn_tx.push_nonces(&verifier_0_context);
-        let secret_nonces_1 = burn_tx.push_nonces(&verifier_1_context);
+        let secret_nonces_0 = disprove_chain_tx.push_nonces(&verifier_0_context);
+        let secret_nonces_1 = disprove_chain_tx.push_nonces(&verifier_1_context);
 
-        burn_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
-        burn_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
+        disprove_chain_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
+        disprove_chain_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
 
-        let mut tx = burn_tx.finalize();
+        let mut tx = disprove_chain_tx.finalize();
 
         let secp = verifier_0_context.secp;
         let verifier_secret: &str =

@@ -603,34 +603,6 @@ impl BitVMClient {
         peg_in_graph.unwrap().deposit(&self.esplora).await
     }
 
-    pub async fn get_peg_in_graph_from_peg_in_confirm_txid(&mut self, peg_in_confirm_txid: &str) {
-        let peg_in_graph = self.data.peg_in_graphs.iter().find(|&peg_in_graph| {
-            peg_in_graph
-                .peg_in_confirm_transaction_ref()
-                .tx()
-                .txid()
-                .eq(peg_in_confirm_txid)
-        });
-        if peg_in_graph.is_none() {
-            panic!("Invalid graph id");
-        }
-
-        peg_in_graph.unwrap()
-    }
-
-    pub async fn get_peg_in_graph_from_peg_in_deposit_txid(&mut self, peg_in_deposit_txid: &str) {
-        let peg_in_graph = self
-            .data
-            .peg_in_graphs
-            .iter()
-            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_confirm_txid));
-        if peg_in_graph.is_none() {
-            panic!("Invalid graph id");
-        }
-
-        peg_in_graph.unwrap()
-    }
-
     pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
         let peg_in_graph = self
             .data
@@ -697,7 +669,7 @@ impl BitVMClient {
         peg_out_graph_id
     }
 
-    pub async fn broadcast_kick_off(&mut self, peg_out_graph_id: &str) {
+    pub async fn broadcast_kick_off_1(&mut self, peg_out_graph_id: &str) {
         let peg_out_graph = self
             .data
             .peg_out_graphs
@@ -707,7 +679,73 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().kick_off(&self.esplora).await;
+        peg_out_graph.unwrap().kick_off_1(&self.esplora).await;
+    }
+
+    pub async fn broadcast_start_time(&mut self, peg_out_graph_id: &str) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().start_time(&self.esplora).await;
+    }
+
+    pub async fn broadcast_start_time_timeout(
+        &mut self,
+        peg_out_graph_id: &str,
+        output_script_pubkey: ScriptBuf,
+    ) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph
+            .unwrap()
+            .start_time_timeout(&self.esplora, output_script_pubkey)
+            .await;
+    }
+
+    pub async fn broadcast_kick_off_2(&mut self, peg_out_graph_id: &str) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().kick_off_2(&self.esplora).await;
+    }
+
+    pub async fn broadcast_kick_off_timeout(
+        &mut self,
+        peg_out_graph_id: &str,
+        output_script_pubkey: ScriptBuf,
+    ) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph
+            .unwrap()
+            .kick_off_timeout(&self.esplora, output_script_pubkey)
+            .await;
     }
 
     pub async fn broadcast_challenge(
@@ -806,7 +844,7 @@ impl BitVMClient {
             .await;
     }
 
-    pub async fn broadcast_burn(
+    pub async fn broadcast_disprove_chain(
         &mut self,
         peg_out_graph_id: &str,
         output_script_pubkey: ScriptBuf,
@@ -822,7 +860,7 @@ impl BitVMClient {
 
         peg_out_graph
             .unwrap()
-            .burn(&self.esplora, output_script_pubkey)
+            .disprove_chain(&self.esplora, output_script_pubkey)
             .await;
     }
 

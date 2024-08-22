@@ -1147,7 +1147,7 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn kick_off_2_timeout(
+    pub async fn kick_off_timeout(
         &mut self,
         client: &AsyncClient,
         output_script_pubkey: ScriptBuf,
