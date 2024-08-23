@@ -61,24 +61,26 @@ async fn test_start_time_timeout_success() {
     .await;
 
     // start time timeout
+    let vout = 2; // connector 2
+    let start_time_timeout_input_0 = Input {
+        outpoint: OutPoint {
+            txid: kick_off_1_txid,
+            vout,
+        },
+        amount: kick_off_1_tx.output[vout as usize].value,
+    };
+    let vout = 1; // connector 1
+    let start_time_timeout_input_1 = Input {
+        outpoint: OutPoint {
+            txid: kick_off_1_txid,
+            vout,
+        },
+        amount: kick_off_1_tx.output[vout as usize].value,
+    };
     let mut start_time_timeout = StartTimeTimeoutTransaction::new(
         &operator_context,
-        Input {
-            outpoint: OutPoint {
-                // connector 2
-                txid: kick_off_1_txid,
-                vout: 2,
-            },
-            amount: kick_off_1_tx.output[2].value,
-        },
-        Input {
-            outpoint: OutPoint {
-                // connector 1
-                txid: kick_off_1_txid,
-                vout: 1,
-            },
-            amount: kick_off_1_tx.output[1].value,
-        },
+        start_time_timeout_input_0,
+        start_time_timeout_input_1,
     );
 
     let secret_nonces_0 = start_time_timeout.push_nonces(&verifier_0_context);

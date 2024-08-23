@@ -59,16 +59,15 @@ async fn test_disprove_success() {
     .await;
 
     // assert
-    let kick_off_2_output_index = 1; // connector B
-    let assert_kick_off_2_outpoint = OutPoint {
-        txid: kick_off_2_txid,
-        vout: kick_off_2_output_index,
+    let vout = 1; // connector B
+    let assert_input_0 = Input {
+        outpoint: OutPoint {
+            txid: kick_off_2_txid,
+            vout,
+        },
+        amount: kick_off_2_tx.output[vout as usize].value,
     };
-    let assert_kick_off_input = Input {
-        outpoint: assert_kick_off_2_outpoint,
-        amount: kick_off_2_tx.output[kick_off_2_output_index as usize].value,
-    };
-    let mut assert = AssertTransaction::new(&operator_context, assert_kick_off_input);
+    let mut assert = AssertTransaction::new(&operator_context, assert_input_0);
 
     let secret_nonces_0 = assert.push_nonces(&verifier_0_context);
     let secret_nonces_1 = assert.push_nonces(&verifier_1_context);
@@ -82,31 +81,29 @@ async fn test_disprove_success() {
     assert!(assert_result.is_ok());
 
     // disprove
-    let assert_output_index = 1;
+    let vout = 1;
     let script_index = 1;
-    let disprove_assert_outpoint_0 = OutPoint {
-        txid: assert_txid,
-        vout: assert_output_index,
-    };
-    let disprove_assert_input_0 = Input {
-        outpoint: disprove_assert_outpoint_0,
-        amount: assert_tx.output[assert_output_index as usize].value,
+    let disprove_input_0 = Input {
+        outpoint: OutPoint {
+            txid: assert_txid,
+            vout,
+        },
+        amount: assert_tx.output[vout as usize].value,
     };
 
-    let assert_output_index = 2;
-    let disprove_assert_outpoint_1 = OutPoint {
-        txid: assert_txid,
-        vout: assert_output_index,
-    };
-    let disprove_assert_input_1 = Input {
-        outpoint: disprove_assert_outpoint_1,
-        amount: assert_tx.output[assert_output_index as usize].value,
+    let vout = 2;
+    let disprove_input_1 = Input {
+        outpoint: OutPoint {
+            txid: assert_txid,
+            vout,
+        },
+        amount: assert_tx.output[vout as usize].value,
     };
 
     let mut disprove = DisproveTransaction::new(
         &operator_context,
-        disprove_assert_input_0,
-        disprove_assert_input_1,
+        disprove_input_0,
+        disprove_input_1,
         script_index,
     );
 

@@ -79,41 +79,45 @@ async fn test_take_2_success() {
     .await;
 
     // take 2
-    let connector_0_input = Input {
+    let vout = 0; // connector 0
+    let take_2_input_0 = Input {
         outpoint: OutPoint {
             txid: peg_in_confirm_txid,
-            vout: 0,
+            vout,
         },
-        amount: peg_in_confirm_tx.output[0].value,
+        amount: peg_in_confirm_tx.output[vout as usize].value,
     };
-    let connector_4_input = Input {
+    let vout = 0; // connector 4
+    let take_2_input_1 = Input {
         outpoint: OutPoint {
             txid: assert_txid,
-            vout: 0,
+            vout,
         },
-        amount: assert_tx.output[0].value,
+        amount: assert_tx.output[vout as usize].value,
     };
-    let connector_5_input = Input {
+    let vout = 1; // connector 5
+    let take_2_input_2 = Input {
         outpoint: OutPoint {
             txid: assert_txid,
-            vout: 1,
+            vout,
         },
-        amount: assert_tx.output[1].value,
+        amount: assert_tx.output[vout as usize].value,
     };
-    let connector_c_input = Input {
+    let vout = 2; // connector c
+    let take_2_input_3 = Input {
         outpoint: OutPoint {
             txid: assert_txid,
-            vout: 2,
+            vout,
         },
-        amount: assert_tx.output[2].value,
+        amount: assert_tx.output[vout as usize].value,
     };
 
     let mut take_2 = Take2Transaction::new(
         &operator_context,
-        connector_0_input,
-        connector_4_input,
-        connector_5_input,
-        connector_c_input,
+        take_2_input_0,
+        take_2_input_1,
+        take_2_input_2,
+        take_2_input_3,
     );
 
     let secret_nonces_0 = take_2.push_nonces(&verifier_0_context);

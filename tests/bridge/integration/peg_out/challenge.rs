@@ -80,14 +80,13 @@ async fn test_challenge_success() {
         script: &generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
     };
 
-    let kick_off_1_output_index = 0; // connector A
-    let challenge_kick_off_outpoint = OutPoint {
-        txid: kick_off_1_txid,
-        vout: kick_off_1_output_index,
-    };
+    let vout = 0; // connector A
     let challenge_kick_off_input = Input {
-        outpoint: challenge_kick_off_outpoint,
-        amount: kick_off_1_tx.output[kick_off_1_output_index as usize].value,
+        outpoint: OutPoint {
+            txid: kick_off_1_txid,
+            vout,
+        },
+        amount: kick_off_1_tx.output[vout as usize].value,
     };
 
     let mut challenge = ChallengeTransaction::new(

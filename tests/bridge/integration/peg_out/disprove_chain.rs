@@ -61,18 +61,17 @@ async fn test_disprove_chain_success() {
     .await;
 
     // disprove chain
-    let kick_off_2_output_index = 1; // connector B
-    let disprove_chain_kick_off_2_outpoint = OutPoint {
-        txid: kick_off_2_txid,
-        vout: kick_off_2_output_index,
-    };
-    let disprove_chain_kick_off_2_input = Input {
-        outpoint: disprove_chain_kick_off_2_outpoint,
-        amount: kick_off_2_tx.output[kick_off_2_output_index as usize].value,
+    let vout = 1; // connector B
+    let disprove_chain_input_0 = Input {
+        outpoint: OutPoint {
+            txid: kick_off_2_txid,
+            vout,
+        },
+        amount: kick_off_2_tx.output[vout as usize].value,
     };
 
     let mut disprove_chain =
-        DisproveChainTransaction::new(&operator_context, disprove_chain_kick_off_2_input);
+        DisproveChainTransaction::new(&operator_context, disprove_chain_input_0);
 
     let secret_nonces_0 = disprove_chain.push_nonces(&verifier_0_context);
     let secret_nonces_1 = disprove_chain.push_nonces(&verifier_1_context);

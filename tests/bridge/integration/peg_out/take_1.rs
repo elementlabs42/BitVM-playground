@@ -83,14 +83,15 @@ async fn test_take_1_success() {
     .await;
 
     // kick-off 2
-    let connector_1_input = Input {
+    let vout = 1; // connector 1
+    let kick_off_2_input_0 = Input {
         outpoint: OutPoint {
             txid: kick_off_1_txid,
-            vout: 1,
+            vout,
         },
-        amount: kick_off_1_tx.output[1].value,
+        amount: kick_off_1_tx.output[vout as usize].value,
     };
-    let kick_off_2 = KickOff2Transaction::new(&operator_context, connector_1_input);
+    let kick_off_2 = KickOff2Transaction::new(&operator_context, kick_off_2_input_0);
     let kick_off_2_tx = kick_off_2.finalize();
     let kick_off_2_txid = kick_off_2_tx.compute_txid();
 
@@ -100,41 +101,45 @@ async fn test_take_1_success() {
     assert!(kick_off_2_result.is_ok());
 
     // take 1
-    let connector_0_input = Input {
+    let vout = 0; // connector 0
+    let take_1_input_0 = Input {
         outpoint: OutPoint {
             txid: peg_in_confirm_txid,
-            vout: 0,
+            vout,
         },
-        amount: peg_in_confirm_tx.output[0].value,
+        amount: peg_in_confirm_tx.output[vout as usize].value,
     };
-    let connector_a_input = Input {
+    let vout = 0; // connector a
+    let take_1_input_1 = Input {
         outpoint: OutPoint {
             txid: kick_off_1_txid,
-            vout: 0,
+            vout,
         },
-        amount: kick_off_1_tx.output[0].value,
+        amount: kick_off_1_tx.output[vout as usize].value,
     };
-    let connector_3_input = Input {
+    let vout = 0; // connector 3
+    let take_1_input_2 = Input {
         outpoint: OutPoint {
             txid: kick_off_2_txid,
-            vout: 0,
+            vout,
         },
-        amount: kick_off_2_tx.output[0].value,
+        amount: kick_off_2_tx.output[vout as usize].value,
     };
-    let connector_b_input = Input {
+    let vout = 1; // connector b
+    let take_1_input_3 = Input {
         outpoint: OutPoint {
             txid: kick_off_2_txid,
-            vout: 1,
+            vout,
         },
-        amount: kick_off_2_tx.output[1].value,
+        amount: kick_off_2_tx.output[vout as usize].value,
     };
 
     let mut take_1 = Take1Transaction::new(
         &operator_context,
-        connector_0_input,
-        connector_a_input,
-        connector_3_input,
-        connector_b_input,
+        take_1_input_0,
+        take_1_input_1,
+        take_1_input_2,
+        take_1_input_3,
     );
 
     let secret_nonces_0 = take_1.push_nonces(&verifier_0_context);

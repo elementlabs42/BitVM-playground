@@ -42,20 +42,18 @@ async fn test_start_time_success() {
     .await;
 
     // start time
-    let mut start_time = StartTimeTransaction::new(
-        &operator_context,
-        Input {
-            outpoint: OutPoint {
-                // connector 2
-                txid: kick_off_1_txid,
-                vout: 2,
-            },
-            amount: kick_off_1_tx.output[2].value,
+    let vout = 2;
+    let start_time_input_0 = Input {
+        outpoint: OutPoint {
+            // connector 2
+            txid: kick_off_1_txid,
+            vout,
         },
-    );
+        amount: kick_off_1_tx.output[vout as usize].value,
+    };
+    let start_time = StartTimeTransaction::new(&operator_context, start_time_input_0);
 
     let start_time_tx = start_time.finalize();
-    let start_time_txid = start_time_tx.compute_txid();
 
     // mine start time
     sleep(Duration::from_secs(60)).await;

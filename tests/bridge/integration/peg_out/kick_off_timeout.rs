@@ -61,18 +61,17 @@ async fn test_kick_off_timeout_success() {
     .await;
 
     // kick-off timeout
-    let kick_off_1_output_index = 1; // connector 1
-    let kick_off_timeout_kick_off_1_outpoint = OutPoint {
-        txid: kick_off_1_txid,
-        vout: kick_off_1_output_index,
-    };
-    let kick_off_timeout_kick_off_1_input = Input {
-        outpoint: kick_off_timeout_kick_off_1_outpoint,
-        amount: kick_off_1_tx.output[kick_off_1_output_index as usize].value,
+    let vout = 1; // connector 1
+    let kick_off_timeout_input_0 = Input {
+        outpoint: OutPoint {
+            txid: kick_off_1_txid,
+            vout: vout,
+        },
+        amount: kick_off_1_tx.output[vout as usize].value,
     };
 
     let mut kick_off_timeout =
-        KickOffTimeoutTransaction::new(&operator_context, kick_off_timeout_kick_off_1_input);
+        KickOffTimeoutTransaction::new(&operator_context, kick_off_timeout_input_0);
 
     let secret_nonces_0 = kick_off_timeout.push_nonces(&verifier_0_context);
     let secret_nonces_1 = kick_off_timeout.push_nonces(&verifier_1_context);
