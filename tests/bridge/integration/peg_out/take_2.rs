@@ -13,11 +13,10 @@ use bitvm::bridge::{
 use tokio::time::sleep;
 
 use crate::bridge::{
-    helper::verify_funding_inputs, integration::peg_out::utils::create_and_mine_assert_tx,
+    helper::verify_funding_inputs,
+    integration::peg_out::utils::{create_and_mine_assert_tx, create_and_mine_peg_in_confirm_tx},
     setup::setup_test,
 };
-
-use super::utils::create_and_mine_peg_in_confirm_tx;
 
 #[tokio::test]
 async fn test_take_2_success() {
@@ -57,7 +56,7 @@ async fn test_take_2_success() {
     verify_funding_inputs(&client, &funding_inputs).await;
 
     // peg-in confirm
-    let (peg_in_confirm_tx, peg_in_confirm_tx_id) = create_and_mine_peg_in_confirm_tx(
+    let (peg_in_confirm_tx, peg_in_confirm_txid) = create_and_mine_peg_in_confirm_tx(
         &client,
         &depositor_context,
         &verifier_0_context,
@@ -69,7 +68,7 @@ async fn test_take_2_success() {
     .await;
 
     // assert
-    let (assert_tx, assert_tx_id) = create_and_mine_assert_tx(
+    let (assert_tx, assert_txid) = create_and_mine_assert_tx(
         &client,
         &operator_context,
         &verifier_0_context,
@@ -82,31 +81,39 @@ async fn test_take_2_success() {
     // take 2
     let connector_0_input = Input {
         outpoint: OutPoint {
-            txid: peg_in_confirm_tx_id,
+            txid: peg_in_confirm_txid,
             vout: 0,
         },
         amount: peg_in_confirm_tx.output[0].value,
     };
-    let connector_2_input = Input {
+    let connector_4_input = Input {
         outpoint: OutPoint {
-            txid: assert_tx_id,
+            txid: assert_txid,
             vout: 0,
         },
         amount: assert_tx.output[0].value,
     };
-    let connector_3_input = Input {
+    let connector_5_input = Input {
         outpoint: OutPoint {
-            txid: assert_tx_id,
+            txid: assert_txid,
             vout: 1,
         },
         amount: assert_tx.output[1].value,
+    };
+    let connector_c_input = Input {
+        outpoint: OutPoint {
+            txid: assert_txid,
+            vout: 2,
+        },
+        amount: assert_tx.output[2].value,
     };
 
     let mut take_2 = Take2Transaction::new(
         &operator_context,
         connector_0_input,
-        connector_2_input,
-        connector_3_input,
+        connector_4_input,
+        connector_5_input,
+        connector_c_input,
     );
 
     let secret_nonces_0 = take_2.push_nonces(&verifier_0_context);
@@ -116,13 +123,7 @@ async fn test_take_2_success() {
     take_2.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let take_2_tx = take_2.finalize();
-    let take_2_tx_id = take_2_tx.compute_txid();
-
-    take_2.pre_sign(&verifier_0_context, &secret_nonces_0);
-    take_2.pre_sign(&verifier_1_context, &secret_nonces_1);
-
-    let take_2_tx = take_2.finalize();
-    let take_2_tx_id = take_2_tx.compute_txid();
+    let take_2_txid = take_2_tx.compute_txid();
 
     // mine take 2
     sleep(Duration::from_secs(60)).await;
@@ -142,7 +143,7 @@ async fn test_take_2_success() {
     let operator_utxo = operator_utxos
         .clone()
         .into_iter()
-        .find(|x| x.txid == take_2_tx_id);
+        .find(|x| x.txid == take_2_txid);
 
     // assert
     assert!(operator_utxo.is_some());

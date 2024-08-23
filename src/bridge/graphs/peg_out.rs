@@ -1000,13 +1000,13 @@ impl PegOutGraph {
     pub async fn kick_off_1(&mut self, client: &AsyncClient) {
         verify_if_not_mined(&client, self.kick_off_1_transaction.tx().compute_txid()).await;
 
-        // complete kick off 1 tx
+        // complete kick-off 1 tx
         let kick_off_1_tx = self.kick_off_1_transaction.finalize();
 
-        // broadcast kick off 1 tx
+        // broadcast kick-off 1 tx
         let kick_off_1_result = client.broadcast(&kick_off_1_tx).await;
 
-        // verify kick_off_1 tx result
+        // verify kick-off 1 tx result
         verify_tx_result(&kick_off_1_result);
     }
 
@@ -1131,13 +1131,13 @@ impl PegOutGraph {
                         <= blockchain_height
                 })
             {
-                // complete kick off 2 tx
+                // complete kick-off 2 tx
                 let kick_off_2_tx = self.kick_off_2_transaction.finalize();
 
-                // broadcast kick off 2 tx
+                // broadcast kick-off 2 tx
                 let kick_off_2_result = client.broadcast(&kick_off_2_tx).await;
 
-                // verify kick off 2 tx result
+                // verify kick-off 2 tx result
                 verify_tx_result(&kick_off_2_result);
             } else {
                 panic!("Kick-off 1 timelock has not elapsed!");
@@ -1172,15 +1172,15 @@ impl PegOutGraph {
                         <= blockchain_height
                 })
             {
-                // complete kick off timeout tx
+                // complete kick-off timeout tx
                 let kick_off_timeout_tx = self.kick_off_timeout_transaction.finalize();
 
-                // broadcast kick off timeout tx
+                // broadcast kick-off timeout tx
                 self.kick_off_timeout_transaction
                     .add_output(output_script_pubkey);
                 let kick_off_timeout_result = client.broadcast(&kick_off_timeout_tx).await;
 
-                // verify kick off timeout tx result
+                // verify kick-off timeout tx result
                 verify_tx_result(&kick_off_timeout_result);
             } else {
                 panic!("Kick-off 1 timelock has not elapsed!");

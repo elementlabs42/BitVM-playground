@@ -3,6 +3,7 @@ pub mod disprove;
 pub mod disprove_chain;
 pub mod kick_off_timeout;
 pub mod peg_out;
+pub mod start_time;
 pub mod start_time_timeout;
 pub mod take_1;
 pub mod take_2;

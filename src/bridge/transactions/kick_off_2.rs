@@ -37,13 +37,13 @@ impl PreSignedTransaction for KickOff2Transaction {
 }
 
 impl KickOff2Transaction {
-    pub fn new(context: &OperatorContext, operator_input: Input) -> Self {
+    pub fn new(context: &OperatorContext, input_0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
-            operator_input,
+            input_0,
         );
 
         this.sign_input_0(context);

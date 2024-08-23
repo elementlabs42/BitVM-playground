@@ -7,14 +7,19 @@ use bitvm::bridge::{
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
+        kick_off_2::KickOff2Transaction,
         take_1::Take1Transaction,
     },
 };
 use tokio::time::sleep;
 
-use crate::bridge::{helper::verify_funding_inputs, setup::setup_test};
-
-use super::utils::{create_and_mine_kick_off_tx, create_and_mine_peg_in_confirm_tx};
+use crate::bridge::{
+    helper::verify_funding_inputs,
+    integration::peg_out::utils::{
+        create_and_mine_kick_off_1_tx, create_and_mine_peg_in_confirm_tx,
+    },
+    setup::setup_test,
+};
 
 #[tokio::test]
 async fn test_take_1_success() {
@@ -47,17 +52,17 @@ async fn test_take_1_success() {
     let peg_in_confirm_funding_address = connector_z.generate_taproot_address();
     funding_inputs.push((&peg_in_confirm_funding_address, deposit_input_amount));
 
-    let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
+    let kick_off_1_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let kick_off_1_funding_utxo_address = generate_pay_to_pubkey_script_address(
         operator_context.network,
         &operator_context.operator_public_key,
     );
-    funding_inputs.push((&kick_off_funding_utxo_address, kick_off_input_amount));
+    funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
 
     verify_funding_inputs(&client, &funding_inputs).await;
 
     // peg-in confirm
-    let (peg_in_confirm_tx, peg_in_confirm_tx_id) = create_and_mine_peg_in_confirm_tx(
+    let (peg_in_confirm_tx, peg_in_confirm_txid) = create_and_mine_peg_in_confirm_tx(
         &client,
         &depositor_context,
         &verifier_0_context,
@@ -68,50 +73,67 @@ async fn test_take_1_success() {
     )
     .await;
 
-    // kick-off
-    let (kick_off_tx, kick_off_tx_id) = create_and_mine_kick_off_tx(
+    // kick-off 1
+    let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
         &client,
         &operator_context,
-        &kick_off_funding_utxo_address,
-        kick_off_input_amount,
+        &kick_off_1_funding_utxo_address,
+        kick_off_1_input_amount,
     )
     .await;
+
+    // kick-off 2
+    let connector_1_input = Input {
+        outpoint: OutPoint {
+            txid: kick_off_1_txid,
+            vout: 1,
+        },
+        amount: kick_off_1_tx.output[1].value,
+    };
+    let kick_off_2 = KickOff2Transaction::new(&operator_context, connector_1_input);
+    let kick_off_2_tx = kick_off_2.finalize();
+    let kick_off_2_txid = kick_off_2_tx.compute_txid();
+
+    // mine kick-off 2
+    sleep(Duration::from_secs(60)).await;
+    let kick_off_2_result = client.esplora.broadcast(&kick_off_2_tx).await;
+    assert!(kick_off_2_result.is_ok());
 
     // take 1
     let connector_0_input = Input {
         outpoint: OutPoint {
-            txid: peg_in_confirm_tx_id,
+            txid: peg_in_confirm_txid,
             vout: 0,
         },
         amount: peg_in_confirm_tx.output[0].value,
     };
-    let connector_1_input = Input {
-        outpoint: OutPoint {
-            txid: kick_off_tx_id,
-            vout: 0,
-        },
-        amount: kick_off_tx.output[0].value,
-    };
     let connector_a_input = Input {
         outpoint: OutPoint {
-            txid: kick_off_tx_id,
-            vout: 1,
+            txid: kick_off_1_txid,
+            vout: 0,
         },
-        amount: kick_off_tx.output[1].value,
+        amount: kick_off_1_tx.output[0].value,
+    };
+    let connector_3_input = Input {
+        outpoint: OutPoint {
+            txid: kick_off_2_txid,
+            vout: 0,
+        },
+        amount: kick_off_2_tx.output[0].value,
     };
     let connector_b_input = Input {
         outpoint: OutPoint {
-            txid: kick_off_tx_id,
-            vout: 2,
+            txid: kick_off_2_txid,
+            vout: 1,
         },
-        amount: kick_off_tx.output[2].value,
+        amount: kick_off_2_tx.output[1].value,
     };
 
     let mut take_1 = Take1Transaction::new(
         &operator_context,
         connector_0_input,
-        connector_1_input,
         connector_a_input,
+        connector_3_input,
         connector_b_input,
     );
 
@@ -122,7 +144,7 @@ async fn test_take_1_success() {
     take_1.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let take_1_tx = take_1.finalize();
-    let take_1_tx_id = take_1_tx.compute_txid();
+    let take_1_txid = take_1_tx.compute_txid();
 
     // mine take 1
     sleep(Duration::from_secs(60)).await;
@@ -142,7 +164,7 @@ async fn test_take_1_success() {
     let operator_utxo = operator_utxos
         .clone()
         .into_iter()
-        .find(|x| x.txid == take_1_tx_id);
+        .find(|x| x.txid == take_1_txid);
 
     // assert
     assert!(operator_utxo.is_some());
