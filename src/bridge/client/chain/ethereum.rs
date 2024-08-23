@@ -51,7 +51,7 @@ impl ChainAdaptor for EthereumAdaptor {
 
         let logs = self.provider.get_logs(&filter).await.unwrap();
         println!("logs.length: {:?}", logs.len());
-        let sol_events: Vec<IBridge::PegOutInitiated>;
+        let mut sol_events: Vec<IBridge::PegOutInitiated> = Vec::new();
         for log in logs {
             let decoded = log.log_decode::<IBridge::PegOutInitiated>();
             if decoded.is_err() {
@@ -68,12 +68,14 @@ impl ChainAdaptor for EthereumAdaptor {
             // println!("log: {withdrawer:?} {amount:?} {destination_address:?} {source_outpoint:?} {operator_pubKey:?}");
         }
 
-        sol_events.iter().map(|e| PegOutEvent {
+        let peg_out_events = sol_events.iter().map(|e| PegOutEvent {
             source_outpoint: OutPoint {
                 txid: Txid::from_slice(&e.source_outpoint.txId.to_vec()).unwrap(),
                 vout: e.source_outpoint.vOut.to::<u32>(),
             },
-        });
+        }).collect();
+
+        Ok(peg_out_events)
     }
 }
 
