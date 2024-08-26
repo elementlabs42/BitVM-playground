@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        super::bridge::constants::{num_blocks_per_network, NUM_BLOCKS_PER_3_DAYS},
+        super::bridge::{constants::NUM_BLOCKS_PER_3_DAYS, utils::num_blocks_per_network},
         scripts::*,
         transactions::base::Input,
     },

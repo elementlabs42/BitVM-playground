@@ -7,12 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        constants::{
-            num_blocks_per_network, NUM_BLOCKS_PER_2_WEEKS, NUM_BLOCKS_PER_6_HOURS,
-            NUM_BLOCKS_PER_DAY,
-        },
+        constants::{NUM_BLOCKS_PER_2_WEEKS, NUM_BLOCKS_PER_6_HOURS, NUM_BLOCKS_PER_DAY},
         scripts::*,
         transactions::base::Input,
+        utils::num_blocks_per_network,
     },
     connector::*,
 };

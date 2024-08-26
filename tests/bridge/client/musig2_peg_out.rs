@@ -24,7 +24,7 @@ async fn test_musig2_peg_out_take1() {
 
     depositor_operator_verifier0_client.sync().await;
     depositor_operator_verifier0_client
-        .broadcast_take1(&peg_out_graph_id)
+        .broadcast_take_1(&peg_out_graph_id)
         .await;
 }
 
@@ -38,7 +38,7 @@ async fn test_musig2_peg_out_take2() {
     eprintln!("Broadcasting take2...");
     depositor_operator_verifier0_client.sync().await;
     depositor_operator_verifier0_client
-        .broadcast_take2(&peg_out_graph_id)
+        .broadcast_take_2(&peg_out_graph_id)
         .await;
 }
 
@@ -84,6 +84,8 @@ async fn create_peg_out_graph(
         mut verifier1_client,
         depositor_context,
         operator_context,
+        _,
+        _,
         _,
         _,
         _,

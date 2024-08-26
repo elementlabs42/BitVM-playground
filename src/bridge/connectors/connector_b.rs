@@ -7,9 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        constants::{num_blocks_per_network, NUM_BLOCKS_PER_3_DAYS},
-        scripts::*,
-        transactions::base::Input,
+        constants::NUM_BLOCKS_PER_3_DAYS, scripts::*, transactions::base::Input,
+        utils::num_blocks_per_network,
     },
     connector::*,
 };

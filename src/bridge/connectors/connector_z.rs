@@ -1,5 +1,5 @@
 use crate::{
-    bridge::constants::{num_blocks_per_network, NUM_BLOCKS_PER_2_WEEKS},
+    bridge::{constants::NUM_BLOCKS_PER_2_WEEKS, utils::num_blocks_per_network},
     treepp::*,
 };
 use bitcoin::{
