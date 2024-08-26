@@ -1,5 +1,3 @@
-use bitcoin::Network;
-
 pub const NUM_BLOCKS_PER_HOUR: u32 = 6;
 pub const NUM_BLOCKS_PER_6_HOURS: u32 = NUM_BLOCKS_PER_HOUR * 6;
 

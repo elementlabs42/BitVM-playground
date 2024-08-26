@@ -61,44 +61,44 @@ async fn test_musig2_peg_in() {
     println!("Depositor: Saving state changes to remote...");
     depositor_operator_verifier_0_client.flush().await;
 
-    // Verifier0: push nonces
-    println!("Verfier0: Reading state from remote...");
+    // Verifier 0: push nonces
+    println!("Verifier 0: Reading state from remote...");
     depositor_operator_verifier_0_client.sync().await;
 
-    println!("Verfier0: Generating nonces...");
+    println!("Verifier 0: Generating nonces...");
     depositor_operator_verifier_0_client.push_peg_in_nonces(&graph_id);
 
-    println!("Verfier0: Saving state changes to remote...");
+    println!("Verifier 0: Saving state changes to remote...");
     depositor_operator_verifier_0_client.flush().await;
 
     // Verifier 1: push nonces
-    println!("Verfier 1: Reading state from remote...");
+    println!("Verifier 1: Reading state from remote...");
     verifier_1_client.sync().await;
 
-    println!("Verfier 1: Generating nonces...");
+    println!("Verifier 1: Generating nonces...");
     verifier_1_client.push_peg_in_nonces(&graph_id);
 
-    println!("Verfier 1: Saving state changes to remote...");
+    println!("Verifier 1: Saving state changes to remote...");
     verifier_1_client.flush().await;
 
     // Verifier 0: presign
-    println!("Verfier 0: Reading state from remote...");
+    println!("Verifier 0: Reading state from remote...");
     depositor_operator_verifier_0_client.sync().await;
 
-    println!("Verfier 0: Pre-signing...");
+    println!("Verifier 0: Pre-signing...");
     depositor_operator_verifier_0_client.pre_sign_peg_in(&graph_id);
 
-    println!("Verfier 0: Saving state changes to remote...");
+    println!("Verifier 0: Saving state changes to remote...");
     depositor_operator_verifier_0_client.flush().await;
 
     // Verifier 1: presign
-    println!("Verfier 1: Reading state from remote...");
+    println!("Verifier 1: Reading state from remote...");
     verifier_1_client.sync().await;
 
-    println!("Verfier 1: Pre-signing...");
+    println!("Verifier 1: Pre-signing...");
     verifier_1_client.pre_sign_peg_in(&graph_id);
 
-    println!("Verfier 1: Saving state changes to remote...");
+    println!("Verifier 1: Saving state changes to remote...");
     verifier_1_client.flush().await;
 
     // Operator: finalize & verify

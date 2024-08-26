@@ -41,11 +41,11 @@ pub async fn setup_test() -> (
 ) {
     let network = Network::Testnet;
 
-    let (_, _, verifier0_public_key) = generate_keys_from_secret(network, VERIFIER_0_SECRET);
-    let (_, _, verifier1_public_key) = generate_keys_from_secret(network, VERIFIER_1_SECRET);
+    let (_, _, verifier_0_public_key) = generate_keys_from_secret(network, VERIFIER_0_SECRET);
+    let (_, _, verifier_1_public_key) = generate_keys_from_secret(network, VERIFIER_1_SECRET);
     let mut n_of_n_public_keys: Vec<PublicKey> = Vec::new();
-    n_of_n_public_keys.push(verifier0_public_key);
-    n_of_n_public_keys.push(verifier1_public_key);
+    n_of_n_public_keys.push(verifier_0_public_key);
+    n_of_n_public_keys.push(verifier_1_public_key);
 
     let depositor_context = DepositorContext::new(network, DEPOSITOR_SECRET, &n_of_n_public_keys);
     let operator_context = OperatorContext::new(network, OPERATOR_SECRET, &n_of_n_public_keys);
