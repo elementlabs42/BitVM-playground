@@ -32,8 +32,12 @@ use super::{
             take_1::Take1Transaction,
             take_2::Take2Transaction,
         },
+        utils::{get_num_blocks_per_2_weeks, get_num_blocks_per_4_weeks},
     },
-    base::{get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
+    base::{
+        get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, FEE_AMOUNT,
+        GRAPH_VERSION,
+    },
     peg_in::PegInGraph,
 };
 

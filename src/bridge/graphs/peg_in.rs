@@ -23,6 +23,7 @@ use super::{
             peg_in_refund::PegInRefundTransaction,
             pre_signed::PreSignedTransaction,
         },
+        utils::get_num_blocks_per_2_weeks,
     },
     base::{verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
 };
@@ -369,6 +370,7 @@ impl PegInGraph {
             .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
             .await;
 
+        // TODO: Wait a preconfigured (network-dependent) amount of time until the deposit tx is mined.
         if deposit_status.is_ok_and(|status| status.confirmed) {
             // complete confirm tx
             let confirm_tx = self.peg_in_confirm_transaction.finalize();
