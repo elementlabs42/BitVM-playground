@@ -17,10 +17,11 @@ use crate::bridge::{
 
 #[tokio::test]
 async fn test_musig2_peg_out_take_1() {
+    let with_kick_off_2_tx = false;
     let with_challenge_tx = false;
     let with_assert_tx = false;
     let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, _) =
-        create_peg_out_graph(with_challenge_tx, with_assert_tx).await;
+        create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
 
     depositor_operator_verifier_0_client.sync().await;
     depositor_operator_verifier_0_client
@@ -30,10 +31,11 @@ async fn test_musig2_peg_out_take_1() {
 
 #[tokio::test]
 async fn test_musig2_peg_out_take_2() {
+    let with_kick_off_2_tx = true;
     let with_challenge_tx = false;
     let with_assert_tx = true;
     let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, _) =
-        create_peg_out_graph(with_challenge_tx, with_assert_tx).await;
+        create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
 
     eprintln!("Broadcasting take 2...");
     depositor_operator_verifier_0_client.sync().await;
@@ -44,10 +46,11 @@ async fn test_musig2_peg_out_take_2() {
 
 #[tokio::test]
 async fn test_musig2_start_time_timeout() {
+    let with_kick_off_2_tx = false;
     let with_challenge_tx = false;
-    let with_assert_tx = true;
+    let with_assert_tx = false;
     let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
-        create_peg_out_graph(with_challenge_tx, with_assert_tx).await;
+        create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
 
     depositor_operator_verifier_0_client.sync().await;
     depositor_operator_verifier_0_client
@@ -60,10 +63,11 @@ async fn test_musig2_start_time_timeout() {
 
 #[tokio::test]
 async fn test_musig2_kick_off_timeout() {
+    let with_kick_off_2_tx = false;
     let with_challenge_tx = false;
-    let with_assert_tx = true;
+    let with_assert_tx = false;
     let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
-        create_peg_out_graph(with_challenge_tx, with_assert_tx).await;
+        create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
 
     depositor_operator_verifier_0_client.sync().await;
     depositor_operator_verifier_0_client
@@ -76,10 +80,11 @@ async fn test_musig2_kick_off_timeout() {
 
 #[tokio::test]
 async fn test_musig2_peg_out_disprove_with_challenge() {
+    let with_kick_off_2_tx = true;
     let with_challenge_tx = true;
     let with_assert_tx = true;
     let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
-        create_peg_out_graph(with_challenge_tx, with_assert_tx).await;
+        create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
 
     depositor_operator_verifier_0_client.sync().await;
     depositor_operator_verifier_0_client
@@ -91,7 +96,25 @@ async fn test_musig2_peg_out_disprove_with_challenge() {
         .await;
 }
 
+#[tokio::test]
+async fn test_musig2_peg_out_disprove_chain_with_challenge() {
+    let with_kick_off_2_tx = true;
+    let with_challenge_tx = true;
+    let with_assert_tx = false;
+    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
+        create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
+
+    depositor_operator_verifier_0_client.sync().await;
+    depositor_operator_verifier_0_client
+        .broadcast_disprove_chain(
+            &peg_out_graph_id,
+            generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
+        )
+        .await;
+}
+
 async fn create_peg_out_graph(
+    with_kick_off_2_tx: bool,
     with_challenge_tx: bool,
     with_assert_tx: bool,
 ) -> (BitVMClient, BitVMClient, String, DepositorContext) {
@@ -203,6 +226,24 @@ async fn create_peg_out_graph(
     // Wait for peg-in deposit transaction to be mined
     println!("Waiting for peg-out kick-off tx...");
     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+
+    if with_kick_off_2_tx {
+        eprintln!("Broadcasting start time...");
+        depositor_operator_verifier_0_client
+            .broadcast_start_time(&peg_out_graph_id)
+            .await;
+
+        println!("Waiting for peg-out start time tx...");
+        sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+
+        eprintln!("Broadcasting kick-off 2...");
+        depositor_operator_verifier_0_client
+            .broadcast_kick_off_2(&peg_out_graph_id)
+            .await;
+
+        println!("Waiting for peg-out kick-off 2 tx...");
+        sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+    }
 
     if with_challenge_tx {
         let challenge_funding_outpoint = generate_stub_outpoint(

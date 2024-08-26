@@ -88,7 +88,7 @@ async fn test_kick_off_timeout_success() {
     let kick_off_timeout_tx = kick_off_timeout.finalize();
     let kick_off_timeout_txid = kick_off_timeout_tx.compute_txid();
 
-    // mine kick off timeout
+    // mine kick-off timeout
     sleep(Duration::from_secs(60)).await;
     let kick_off_timeout_result = client.esplora.broadcast(&kick_off_timeout_tx).await;
     assert!(kick_off_timeout_result.is_ok());
