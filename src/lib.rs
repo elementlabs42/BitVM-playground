@@ -174,7 +174,6 @@ pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo
 }
 
 pub fn execute_script_as_chunks(script: treepp::Script, target_chunk_size: usize, tolerance: usize) -> ExecuteInfo {
-    let (chunks, script) = script.compile_to_chunks(target_chunk_size, tolerance);
     //TODO: Rerun for all the slices constructed with chunks entries
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
@@ -190,7 +189,7 @@ pub fn execute_script_as_chunks(script: treepp::Script, target_chunk_size: usize
             input_idx: 0,
             taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
         },
-        script,
+        script.compile(),
         vec![],
     )
     .expect("error creating exec");

@@ -1,9 +1,8 @@
-use std::io::Read;
 use std::str::FromStr;
 
-use super::{base::ChainAdaptor, chain::PegOutEvent};
-use alloy::network::Ethereum;
 use alloy::rpc::types::Log;
+
+use super::{base::ChainAdaptor, chain::PegOutEvent, chain::PegInMintedEvent};
 use alloy::sol_types::SolEvent;
 use alloy::{
     eips::BlockNumberOrTag,
@@ -14,7 +13,6 @@ use alloy::{
     transports::http::{reqwest::Url, Client, Http},
 };
 use async_trait::async_trait;
-use bitcoin::address::NetworkChecked;
 use bitcoin::hashes::Hash;
 use bitcoin::{Address, Amount, OutPoint, PublicKey, Txid};
 use dotenv;
@@ -34,6 +32,11 @@ sol!(
             Outpoint source_outpoint,
             uint256 amount,
             bytes32 operator_pubKey
+        );
+        event PegInMinted(
+            address indexed depositor, 
+            uint256 amount, 
+            bytes32 depositorPubKey
         );
     }
 );
@@ -94,6 +97,43 @@ impl ChainAdaptor for EthereumAdaptor {
             .collect();
 
         Ok(peg_out_events)
+    }
+
+    async fn get_peg_in_minted_event(&self) -> Result<Vec<PegInMintedEvent>, String> {
+            let filter = Filter::new()
+                .from_block(BlockNumberOrTag::Number(self.bridge_creation_block))
+                .address(self.bridge_address)
+                .event(&IBridge::PegInMinted::SIGNATURE);
+            
+            let results = self.provider.get_logs(&filter).await;
+            if results.is_err() {
+                return Err(results.unwrap_err().to_string());
+            }
+            let logs = results.unwrap();
+            println!("logs.length: {:?}", logs.len());
+            let mut sol_events: Vec<IBridge::PegInMinted> = Vec::new();
+            // parse from sol_events to pegin minted events
+            for log in logs {
+                let results = self.provider.get_logs(&filter).await;
+                if (results.is_err()) {
+                    return Err(results.unwrap_err().to_string());
+                }
+                let logs = results.unwrap();
+            }
+
+            let peg_in_minted_events = sol_events
+                .iter()
+                .map(|e| {
+                    PegInMintedEvent {
+                        depositor: e.depositor.to_string(),
+                        amount: e.amount,
+                        depositor_pubkey:  PublicKey::from_slice(&e.depositorPubKey.to_vec()).unwrap(),
+                    }
+                })
+                .collect();
+
+            Ok(peg_in_minted_events)
+    
     }
 }
 

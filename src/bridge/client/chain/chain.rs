@@ -1,5 +1,5 @@
 use bitcoin::{Amount, OutPoint, PubkeyHash, PublicKey, Txid};
-use std::str::FromStr;
+use alloy::primitives::{Address, U256};
 
 use super::{base::ChainAdaptor, ethereum::EthereumAdaptor};
 
@@ -11,6 +11,21 @@ pub struct PegOutEvent {
     pub amount: Amount,
     pub operator_public_key: PublicKey,
     pub timestamp: u32,
+}
+
+pub struct PegInMintedEvent {
+    pub depositor: String,
+    pub amount: U256,
+    pub depositor_pubkey: PublicKey
+}
+
+impl PegOutEvent {
+    pub const EVENT_NAME: &'static str =
+        "PegOutInitiated(address,string,(bytes32,uint256),uint256,bytes32)";
+}
+
+impl PegInMintedEvent {
+    pub const EVENT_NAME: &'static str = "PegInMinted(address,uint256,bytes32)";
 }
 
 static CLIENT_MISSING_ORACLE_DRIVER_ERROR: &str = "Bridge client is missing chain adaptor";
@@ -32,6 +47,13 @@ impl Chain {
                 Ok(events) => Ok(events),
                 Err(err) => Err(err.to_string()),
             },
+            Err(err) => Err(err.to_string()),
+        }
+    }
+
+    pub async fn get_peg_in_minted(&self) -> Result<Vec<PegInMintedEvent>, String> {
+        match self.get_driver() {
+            Ok(driver) => driver.get_peg_in_minted_event().await,
             Err(err) => Err(err.to_string()),
         }
     }
