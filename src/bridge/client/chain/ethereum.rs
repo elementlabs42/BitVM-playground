@@ -1,19 +1,22 @@
 use std::io::Read;
+use std::str::FromStr;
 
 use super::{base::ChainAdaptor, chain::PegOutEvent};
 use alloy::network::Ethereum;
+use alloy::rpc::types::Log;
 use alloy::sol_types::SolEvent;
 use alloy::{
     eips::BlockNumberOrTag,
-    primitives::Address,
+    primitives::Address as EvmAddress,
     providers::{Provider, ProviderBuilder, RootProvider},
     rpc::types::Filter,
     sol,
     transports::http::{reqwest::Url, Client, Http},
 };
 use async_trait::async_trait;
+use bitcoin::address::NetworkChecked;
 use bitcoin::hashes::Hash;
-use bitcoin::{OutPoint, Txid};
+use bitcoin::{Address, Amount, OutPoint, PublicKey, Txid};
 use dotenv;
 
 sol!(
@@ -36,7 +39,7 @@ sol!(
 );
 
 pub struct EthereumAdaptor {
-    bridge_address: String,
+    bridge_address: EvmAddress,
     bridge_creation_block: u64,
     provider: RootProvider<Http<Client>>,
 }
@@ -46,34 +49,49 @@ impl ChainAdaptor for EthereumAdaptor {
     async fn get_peg_out_init_event(&self) -> Result<Vec<PegOutEvent>, String> {
         let filter = Filter::new()
             .from_block(BlockNumberOrTag::Number(self.bridge_creation_block))
-            .address(self.bridge_address.parse::<Address>().unwrap())
+            .address(self.bridge_address)
             .event(&IBridge::PegOutInitiated::SIGNATURE);
 
-        let logs = self.provider.get_logs(&filter).await.unwrap();
-        println!("logs.length: {:?}", logs.len());
-        let mut sol_events: Vec<IBridge::PegOutInitiated> = Vec::new();
+        let results = self.provider.get_logs(&filter).await;
+        if (results.is_err()) {
+            return Err(results.unwrap_err().to_string());
+        }
+        let logs = results.unwrap();
+        let mut sol_events: Vec<Log<IBridge::PegOutInitiated>> = Vec::new();
         for log in logs {
             let decoded = log.log_decode::<IBridge::PegOutInitiated>();
             if decoded.is_err() {
                 return Err(decoded.unwrap_err().to_string());
             }
-            // let IBridge::PegOutInitiated {
-            //     withdrawer,
-            //     amount,
-            //     destination_address,
-            //     source_outpoint,
-            //     operator_pubKey,
-            // } = decoded.unwrap().inner.data;
-            sol_events.push(decoded.unwrap().inner.data);
-            // println!("log: {withdrawer:?} {amount:?} {destination_address:?} {source_outpoint:?} {operator_pubKey:?}");
+            sol_events.push(decoded.unwrap());
         }
 
-        let peg_out_events = sol_events.iter().map(|e| PegOutEvent {
-            source_outpoint: OutPoint {
-                txid: Txid::from_slice(&e.source_outpoint.txId.to_vec()).unwrap(),
-                vout: e.source_outpoint.vOut.to::<u32>(),
-            },
-        }).collect();
+        let peg_out_events = sol_events
+            .iter()
+            .map(|e| {
+                let withdrawer_address = Address::from_str(&e.inner.data.destination_address)
+                    .unwrap()
+                    .assume_checked();
+                println!(
+                    "e.inner.data.operator_pubKey: {:?}",
+                    e.inner.data.operator_pubKey
+                );
+                let operator_public_key =
+                    PublicKey::from_slice(&e.inner.data.operator_pubKey.to_vec()).unwrap();
+                PegOutEvent {
+                    withdrawer_chain_address: e.inner.data.withdrawer.to_string(),
+                    withdrawer_public_key_hash: withdrawer_address.pubkey_hash().unwrap(),
+                    source_outpoint: OutPoint {
+                        txid: Txid::from_slice(&e.inner.data.source_outpoint.txId.to_vec())
+                            .unwrap(),
+                        vout: e.inner.data.source_outpoint.vOut.to::<u32>(),
+                    },
+                    amount: Amount::from_sat(e.inner.data.amount.to::<u64>()),
+                    operator_public_key,
+                    timestamp: u32::try_from(e.block_timestamp.unwrap()).unwrap(),
+                }
+            })
+            .collect();
 
         Ok(peg_out_events)
     }
@@ -82,20 +100,22 @@ impl ChainAdaptor for EthereumAdaptor {
 impl EthereumAdaptor {
     pub fn new() -> Option<Self> {
         dotenv::dotenv().ok();
-        let rpc_url = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_RPC_URL");
-        let bridge_address = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_ADDRESS");
+        let rpc_url_str = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_RPC_URL");
+        let bridge_address_str = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_ADDRESS");
         let bridge_creation = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_CREATION");
-        if bridge_address.is_err() || bridge_creation.is_err() {
+        if bridge_address_str.is_err() || bridge_creation.is_err() {
             return None;
         }
-        if rpc_url.is_err() {
+        if rpc_url_str.is_err() {
             return None;
         }
 
+        let rpc_url = rpc_url_str.unwrap().parse::<Url>();
+        let bridge_address = bridge_address_str.unwrap().parse::<EvmAddress>();
         Some(Self {
             bridge_address: bridge_address.unwrap(),
             bridge_creation_block: bridge_creation.unwrap().parse::<u64>().unwrap(),
-            provider: ProviderBuilder::new().on_http(rpc_url.unwrap().parse::<Url>().unwrap()),
+            provider: ProviderBuilder::new().on_http(rpc_url.unwrap()),
         })
     }
 }
