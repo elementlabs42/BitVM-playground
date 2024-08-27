@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{
-            connector::*, connector_1::Connector1, connector_2::Connector2, connector_a::ConnectorA,
+            connector::*, connector_1::Connector1, connector_2::Connector2, connector_6::Connector6, connector_a::ConnectorA,
         },
         contexts::operator::OperatorContext,
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
@@ -37,13 +37,13 @@ impl PreSignedTransaction for KickOff1Transaction {
 }
 
 impl KickOff1Transaction {
-    pub fn new(context: &OperatorContext, operator_input: Input) -> Self {
+    pub fn new(context: &OperatorContext, input_0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
-            operator_input,
+            input_0,
         );
 
         this.sign_input_0(context);
@@ -56,14 +56,9 @@ impl KickOff1Transaction {
         operator_public_key: &PublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        operator_input: Input,
+        input_0: Input,
     ) -> Self {
         let connector_1 = Connector1::new(
-            network,
-            operator_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
-        let connector_a = ConnectorA::new(
             network,
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
@@ -73,15 +68,21 @@ impl KickOff1Transaction {
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
         );
+        let connector_6 = Connector6::new(
+            network,
+            operator_public_key,
+            evm_txid,
+            peg_out_txid,
+        );
+        let connector_a = ConnectorA::new(
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
+        );
 
-        let _input_0 = TxIn {
-            previous_output: operator_input.outpoint,
-            script_sig: ScriptBuf::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::default(),
-        };
+        let _input_0 = connector_6.generate_tx_in(&input_0);
 
-        let total_output_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
@@ -106,7 +107,7 @@ impl KickOff1Transaction {
                 output: vec![_output_0, _output_1, _output_2],
             },
             prev_outs: vec![TxOut {
-                value: operator_input.amount,
+                value: input_0.amount,
                 script_pubkey: generate_pay_to_pubkey_script_address(network, operator_public_key)
                     .script_pubkey(), // TODO: Add address of Commit y
             }],

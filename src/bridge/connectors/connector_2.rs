@@ -38,12 +38,6 @@ impl Connector2 {
             OP_CHECKSIG
         }
         .compile()
-        // context.paul.push.start_time(),
-        // OP_CHECKLOCKTIMEVERIFY,
-        // OP_DROP,
-        // context.operator_pk,
-        // OP_CHECKSIG
-        // generate_pay_to_pubkey_taproot_script(&self.operator_taproot_public_key)
     }
 
     fn generate_taproot_leaf_0_unlock(&self) -> ScriptBuf {

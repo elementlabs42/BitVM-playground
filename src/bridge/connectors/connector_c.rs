@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::treepp::script;
 use bitcoin::{
     hashes::{ripemd160, Hash},
     key::Secp256k1,
