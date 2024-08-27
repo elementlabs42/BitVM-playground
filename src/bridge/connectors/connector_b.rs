@@ -36,6 +36,18 @@ impl ConnectorB {
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 
     fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
+        // [
+        //     THREE_DAYS,
+        //     OP_CHECKSEQUENCEVERIFY,
+        //     OP_DROP,
+        // ]
+        // + [context.paul.commit.x()]
+        // + [context.paul.commit.z(i) for i in range(1, SPLITS)]
+        // + [context.paul.commit.y()]
+        // + [
+        //     context.n_of_n_pubkey,
+        //     OP_CHECKSIG,
+        // ]
         generate_timelock_taproot_script(
             &self.n_of_n_taproot_public_key,
             self.num_blocks_timelock_1,

@@ -1,7 +1,6 @@
+use crate::treepp::script;
 use bitcoin::{
-    key::Secp256k1,
-    taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
+    key::Secp256k1, opcodes::all::OP_CLTV, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, ScriptBuf, TxIn, XOnlyPublicKey
 };
 use serde::{Deserialize, Serialize};
 
@@ -31,14 +30,31 @@ impl Connector2 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        // TODO: Add commit later
-        generate_pay_to_pubkey_taproot_script(&self.operator_taproot_public_key)
+        script! {
+            { context.paul.push.start_time() }
+            OP_CLTV
+            OP_DROP
+            { self.operator_taproot_public_key }
+            OP_CHECKSIG
+        }
+        .compile()
+        // context.paul.push.start_time(),
+        // OP_CHECKLOCKTIMEVERIFY,
+        // OP_DROP,
+        // context.operator_pk,
+        // OP_CHECKSIG
+        // generate_pay_to_pubkey_taproot_script(&self.operator_taproot_public_key)
+    }
+
+    fn generate_taproot_leaf_0_unlock(&self) -> ScriptBuf {
+        // witness_vec = StartTimeLeaf().unlock(context)
+        // witness_vec.extend([prevout_leaf[0].to_bytes(), control_block.serialize()])
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 
     fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
-        generate_pay_to_pubkey_taproot_script(&self.operator_taproot_public_key)
+        generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)
     }
 
     fn generate_taproot_leaf_1_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
