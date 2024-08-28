@@ -114,18 +114,20 @@ fn verify_public_nonces(
     all_sigs: &HashMap<usize, HashMap<PublicKey, Signature>>,
     txid: Txid,
 ) -> bool {
+    let mut ret_val = true;
+
     for (i, nonces) in all_nonces {
         for (pubkey, nonce) in nonces {
             if !verify_public_nonce(&all_sigs[i][pubkey], nonce, &XOnlyPublicKey::from(*pubkey)) {
                 println!(
                     "Failed to verify public nonce for pubkey {pubkey} on tx:input {txid}:{i}."
                 );
-                return false;
+                ret_val = false;
             }
         }
     }
 
-    true
+    ret_val
 }
 
 pub fn verify_public_nonces_for_tx(
