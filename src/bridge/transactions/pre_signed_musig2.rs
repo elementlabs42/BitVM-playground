@@ -66,7 +66,7 @@ pub fn push_nonce<T: PreSignedTransaction + PreSignedMusig2Transaction>(
     secret_nonce
 }
 
-pub fn get_nonce_message(nonce: &PubNonce) -> Message {
+fn get_nonce_message(nonce: &PubNonce) -> Message {
     Message::from_hashed_data::<bitcoin::hashes::sha256::Hash>(nonce.to_bytes().as_slice())
 }
 
@@ -74,7 +74,7 @@ fn verify_schnorr_signature(sig: &Signature, msg: &Message, pubkey: &XOnlyPublic
     match Secp256k1::new().verify_schnorr(sig, msg, pubkey) {
         Ok(()) => true,
         Err(e) => {
-            println!("verify_schnorr_signature: {e}");
+            eprintln!("verify_schnorr() failed with: {e}");
             false
         }
     }
