@@ -1,6 +1,9 @@
 use bitcoin::{Amount, OutPoint, PubkeyHash, PublicKey};
 
-use super::{base::ChainAdaptor, ethereum::EthereumAdaptor};
+use super::{
+    base::ChainAdaptor,
+    ethereum::{EthereumAdaptor, EthereumInitConfig},
+};
 
 #[derive(Debug)]
 pub struct PegOutEvent {
@@ -12,6 +15,16 @@ pub struct PegOutEvent {
     pub timestamp: u32,
 }
 
+#[derive(Debug)]
+pub struct PegOutBurntEvent {
+    pub withdrawer_chain_address: String,
+    pub source_outpoint: OutPoint,
+    pub amount: Amount,
+    pub operator_public_key: PublicKey,
+    pub timestamp: u32,
+}
+
+#[derive(Debug)]
 pub struct PegInEvent {
     pub depositor: String,
     pub amount: Amount,
@@ -29,6 +42,10 @@ impl Chain {
         Self {
             ethereum: EthereumAdaptor::new(),
         }
+    }
+
+    pub fn init_ethereum(&mut self, conf: EthereumInitConfig) {
+        self.ethereum = Some(EthereumAdaptor::from_config(conf));
     }
 
     pub async fn get_peg_out_init(&self) -> Result<Vec<PegOutEvent>, String> {
