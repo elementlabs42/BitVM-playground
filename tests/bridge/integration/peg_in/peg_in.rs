@@ -43,28 +43,6 @@ async fn test_peg_in_success() {
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);
 
-    println!(
-        "depositor_public_key: {:?}",
-        hex::encode(depositor_context.depositor_public_key.to_bytes())
-    );
-    println!(
-        "depositor_xonly_public_key: {:?}",
-        hex::encode(depositor_context.depositor_taproot_public_key.serialize())
-    );
-    println!(
-        "n_of_n_xonly_public_key: {:?}",
-        hex::encode(depositor_context.n_of_n_taproot_public_key.serialize())
-    );
-    println!("network: {:?}", depositor_context.network);
-    let connector_0 = Connector0::new(
-        depositor_context.network,
-        &depositor_context.n_of_n_taproot_public_key,
-    );
-    println!(
-        "connector_0: {:?}",
-        hex::encode(connector_0.generate_taproot_address().script_pubkey())
-    );
-
     // peg-in deposit
     let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
         depositor_context.network,

@@ -14,7 +14,7 @@ use alloy::{
 };
 use async_trait::async_trait;
 use bitcoin::hashes::Hash;
-use bitcoin::{Address, Amount, OutPoint, PublicKey, Txid};
+use bitcoin::{Address, Amount, Denomination, OutPoint, PublicKey, Txid};
 use dotenv;
 
 sol!(
@@ -31,7 +31,7 @@ sol!(
             string destination_address,
             Outpoint source_outpoint,
             uint256 amount,
-            bytes32 operator_pubKey
+            bytes operator_pubKey
         );
         event PegInMinted(
             address indexed depositor,
@@ -75,10 +75,6 @@ impl ChainAdaptor for EthereumAdaptor {
                 let withdrawer_address = Address::from_str(&e.inner.data.destination_address)
                     .unwrap()
                     .assume_checked();
-                println!(
-                    "e.inner.data.operator_pubKey: {:?}",
-                    e.inner.data.operator_pubKey
-                );
                 let operator_public_key =
                     PublicKey::from_slice(&e.inner.data.operator_pubKey.to_vec()).unwrap();
                 PegOutEvent {
@@ -89,7 +85,11 @@ impl ChainAdaptor for EthereumAdaptor {
                             .unwrap(),
                         vout: e.inner.data.source_outpoint.vOut.to::<u32>(),
                     },
-                    amount: Amount::from_sat(e.inner.data.amount.to::<u64>()),
+                    amount: Amount::from_str_in(
+                        e.inner.data.amount.to_string().as_str(),
+                        Denomination::Satoshi,
+                    )
+                    .unwrap(),
                     operator_public_key,
                     timestamp: u32::try_from(e.block_timestamp.unwrap()).unwrap(),
                 }
@@ -124,7 +124,8 @@ impl ChainAdaptor for EthereumAdaptor {
             .iter()
             .map(|e| PegInEvent {
                 depositor: e.depositor.to_string(),
-                amount: Amount::from_str(e.amount.to_string().as_str()).unwrap(),
+                amount: Amount::from_str_in(e.amount.to_string().as_str(), Denomination::Satoshi)
+                    .unwrap(),
                 depositor_pubkey: PublicKey::from_slice(&e.depositorPubKey.to_vec()).unwrap(),
             })
             .collect();
