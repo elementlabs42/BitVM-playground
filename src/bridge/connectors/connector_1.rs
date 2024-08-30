@@ -1,7 +1,6 @@
+use crate::treepp::script;
 use bitcoin::{
-    key::Secp256k1,
-    taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
+    key::Secp256k1, opcodes::all::OP_CHECKSIGVERIFY, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, ScriptBuf, TxIn, XOnlyPublicKey
 };
 use serde::{Deserialize, Serialize};
 
@@ -45,23 +44,24 @@ impl Connector1 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        // TWO_WEEKS,
-        // OP_CHECKSEQUENCEVERIFY,
-        // OP_DROP,
-        // context.paul.push.sb(),
-        // OP_RIPEMD160,
-        // context.paul.push.y(),
-        // OP_EQUALVERIFY,
-        // context.operator_pk,
-        // OP_CHECKSIG,
-        generate_timelock_taproot_script(
-            &self.operator_taproot_public_key,
-            self.num_blocks_timelock_0,
-        )
+        script! {
+            // QUESTION: should both sb adn y be ommitted from the script and included in the witness data later?
+            { self.num_blocks_timelock_0 }
+            OP_CSV
+            OP_DROP
+            // Placeholder for sb
+            OP_RIPEMD160
+            // Placeholder for y
+            OP_EQUALVERIFY
+            { self.operator_taproot_public_key }
+            OP_CHECKSIG
+          }
+          .compile()
     }
 
     fn generate_taproot_leaf_0_unlock(&self) -> ScriptBuf {
-        // return [context.paul.unlock.y()] + [context.paul.unlock.z(i) for i in range(SPLITS, 1)] + [context.paul.unlock.x()]
+        // TODO push sb
+        // TODO push y
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
