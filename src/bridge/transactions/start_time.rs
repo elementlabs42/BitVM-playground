@@ -2,7 +2,7 @@ use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
-use musig2::{PartialSignature, PubNonce};
+use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -28,6 +28,7 @@ pub struct StartTimeTransaction {
     connector_2: Connector2,
 
     musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
+    musig2_nonce_signatures: HashMap<usize, HashMap<PublicKey, Signature>>,
     musig2_signatures: HashMap<usize, HashMap<PublicKey, PartialSignature>>,
 }
 
@@ -45,6 +46,14 @@ impl PreSignedMusig2Transaction for StartTimeTransaction {
     fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
+    }
+    fn musig2_nonce_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, Signature>> {
+        &self.musig2_nonce_signatures
+    }
+    fn musig2_nonce_signatures_mut(
+        &mut self,
+    ) -> &mut HashMap<usize, HashMap<PublicKey, Signature>> {
+        &mut self.musig2_nonce_signatures
     }
     fn musig2_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &self.musig2_signatures
@@ -91,7 +100,8 @@ impl StartTimeTransaction {
 
         let _output_0 = TxOut {
             value: total_output_amount,
-            script_pubkey: generate_pay_to_pubkey_script(operator_public_key).script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(network, &operator_public_key)
+                .script_pubkey(),
         };
 
         StartTimeTransaction {
@@ -108,6 +118,7 @@ impl StartTimeTransaction {
             prev_scripts: vec![connector_2.generate_taproot_leaf_script(input_0_leaf)],
             connector_2,
             musig2_nonces: HashMap::new(),
+            musig2_nonce_signatures: HashMap::new(),
             musig2_signatures: HashMap::new(),
         }
     }

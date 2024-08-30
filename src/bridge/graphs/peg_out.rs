@@ -1420,7 +1420,14 @@ impl PegOutGraph {
         if self.peg_out_transaction.is_some() {
             peg_out_status = Some(
                 client
-                    .get_tx_status(&self.peg_out_transaction.tx().compute_txid())
+                    .get_tx_status(
+                        &self
+                            .peg_out_transaction
+                            .as_ref()
+                            .unwrap()
+                            .tx()
+                            .compute_txid(),
+                    )
                     .await,
             );
         }
@@ -1528,9 +1535,6 @@ impl PegOutGraph {
         }
 
         if !verify_public_nonces_for_tx(&self.assert_transaction) {
-            ret_val = false;
-        }
-        if !verify_public_nonces_for_tx(&self.challenge_transaction) {
             ret_val = false;
         }
         if !verify_public_nonces_for_tx(&self.disprove_chain_transaction) {
