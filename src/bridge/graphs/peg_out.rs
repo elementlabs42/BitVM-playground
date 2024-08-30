@@ -450,6 +450,7 @@ impl PegOutGraph {
         let start_time_vout_0 = 2;
         let start_time_transaction = StartTimeTransaction::new_for_validation(
             self.network,
+            &self.operator_public_key,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
@@ -1155,7 +1156,7 @@ impl PegOutGraph {
         client: &AsyncClient,
         output_script_pubkey: ScriptBuf,
     ) {
-        verify_if_not_mined(client, self.kick_off_2_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(client, self.kick_off_timeout_transaction.tx().compute_txid()).await;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
         let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
@@ -1415,7 +1416,7 @@ impl PegOutGraph {
         if self.peg_out_transaction.is_some() {
             peg_out_status = Some(
                 client
-                    .get_tx_status(&self.take_2_transaction.tx().compute_txid())
+                    .get_tx_status(&self.peg_out_transaction.tx().compute_txid())
                     .await,
             );
         }

@@ -60,6 +60,7 @@ impl StartTimeTransaction {
     pub fn new(context: &OperatorContext, input_0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
+            &context.operator_public_key,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             input_0,
@@ -72,6 +73,7 @@ impl StartTimeTransaction {
 
     pub fn new_for_validation(
         network: Network,
+        operator_public_key: &PublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         input_0: Input,
@@ -89,7 +91,7 @@ impl StartTimeTransaction {
 
         let _output_0 = TxOut {
             value: total_output_amount,
-            script_pubkey: generate_burn_script_address(network).script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script(operator_public_key).script_pubkey(),
         };
 
         StartTimeTransaction {
