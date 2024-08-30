@@ -32,7 +32,7 @@ async fn test_peg_out_for_chain() {
         bridge_creation_block: 20588300,
     });
     let events_result = adaptors.get_peg_out_init().await;
-    assert!(events_result.is_ok());
+    assert!(events_result.as_ref().is_ok_and(|x| x.len() > 0));
 
     let peg_out_event = events_result.unwrap().pop().unwrap();
 
