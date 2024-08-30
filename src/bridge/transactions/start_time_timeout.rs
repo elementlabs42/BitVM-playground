@@ -60,17 +60,13 @@ impl PreSignedMusig2Transaction for StartTimeTimeoutTransaction {
 
 impl StartTimeTimeoutTransaction {
     pub fn new(context: &OperatorContext, input_0: Input, input_1: Input) -> Self {
-        let mut this = Self::new_for_validation(
+        Self::new_for_validation(
             context.network,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             input_0,
             input_1,
-        );
-
-        this.sign_input_0(context);
-
-        this
+        )
     }
 
     pub fn new_for_validation(
@@ -142,15 +138,30 @@ impl StartTimeTimeoutTransaction {
 
     pub fn num_blocks_timelock_1(&self) -> u32 { self.connector_1.num_blocks_timelock_2 }
 
-    fn sign_input_0(&mut self, context: &OperatorContext) {
+    fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
         let input_index = 0;
-        pre_sign_taproot_input(
+        pre_sign_musig2_taproot_input(
             self,
             context,
             input_index,
-            TapSighashType::All,
+            TapSighashType::Single,
+            secret_nonce,
+        );
+
+        // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
+        if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
+            self.finalize_input_0(context);
+        }
+    }
+
+    fn finalize_input_0(&mut self, context: &dyn BaseContext) {
+        let input_index = 0;
+        finalize_musig2_taproot_input(
+            self,
+            context,
+            input_index,
+            TapSighashType::Single,
             self.connector_2.generate_taproot_spend_info(),
-            &vec![&context.operator_keypair],
         );
     }
 
@@ -176,13 +187,17 @@ impl StartTimeTimeoutTransaction {
             self,
             context,
             input_index,
-            TapSighashType::Single,
+            TapSighashType::None,
             self.connector_1.generate_taproot_spend_info(),
         );
     }
 
     pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
         let mut secret_nonces = HashMap::new();
+
+        let input_index = 0;
+        let secret_nonce = push_nonce(self, context, input_index);
+        secret_nonces.insert(input_index, secret_nonce);
 
         let input_index = 1;
         let secret_nonce = push_nonce(self, context, input_index);
@@ -196,6 +211,9 @@ impl StartTimeTimeoutTransaction {
         context: &VerifierContext,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
+        let input_index = 0;
+        self.sign_input_0(context, &secret_nonces[&input_index]);
+
         let input_index = 1;
         self.sign_input_1(context, &secret_nonces[&input_index]);
     }

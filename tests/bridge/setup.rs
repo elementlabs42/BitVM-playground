@@ -43,8 +43,10 @@ pub async fn setup_test() -> (
     let source_network = Network::Testnet;
     let destination_network = DestinationNetwork::EthereumSepolia;
 
-    let (_, _, verifier_0_public_key) = generate_keys_from_secret(source_network, VERIFIER_0_SECRET);
-    let (_, _, verifier_1_public_key) = generate_keys_from_secret(source_network, VERIFIER_1_SECRET);
+    let (_, _, verifier_0_public_key) =
+        generate_keys_from_secret(source_network, VERIFIER_0_SECRET);
+    let (_, _, verifier_1_public_key) =
+        generate_keys_from_secret(source_network, VERIFIER_1_SECRET);
     let mut n_of_n_public_keys: Vec<PublicKey> = Vec::new();
     n_of_n_public_keys.push(verifier_0_public_key);
     n_of_n_public_keys.push(verifier_1_public_key);
@@ -53,8 +55,10 @@ pub async fn setup_test() -> (
         DepositorContext::new(source_network, DEPOSITOR_SECRET, &n_of_n_public_keys);
     let operator_context =
         OperatorContext::new(source_network, OPERATOR_SECRET, &n_of_n_public_keys);
-    let verifier_0_context = VerifierContext::new(source_network, VERIFIER_0_SECRET, &n_of_n_public_keys);
-    let verifier_1_context = VerifierContext::new(source_network, VERIFIER_1_SECRET, &n_of_n_public_keys);
+    let verifier_0_context =
+        VerifierContext::new(source_network, VERIFIER_0_SECRET, &n_of_n_public_keys);
+    let verifier_1_context =
+        VerifierContext::new(source_network, VERIFIER_1_SECRET, &n_of_n_public_keys);
     let withdrawer_context =
         WithdrawerContext::new(source_network, WITHDRAWER_SECRET, &n_of_n_public_keys);
 
@@ -86,7 +90,10 @@ pub async fn setup_test() -> (
         &operator_context.n_of_n_taproot_public_key,
     );
     let connector_b = ConnectorB::new(source_network, &operator_context.n_of_n_taproot_public_key);
-    let connector_c = ConnectorC::new(source_network, &operator_context.operator_taproot_public_key);
+    let connector_c = ConnectorC::new(
+        source_network,
+        &operator_context.operator_taproot_public_key,
+    );
     let connector_z = ConnectorZ::new(
         source_network,
         DEPOSITOR_EVM_ADDRESS,
