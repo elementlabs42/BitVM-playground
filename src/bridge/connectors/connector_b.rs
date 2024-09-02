@@ -1,4 +1,3 @@
-use crate::treepp::script;
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
@@ -37,27 +36,10 @@ impl ConnectorB {
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 
     fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
-        // [
-        //     THREE_DAYS,
-        //     OP_CHECKSEQUENCEVERIFY,
-        //     OP_DROP,
-        // ]
-        // + [context.paul.commit.x()]
-        // + [context.paul.commit.z(i) for i in range(1, SPLITS)]
-        // + [context.paul.commit.y()]
-        // + [
-        //     context.n_of_n_pubkey,
-        //     OP_CHECKSIG,
-        // ]
-        script! {
-            { self.num_blocks_timelock_1 }
-            OP_CSV
-            // QUESTION: what do the commits for x, z, and y look like here? Is it just a series of inscriptions?
-            OP_DROP
-            { self.n_of_n_taproot_public_key }
-            OP_CHECKSIG
-          }
-          .compile()
+        generate_timelock_taproot_script(
+            &self.n_of_n_taproot_public_key,
+            self.num_blocks_timelock_1,
+        )
     }
 
     fn generate_taproot_leaf_1_tx_in(&self, input: &Input) -> TxIn {

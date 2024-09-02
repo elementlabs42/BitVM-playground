@@ -106,7 +106,7 @@ impl KickOff2Transaction {
         self.tx.input[input_index]
             .witness
             .push(prevout_leaf.0.to_bytes());
-        
+
         // context.paul.unlock.sb()
         self.tx.input[input_index]
             .witness

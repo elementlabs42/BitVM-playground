@@ -1,6 +1,9 @@
 use crate::treepp::script;
 use bitcoin::{
-    key::Secp256k1, opcodes::all::OP_CLTV, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, ScriptBuf, TxIn, XOnlyPublicKey
+    key::Secp256k1,
+    opcodes::all::OP_CLTV,
+    taproot::{TaprootBuilder, TaprootSpendInfo},
+    Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
 

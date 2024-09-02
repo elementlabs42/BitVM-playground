@@ -18,7 +18,10 @@ use super::{
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         transactions::{
             assert::AssertTransaction,
-            base::{validate_transaction, BaseTransaction, Input, InputWithScript},
+            base::{
+                validate_transaction, verify_public_nonces_for_tx, BaseTransaction, Input,
+                InputWithScript,
+            },
             challenge::ChallengeTransaction,
             disprove::DisproveTransaction,
             disprove_chain::DisproveChainTransaction,
@@ -447,6 +450,7 @@ impl PegOutGraph {
         let start_time_vout_0 = 2;
         let start_time_transaction = StartTimeTransaction::new_for_validation(
             self.network,
+            &self.operator_public_key,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
@@ -645,7 +649,7 @@ impl PegOutGraph {
             script_index,
         );
 
-        let disprove_chain_vout_0 = 2;
+        let disprove_chain_vout_0 = 1;
         let disprove_chain_transaction = DisproveChainTransaction::new_for_validation(
             self.network,
             &self.n_of_n_taproot_public_key,
@@ -1152,7 +1156,11 @@ impl PegOutGraph {
         client: &AsyncClient,
         output_script_pubkey: ScriptBuf,
     ) {
-        verify_if_not_mined(client, self.kick_off_2_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(
+            client,
+            self.kick_off_timeout_transaction.tx().compute_txid(),
+        )
+        .await;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
         let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
@@ -1412,7 +1420,14 @@ impl PegOutGraph {
         if self.peg_out_transaction.is_some() {
             peg_out_status = Some(
                 client
-                    .get_tx_status(&self.take_2_transaction.tx().compute_txid())
+                    .get_tx_status(
+                        &self
+                            .peg_out_transaction
+                            .as_ref()
+                            .unwrap()
+                            .tx()
+                            .compute_txid(),
+                    )
                     .await,
             );
         }
@@ -1450,45 +1465,101 @@ impl PegOutGraph {
     }
 
     pub fn validate(&self) -> bool {
+        let mut ret_val = true;
         let peg_out_graph = self.new_for_validation();
         if !validate_transaction(
             self.assert_transaction.tx(),
             peg_out_graph.assert_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.challenge_transaction.tx(),
             peg_out_graph.challenge_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.disprove_chain_transaction.tx(),
             peg_out_graph.disprove_chain_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.disprove_transaction.tx(),
             peg_out_graph.disprove_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.kick_off_1_transaction.tx(),
             peg_out_graph.kick_off_1_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.kick_off_2_transaction.tx(),
             peg_out_graph.kick_off_2_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.kick_off_timeout_transaction.tx(),
             peg_out_graph.kick_off_timeout_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.start_time_transaction.tx(),
             peg_out_graph.start_time_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.start_time_timeout_transaction.tx(),
             peg_out_graph.start_time_timeout_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.take_1_transaction.tx(),
             peg_out_graph.take_1_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.take_2_transaction.tx(),
             peg_out_graph.take_2_transaction.tx(),
         ) {
-            return false;
+            ret_val = false;
         }
 
-        true
+        if !verify_public_nonces_for_tx(&self.assert_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.disprove_chain_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.disprove_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.kick_off_timeout_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.start_time_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.start_time_timeout_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.take_1_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.take_2_transaction) {
+            ret_val = false;
+        }
+
+        ret_val
     }
 
     pub fn merge(&mut self, source_peg_out_graph: &PegOutGraph) {

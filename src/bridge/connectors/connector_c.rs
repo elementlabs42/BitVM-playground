@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::treepp::script;
 use bitcoin::{
     hashes::{ripemd160, Hash},
     key::Secp256k1,
@@ -71,8 +71,6 @@ impl TaprootConnector for ConnectorC {
 
         TaprootBuilder::with_huffman_tree(script_weights)
             .expect("Unable to add assert leaves")
-            // Finalizing with n_of_n_public_key allows the key-path spend with the
-            // n_of_n
             .finalize(&Secp256k1::new(), self.operator_taproot_public_key)
             .expect("Unable to finalize assert transaction connector c taproot")
     }
