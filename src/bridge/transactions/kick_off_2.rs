@@ -101,6 +101,17 @@ impl KickOff2Transaction {
 
     fn sign_input_0(&mut self, context: &OperatorContext) {
         let input_index = 0;
+
+        // context.paul.unlock.y()
+        self.tx.input[input_index]
+            .witness
+            .push(prevout_leaf.0.to_bytes());
+
+        // context.paul.unlock.sb()
+        self.tx.input[input_index]
+            .witness
+            .push(prevout_leaf.0.to_bytes());
+
         pre_sign_taproot_input(
             self,
             context,
