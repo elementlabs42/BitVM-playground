@@ -1,7 +1,5 @@
-use crate::treepp::script;
 use bitcoin::{
     key::Secp256k1,
-    opcodes::all::OP_CLTV,
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
@@ -33,21 +31,8 @@ impl Connector2 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        script! {
-            // pre-image (pushed to stack from witness)
-            // BITVM1 opcodes
-            // block peg out was mined in (left on stack)
-
-            OP_CLTV
-            OP_DROP
-            { self.operator_taproot_public_key }
-            OP_CHECKSIG
-        }
-        .compile()
-    }
-
-    fn generate_taproot_leaf_0_unlock(&self) -> ScriptBuf {
-        // pre-image (push to witness)
+        // TODO: Add commit later
+        generate_pay_to_pubkey_taproot_script(&self.operator_taproot_public_key)
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
