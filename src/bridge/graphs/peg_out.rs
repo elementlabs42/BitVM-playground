@@ -862,6 +862,8 @@ impl PegOutGraph {
     }
 
     pub async fn operator_status(&self, client: &AsyncClient) -> PegOutOperatorStatus {
+        // TODO: check Chain Listener to see if a Peg Out Request emitted an event, if so, return status notifying operator he can mine peg out
+
         if self.n_of_n_presigned {
             let (
                 assert_status,
@@ -999,6 +1001,18 @@ impl PegOutGraph {
         } else {
             return PegOutDepositorStatus::PegOutNotStarted;
         }
+    }
+
+    pub async fn peg_out(&mut self, client: &AsyncClient) {
+        verify_if_not_mined(&client, self.peg_out_transaction.tx().compute_txid()).await;
+
+        // TODO: Implement status as well
+
+        // TODO: implement peg out txn instantiation
+        let peg_out_transaction = PegOutTransaction::new(context, withdrawer_public_key, evm_address, evm_peg_out_ts, input_0);
+
+        // TODO: Set peg out txn
+        self.peg_out_transaction = Some(peg_out_transaction);
     }
 
     pub async fn kick_off_1(&mut self, client: &AsyncClient) {
