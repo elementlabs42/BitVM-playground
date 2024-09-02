@@ -8,6 +8,7 @@ use bitvm::bridge::{
         connector_a::ConnectorA, connector_b::ConnectorB, connector_c::ConnectorC,
         connector_z::ConnectorZ,
     },
+    constants::DestinationNetwork,
     contexts::{
         base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
         verifier::VerifierContext, withdrawer::WithdrawerContext,
@@ -39,24 +40,31 @@ pub async fn setup_test() -> (
     String,
     String,
 ) {
-    let network = Network::Testnet;
+    let source_network = Network::Testnet;
+    let destination_network = DestinationNetwork::EthereumSepolia;
 
-    let (_, _, verifier_0_public_key) = generate_keys_from_secret(network, VERIFIER_0_SECRET);
-    let (_, _, verifier_1_public_key) = generate_keys_from_secret(network, VERIFIER_1_SECRET);
+    let (_, _, verifier_0_public_key) =
+        generate_keys_from_secret(source_network, VERIFIER_0_SECRET);
+    let (_, _, verifier_1_public_key) =
+        generate_keys_from_secret(source_network, VERIFIER_1_SECRET);
     let mut n_of_n_public_keys: Vec<PublicKey> = Vec::new();
     n_of_n_public_keys.push(verifier_0_public_key);
     n_of_n_public_keys.push(verifier_1_public_key);
 
-    let depositor_context = DepositorContext::new(network, DEPOSITOR_SECRET, &n_of_n_public_keys);
-    let operator_context = OperatorContext::new(network, OPERATOR_SECRET, &n_of_n_public_keys);
-
-    let verifier_0_context = VerifierContext::new(network, VERIFIER_0_SECRET, &n_of_n_public_keys);
-    let verifier_1_context = VerifierContext::new(network, VERIFIER_1_SECRET, &n_of_n_public_keys);
+    let depositor_context =
+        DepositorContext::new(source_network, DEPOSITOR_SECRET, &n_of_n_public_keys);
+    let operator_context =
+        OperatorContext::new(source_network, OPERATOR_SECRET, &n_of_n_public_keys);
+    let verifier_0_context =
+        VerifierContext::new(source_network, VERIFIER_0_SECRET, &n_of_n_public_keys);
+    let verifier_1_context =
+        VerifierContext::new(source_network, VERIFIER_1_SECRET, &n_of_n_public_keys);
     let withdrawer_context =
-        WithdrawerContext::new(network, WITHDRAWER_SECRET, &n_of_n_public_keys);
+        WithdrawerContext::new(source_network, WITHDRAWER_SECRET, &n_of_n_public_keys);
 
     let client_0 = BitVMClient::new(
-        network,
+        source_network,
+        destination_network,
         &n_of_n_public_keys,
         Some(DEPOSITOR_SECRET),
         Some(OPERATOR_SECRET),
@@ -66,7 +74,8 @@ pub async fn setup_test() -> (
     .await;
 
     let client_1 = BitVMClient::new(
-        network,
+        source_network,
+        destination_network,
         &n_of_n_public_keys,
         Some(DEPOSITOR_SECRET),
         Some(OPERATOR_SECRET),
@@ -76,32 +85,35 @@ pub async fn setup_test() -> (
     .await;
 
     let connector_a = ConnectorA::new(
-        network,
+        source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
     );
-    let connector_b = ConnectorB::new(network, &operator_context.n_of_n_taproot_public_key);
-    let connector_c = ConnectorC::new(network, &operator_context.operator_taproot_public_key);
+    let connector_b = ConnectorB::new(source_network, &operator_context.n_of_n_taproot_public_key);
+    let connector_c = ConnectorC::new(
+        source_network,
+        &operator_context.operator_taproot_public_key,
+    );
     let connector_z = ConnectorZ::new(
-        network,
+        source_network,
         DEPOSITOR_EVM_ADDRESS,
         &depositor_context.depositor_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
     );
-    let connector_0 = Connector0::new(network, &operator_context.n_of_n_taproot_public_key);
+    let connector_0 = Connector0::new(source_network, &operator_context.n_of_n_taproot_public_key);
     let connector_1 = Connector1::new(
-        network,
+        source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
     );
     let connector_2 = Connector2::new(
-        network,
+        source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
     );
-    let connector_3 = Connector3::new(network, &operator_context.operator_public_key);
-    let connector_4 = Connector4::new(network, &operator_context.operator_public_key);
-    let connector_5 = Connector5::new(network, &operator_context.n_of_n_taproot_public_key);
+    let connector_3 = Connector3::new(source_network, &operator_context.operator_public_key);
+    let connector_4 = Connector4::new(source_network, &operator_context.operator_public_key);
+    let connector_5 = Connector5::new(source_network, &operator_context.n_of_n_taproot_public_key);
 
     return (
         client_0,

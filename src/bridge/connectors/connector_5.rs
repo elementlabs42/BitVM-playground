@@ -56,7 +56,7 @@ impl TaprootConnector for Connector5 {
 
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
         TaprootBuilder::new()
-            .add_leaf(0, self.generate_taproot_leaf_0_script())
+            .add_leaf(1, self.generate_taproot_leaf_0_script())
             .expect("Unable to add leaf 0")
             .add_leaf(1, self.generate_taproot_leaf_1_script())
             .expect("Unable to add leaf 1")

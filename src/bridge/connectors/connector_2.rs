@@ -1,6 +1,9 @@
 use crate::treepp::script;
 use bitcoin::{
-    key::Secp256k1, opcodes::all::OP_CLTV, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, ScriptBuf, TxIn, XOnlyPublicKey
+    key::Secp256k1,
+    opcodes::all::OP_CLTV,
+    taproot::{TaprootBuilder, TaprootSpendInfo},
+    Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +34,10 @@ impl Connector2 {
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
         script! {
-            { context.paul.push.start_time() }
+            // pre-image (pushed to stack from witness)
+            // BITVM1 opcodes
+            // block peg out was mined in (left on stack)
+
             OP_CLTV
             OP_DROP
             { self.operator_taproot_public_key }
@@ -41,8 +47,7 @@ impl Connector2 {
     }
 
     fn generate_taproot_leaf_0_unlock(&self) -> ScriptBuf {
-        // witness_vec = StartTimeLeaf().unlock(context)
-        // witness_vec.extend([prevout_leaf[0].to_bytes(), control_block.serialize()])
+        // pre-image (push to witness)
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }

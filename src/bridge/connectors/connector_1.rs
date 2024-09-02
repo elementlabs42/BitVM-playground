@@ -45,23 +45,10 @@ impl Connector1 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        // TWO_WEEKS,
-        // OP_CHECKSEQUENCEVERIFY,
-        // OP_DROP,
-        // context.paul.push.sb(),
-        // OP_RIPEMD160,
-        // context.paul.push.y(),
-        // OP_EQUALVERIFY,
-        // context.operator_pk,
-        // OP_CHECKSIG,
         generate_timelock_taproot_script(
             &self.operator_taproot_public_key,
             self.num_blocks_timelock_0,
         )
-    }
-
-    fn generate_taproot_leaf_0_unlock(&self) -> ScriptBuf {
-        // return [context.paul.unlock.y()] + [context.paul.unlock.z(i) for i in range(SPLITS, 1)] + [context.paul.unlock.x()]
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
