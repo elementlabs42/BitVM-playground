@@ -111,7 +111,7 @@ impl Take2Transaction {
         let connector_5 = Connector5::new(network, n_of_n_taproot_public_key);
         let connector_c = ConnectorC::new(network, operator_taproot_public_key);
 
-        let input_0_leaf = 0;
+        let input_0_leaf = 1;
         let _input_0 = connector_0.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
         let _input_1 = connector_4.generate_tx_in(&input_1);
