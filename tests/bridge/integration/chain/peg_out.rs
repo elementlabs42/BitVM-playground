@@ -7,10 +7,7 @@ use bitvm::bridge::{
     client::chain::{chain::Chain, ethereum::EthereumInitConfig},
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
-    transactions::{
-        base::{BaseTransaction, Input},
-        peg_out::PegOutTransaction,
-    },
+    transactions::{base::BaseTransaction, peg_out::PegOutTransaction},
 };
 use tokio::time::sleep;
 
@@ -21,27 +18,8 @@ use crate::bridge::{
 
 #[tokio::test]
 async fn test_peg_out_for_chain() {
-    let (
-        client,
-        _,
-        _,
-        operator_context,
-        _,
-        _,
-        withdrawer_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-    ) = setup_test().await;
+    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) =
+        setup_test().await;
     let mut adaptors = Chain::new();
     adaptors.init_ethereum(EthereumInitConfig {
         rpc_url: "http://127.0.0.1:8545".parse::<Url>().unwrap(),
@@ -53,7 +31,7 @@ async fn test_peg_out_for_chain() {
     let events_result = adaptors.get_peg_out_init().await;
     assert!(events_result.as_ref().is_ok_and(|x| x.len() > 0));
 
-    let peg_out_event = events_result.unwrap().pop().unwrap();
+    let mut peg_out_event = events_result.unwrap().pop().unwrap();
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let operator_input_amount = Amount::from_sat(input_amount_raw);
@@ -80,18 +58,10 @@ async fn test_peg_out_for_chain() {
         "operator_funding_utxo.txid: {:?}",
         operator_funding_outpoint.txid
     );
-    let operator_input = Input {
-        outpoint: operator_funding_outpoint,
-        amount: operator_input_amount,
-    };
+    peg_out_event.source_outpoint = operator_funding_outpoint;
+    peg_out_event.amount = operator_input_amount;
 
-    let peg_out = PegOutTransaction::new(
-        &operator_context,
-        &withdrawer_context.withdrawer_public_key,
-        &peg_out_event.withdrawer_chain_address,
-        peg_out_event.timestamp,
-        operator_input,
-    );
+    let peg_out = PegOutTransaction::new(&operator_context, &peg_out_event);
 
     let peg_out_tx = peg_out.finalize();
     let peg_out_tx_id = peg_out_tx.compute_txid();

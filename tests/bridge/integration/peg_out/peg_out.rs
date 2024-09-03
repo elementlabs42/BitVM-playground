@@ -1,12 +1,10 @@
 use bitcoin::Amount;
 
 use bitvm::bridge::{
+    client::chain::chain::PegOutEvent,
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
-    transactions::{
-        base::{BaseTransaction, Input},
-        peg_out::PegOutTransaction,
-    },
+    transactions::{base::BaseTransaction, peg_out::PegOutTransaction},
 };
 
 use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
@@ -57,18 +55,16 @@ async fn test_peg_out_success() {
         "operator_funding_utxo.txid: {:?}",
         operator_funding_outpoint.txid
     );
-    let operator_input = Input {
-        outpoint: operator_funding_outpoint,
+    let stub_event = PegOutEvent {
+        source_outpoint: operator_funding_outpoint,
         amount: operator_input_amount,
+        timestamp,
+        withdrawer_chain_address: withdrawer_evm_address,
+        withdrawer_public_key_hash: withdrawer_context.withdrawer_public_key.pubkey_hash(),
+        operator_public_key: operator_context.operator_public_key,
     };
 
-    let peg_out = PegOutTransaction::new(
-        &operator_context,
-        &withdrawer_context.withdrawer_public_key,
-        &withdrawer_evm_address,
-        timestamp,
-        operator_input,
-    );
+    let peg_out = PegOutTransaction::new(&operator_context, &stub_event);
 
     let peg_out_tx = peg_out.finalize();
     let peg_out_txid = peg_out_tx.compute_txid();
