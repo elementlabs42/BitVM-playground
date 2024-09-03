@@ -220,12 +220,7 @@ mod tests {
 
         let input_index = (all_sigs.len() / 2);
         let pubkey = all_sigs[&input_index].keys().next().unwrap().clone();
-        let mut bad_sig = all_sigs
-            .get_mut(&input_index)
-            .unwrap()
-            .get_mut(&pubkey)
-            .unwrap()
-            .serialize();
+        let mut bad_sig = all_sigs[&input_index][&pubkey].serialize();
         bad_sig[SCHNORR_SIGNATURE_SIZE - 1] += 1;
         all_sigs
             .get_mut(&input_index)
