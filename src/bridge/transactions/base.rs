@@ -1,15 +1,8 @@
 use bitcoin::{Amount, OutPoint, PublicKey, Script, Transaction, Txid, XOnlyPublicKey};
-use bitcoin::{Amount, OutPoint, PublicKey, Script, Transaction, Txid, XOnlyPublicKey};
 use core::cmp;
 use musig2::{secp256k1::schnorr::Signature, PubNonce};
 use std::collections::HashMap;
-use musig2::{secp256k1::schnorr::Signature, PubNonce};
-use std::collections::HashMap;
 
-use super::{
-    pre_signed::PreSignedTransaction,
-    pre_signed_musig2::{verify_public_nonce, PreSignedMusig2Transaction},
-};
 use super::{
     pre_signed::PreSignedTransaction,
     pre_signed_musig2::{verify_public_nonce, PreSignedMusig2Transaction},
