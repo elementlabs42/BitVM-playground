@@ -6,6 +6,14 @@ use musig2::{
     secp256k1::{schnorr::Signature, Message},
     BinaryEncoding, PartialSignature, PubNonce, SecNonce,
 };
+use bitcoin::{
+    key::Secp256k1, taproot::TaprootSpendInfo, PublicKey, TapSighashType, XOnlyPublicKey,
+};
+use musig2::{
+    secp::MaybeScalar,
+    secp256k1::{schnorr::Signature, Message},
+    BinaryEncoding, PartialSignature, PubNonce, SecNonce,
+};
 use std::collections::HashMap;
 
 use super::{
@@ -24,6 +32,9 @@ pub trait PreSignedMusig2Transaction {
     fn musig2_nonce_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, Signature>>;
     fn musig2_nonce_signatures_mut(&mut self)
         -> &mut HashMap<usize, HashMap<PublicKey, Signature>>;
+    fn musig2_nonce_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, Signature>>;
+    fn musig2_nonce_signatures_mut(&mut self)
+        -> &mut HashMap<usize, HashMap<PublicKey, Signature>>;
     fn musig2_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, PartialSignature>>;
     fn musig2_signatures_mut(
         &mut self,
@@ -36,16 +47,35 @@ pub fn push_nonce<T: PreSignedTransaction + PreSignedMusig2Transaction>(
     input_index: usize,
 ) -> SecNonce {
     // Push nonce
+    // Push nonce
     let musig2_nonces = tx.musig2_nonces_mut();
     if musig2_nonces.get(&input_index).is_none() {
         musig2_nonces.insert(input_index, HashMap::new());
     }
 
     let secret_nonce = generate_nonce();
+
+    let secret_nonce = generate_nonce();
     musig2_nonces
         .get_mut(&input_index)
         .unwrap()
         .insert(context.verifier_public_key, secret_nonce.public_nonce());
+
+    // Sign the nonce and push the signature
+    let musig2_nonce_signatures = tx.musig2_nonce_signatures_mut();
+    if musig2_nonce_signatures.get(&input_index).is_none() {
+        musig2_nonce_signatures.insert(input_index, HashMap::new());
+    }
+
+    let nonce_signature = context.secp.sign_schnorr(
+        &get_nonce_message(&secret_nonce.public_nonce()),
+        &context.verifier_keypair,
+    );
+
+    musig2_nonce_signatures
+        .get_mut(&input_index)
+        .unwrap()
+        .insert(context.verifier_public_key, nonce_signature);
 
     // Sign the nonce and push the signature
     let musig2_nonce_signatures = tx.musig2_nonce_signatures_mut();
