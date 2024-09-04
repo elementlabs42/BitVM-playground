@@ -1404,8 +1404,8 @@ impl PegOutGraph {
         let mut events: Vec<PegOutEvent> = Vec::new();
         let mut ids: Vec<usize> = Vec::new();
         for (i, event) in all_events.iter().enumerate() {
-            if self.peg_in_confirm_txid == event.source_outpoint.txid
-                && self.operator_public_key == event.operator_public_key
+            if self.peg_in_confirm_txid.eq(&event.source_outpoint.txid)
+                && self.operator_public_key.eq(&event.operator_public_key)
             {
                 events.push(event.clone());
                 ids.push(i);

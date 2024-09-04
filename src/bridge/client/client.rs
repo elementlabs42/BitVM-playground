@@ -154,10 +154,9 @@ impl BitVMClient {
 
     pub fn get_data(&self) -> &BitVMClientPublicData { return &self.data; }
 
-    pub async fn sync(&mut self) {
-        self.read().await;
-        self.read_from_l2().await;
-    }
+    pub async fn sync(&mut self) { self.read().await; }
+
+    pub async fn sync_l2(&mut self) { self.read_from_l2().await; }
 
     pub async fn flush(&mut self) { self.save().await; }
 
@@ -698,6 +697,24 @@ impl BitVMClient {
         self.data.peg_out_graphs.push(peg_out_graph);
 
         peg_out_graph_id
+    }
+
+    pub async fn broadcast_peg_out(&mut self, peg_out_graph_id: &str) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        if self.operator_context.is_some() {
+            peg_out_graph
+                .unwrap()
+                .peg_out(self.operator_context.as_ref().unwrap(), &self.esplora)
+                .await;
+        }
     }
 
     pub async fn broadcast_kick_off_1(&mut self, peg_out_graph_id: &str) {

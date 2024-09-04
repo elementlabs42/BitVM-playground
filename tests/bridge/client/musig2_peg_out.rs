@@ -113,6 +113,19 @@ async fn test_musig2_peg_out_disprove_chain_with_challenge() {
         .await;
 }
 
+#[tokio::test]
+async fn test_musig2_peg_out() {
+    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, _) =
+        create_peg_out_graph(false, false, false).await;
+
+    depositor_operator_verifier_0_client.sync().await;
+    depositor_operator_verifier_0_client.sync_l2().await;
+
+    depositor_operator_verifier_0_client
+        .broadcast_peg_out(&peg_out_graph_id)
+        .await;
+}
+
 async fn create_peg_out_graph(
     with_kick_off_2_tx: bool,
     with_challenge_tx: bool,
