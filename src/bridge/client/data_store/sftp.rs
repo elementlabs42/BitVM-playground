@@ -22,7 +22,7 @@ struct SftpCredentials {
     pub host: String,
     pub port: String,
     pub username: String,
-    // TODO: `keyfile_path` is currently never read so commenting out to reduce compiler errors.
+    // TODO: `keyfile_path` is currently never read, commenting out to reduce compiler warnings.
     // pub keyfile_path: String,
     pub base_path: String,
 }
