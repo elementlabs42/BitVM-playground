@@ -71,9 +71,6 @@ pub fn merge_musig2_nonces_and_signatures(
     let nonce_signatures = destination_transaction.musig2_nonce_signatures_mut();
     nonce_signatures.extend(source_transaction.musig2_nonce_signatures().clone());
 
-    let nonce_signatures = destination_transaction.musig2_nonce_signatures_mut();
-    nonce_signatures.extend(source_transaction.musig2_nonce_signatures().clone());
-
     let signatures = destination_transaction.musig2_signatures_mut();
     signatures.extend(source_transaction.musig2_signatures().clone());
 }
