@@ -218,7 +218,7 @@ mod tests {
     fn test_verify_public_nonces_invalid_signature() {
         let (all_nonces, mut all_sigs) = get_test_nonces();
 
-        let input_index = (all_sigs.len() / 2);
+        let input_index = all_sigs.len() / 2;
         let pubkey = all_sigs[&input_index].keys().next().unwrap().clone();
         let mut bad_sig = all_sigs[&input_index][&pubkey].serialize();
         bad_sig[SCHNORR_SIGNATURE_SIZE - 1] += 1;

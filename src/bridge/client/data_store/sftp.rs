@@ -70,7 +70,7 @@ impl Sftp {
         }
     }
 
-    async fn get_object(&self, key: &str, file_path: Option<&str>) -> Result<Vec<u8>, String> {
+    async fn get_object(&self, key: &str, _file_path: Option<&str>) -> Result<Vec<u8>, String> {
         let mut buffer: Vec<u8> = vec![];
 
         match connect(&self.credentials).await {
@@ -101,7 +101,7 @@ impl Sftp {
         &self,
         key: &str,
         data: &Vec<u8>,
-        file_path: Option<&str>,
+        _file_path: Option<&str>,
     ) -> Result<(), String> {
         match connect(&self.credentials).await {
             Ok(sftp) => match sftp
@@ -143,7 +143,7 @@ impl Sftp {
 
 #[async_trait]
 impl DataStoreDriver for Sftp {
-    async fn list_objects(&self, file_path: Option<&str>) -> Result<Vec<String>, String> {
+    async fn list_objects(&self, _file_path: Option<&str>) -> Result<Vec<String>, String> {
         match connect(&self.credentials).await {
             Ok(sftp) => {
                 let mut fs = sftp.fs();
