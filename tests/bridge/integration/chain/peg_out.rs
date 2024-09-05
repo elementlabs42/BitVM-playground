@@ -12,7 +12,7 @@ use bitvm::bridge::{
 use tokio::time::sleep;
 
 use crate::bridge::{
-    helper::{fund_utxo, generate_stub_outpoint},
+    helper::{fund_input, generate_stub_outpoint},
     setup::setup_test,
 };
 
@@ -45,7 +45,7 @@ async fn test_peg_out_for_chain() {
         operator_funding_utxo_address
     );
 
-    fund_utxo(&operator_funding_utxo_address, operator_input_amount).await;
+    fund_input(&operator_funding_utxo_address, operator_input_amount).await;
     sleep(Duration::from_secs(5)).await;
 
     let operator_funding_outpoint = generate_stub_outpoint(

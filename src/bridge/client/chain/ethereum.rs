@@ -66,6 +66,7 @@ impl EthereumAdaptor {
     {
         let filter = Filter::new()
             .from_block(BlockNumberOrTag::Number(self.bridge_creation_block))
+            .to_block(BlockNumberOrTag::Finalized)
             .address(self.bridge_address)
             .event(T::SIGNATURE);
 
