@@ -20,7 +20,7 @@
 //
 
 use crate::treepp::*;
-use bitcoin::hashes::{hash160, Hash};
+use bitcoin::{hashes::{hash160, Hash}, opcodes::all::{OP_AND, OP_EQUAL, OP_EQUALVERIFY, OP_FROMALTSTACK, OP_IF, OP_PICK, OP_TOALTSTACK, OP_VERNOTIF}};
 use hex::decode as hex_decode;
 
 /// Bits per digit
@@ -33,90 +33,6 @@ const N0: u32 = 80;
 const N1: usize = 4;
 /// Total number of digits to be signed
 const N: u32 = N0 + N1 as u32;
-
-//
-// Helper functions
-//
-
-/// Generate the public key for the i-th digit of the message
-pub fn public_key(secret_key: &str, digit_index: u32) -> Script {
-    // Convert secret_key from hex string to bytes
-    let mut secret_i = match hex_decode(secret_key) {
-        Ok(bytes) => bytes,
-        Err(_) => panic!("Invalid hex string"),
-    };
-
-    secret_i.push(digit_index as u8);
-
-    let mut hash = hash160::Hash::hash(&secret_i);
-
-    for _ in 0..D {
-        hash = hash160::Hash::hash(&hash[..]);
-    }
-
-    let hash_bytes = hash.as_byte_array().to_vec();
-
-    script! {
-        { hash_bytes }
-    }
-}
-
-/// Compute the signature for the i-th digit of the message
-pub fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) -> Script {
-    // Convert secret_key from hex string to bytes
-    let mut secret_i = match hex_decode(secret_key) {
-        Ok(bytes) => bytes,
-        Err(_) => panic!("Invalid hex string"),
-    };
-
-    secret_i.push(digit_index as u8);
-
-    let mut hash = hash160::Hash::hash(&secret_i);
-
-    for _ in 0..message_digit {
-        hash = hash160::Hash::hash(&hash[..]);
-    }
-
-    let hash_bytes = hash.as_byte_array().to_vec();
-
-    script! {
-        { hash_bytes }
-    }
-}
-
-/// Compute the checksum of the message's digits.
-/// Further infos in chapter "A domination free function for Winternitz signatures"
-pub fn checksum(digits: [u8; N0 as usize]) -> u32 {
-    let mut sum = 0;
-    for digit in digits {
-        sum += digit as u32;
-    }
-    D * N0 - sum
-}
-
-/// Convert a number to digits
-pub fn to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
-    let mut digits: [u8; DIGIT_COUNT] = [0; DIGIT_COUNT];
-    for i in 0..DIGIT_COUNT {
-        let digit = number % (D + 1);
-        number = (number - digit) / (D + 1);
-        digits[i] = digit as u8;
-    }
-    digits
-}
-
-/// Compute the signature for a given message
-pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
-    // const message_digits = to_digits(message, n0)
-    let mut checksum_digits = to_digits::<N1>(checksum(message_digits)).to_vec();
-    checksum_digits.append(&mut message_digits.to_vec());
-
-    script! {
-        for i in 0..N {
-            { digit_signature(secret_key, i, checksum_digits[ (N-1-i) as usize]) }
-        }
-    }
-}
 
 /// Winternitz Signature verification
 ///
@@ -216,6 +132,106 @@ pub fn checksig_verify(secret_key: &str) -> Script {
     }
 }
 
+/// Compute the signature for a given message
+pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
+    // const message_digits = to_digits(message, n0)
+    let mut checksum_digits = to_digits::<N1>(checksum(message_digits)).to_vec();
+    checksum_digits.append(&mut message_digits.to_vec());
+
+    script! {
+        for i in 0..N {
+            { digit_signature(secret_key, i, checksum_digits[ (N-1-i) as usize]) }
+        }
+    }
+}
+
+//
+// Helper functions
+//
+
+/// Generate the public key for the i-th digit of the message
+fn public_key(secret_key: &str, digit_index: u32) -> Script {
+    // Convert secret_key from hex string to bytes
+    let mut secret_i = match hex_decode(secret_key) {
+        Ok(bytes) => bytes,
+        Err(_) => panic!("Invalid hex string"),
+    };
+
+    secret_i.push(digit_index as u8);
+
+    let mut hash = hash160::Hash::hash(&secret_i);
+
+    for _ in 0..D {
+        hash = hash160::Hash::hash(&hash[..]);
+    }
+
+    let hash_bytes = hash.as_byte_array().to_vec();
+
+    script! {
+        { hash_bytes }
+    }
+}
+
+/// Compute the signature for the i-th digit of the message
+fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) -> Script {
+    // Convert secret_key from hex string to bytes
+    let mut secret_i = match hex_decode(secret_key) {
+        Ok(bytes) => bytes,
+        Err(_) => panic!("Invalid hex string"),
+    };
+
+    secret_i.push(digit_index as u8);
+
+    let mut hash = hash160::Hash::hash(&secret_i);
+
+    for _ in 0..message_digit {
+        hash = hash160::Hash::hash(&hash[..]);
+    }
+
+    let hash_bytes = hash.as_byte_array().to_vec();
+
+    script! {
+        { hash_bytes }
+    }
+}
+
+/// Compute the checksum of the message's digits.
+/// Further infos in chapter "A domination free function for Winternitz signatures"
+fn checksum(digits: [u8; N0 as usize]) -> u32 {
+    let mut sum = 0;
+    for digit in digits {
+        sum += digit as u32;
+    }
+    D * N0 - sum
+}
+
+/// Convert a number to digits
+fn to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
+    let mut digits: [u8; DIGIT_COUNT] = [0; DIGIT_COUNT];
+    for i in 0..DIGIT_COUNT {
+        let digit = number % (D + 1);
+        number = (number - digit) / (D + 1);
+        digits[i] = digit as u8;
+    }
+    digits
+}
+
+pub fn number_to_digits(number: u32) -> [u8; N0 as usize] {
+    to_digits::<N0>(number)
+}
+
+pub fn bytes_to_number() -> Script {
+    // Expects numbers in reverse order on stack in Big Endian (most significant bytes at bottom of stack, least significant bytes at top of stack)
+    script!(
+        for _ in 0..N0 - 1 {
+            for _ in 0..LOG_D {
+                OP_DUP OP_ADD
+            }
+            OP_ADD
+        }
+    )
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -228,7 +244,7 @@ mod test {
         // The message to sign
         #[rustfmt::skip]
         const MESSAGE: [u8; N0 as usize] = [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7, // Big endian
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
@@ -292,6 +308,61 @@ mod test {
             0x7F OP_EQUALVERIFY
             0x77 OP_EQUALVERIFY
             0x77 OP_EQUAL
+        };
+
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+
+    fn test_winternitz_back_to_back() {
+        // The message to sign
+        #[rustfmt::skip]
+        const MESSAGE: [u8; N0 as usize] = [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
+        ];
+        let script = script! {
+            { sign(MY_SECKEY, MESSAGE) }
+            { checksig_verify(MY_SECKEY) }
+        };
+
+        println!(
+            "Winternitz signature size:\n \t{:?} bytes / {:?} bits \n\t{:?} bytes / bit",
+            script.len(),
+            N0 * 4,
+            script.len() as f64 / (N0 * 4) as f64
+        );
+
+        let script = script! {
+            { sign(MY_SECKEY, MESSAGE) } // M2
+            { sign(MY_SECKEY, MESSAGE) } // M1
+            { sign(MY_SECKEY, MESSAGE) } // M0
+
+            { checksig_verify(MY_SECKEY) } // M0
+            { bytes_to_number() }
+            {  } // sum of number
+            OP_EQUALVERIFY
+
+            // left with decoded bytes of M0
+            // move decoded(M0) it to end of stack
+            // leaving M1 on top of stack
+            { checksig_verify(MY_SECKEY) } // M1
+            { bytes_to_number() }
+            {  } // sum of number
+            OP_EQUALVERIFY
+
+            // left with decoded bytes of M1
+            // move decoded(M1) it to end of stack
+            // leaving M2 on top of stack
+            { checksig_verify(MY_SECKEY) } // M2
+            { bytes_to_number() }
+            {  } // sum of number
+            OP_EQUALVERIFY
+
+            // left with decoded bytes of M2
         };
 
         let exec_result = execute_script(script);
