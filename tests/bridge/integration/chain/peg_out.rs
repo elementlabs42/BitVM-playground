@@ -1,6 +1,8 @@
 use std::time::Duration;
 
-use alloy::{primitives::Address as EvmAddress, transports::http::reqwest::Url};
+use alloy::{
+    eips::BlockNumberOrTag, primitives::Address as EvmAddress, transports::http::reqwest::Url,
+};
 use bitcoin::Amount;
 
 use bitvm::bridge::{
@@ -27,6 +29,7 @@ async fn test_peg_out_for_chain() {
             .parse::<EvmAddress>()
             .unwrap(),
         bridge_creation_block: 20588300,
+        to_block: Some(BlockNumberOrTag::Latest),
     });
     let events_result = adaptors.get_peg_out_init().await;
     assert!(events_result.as_ref().is_ok_and(|x| x.len() > 0));

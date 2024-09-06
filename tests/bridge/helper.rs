@@ -12,7 +12,7 @@ use tokio::time::sleep;
 
 pub const TX_WAIT_TIME: u64 = 45; // in seconds
 pub const ESPLORA_FUNDING_URL: &str = "https://faucet.mutinynet.com/";
-pub const ESPLORA_RETRIES: usize = 1;
+pub const ESPLORA_RETRIES: usize = 3;
 pub const ESPLORA_RETRY_WAIT_TIME: u64 = 5;
 
 pub async fn generate_stub_outpoint(
@@ -52,6 +52,11 @@ async fn fund_input_http(address: &Address, amount: Amount) -> Result<Response, 
         address
     );
 
+    println!(
+        "Funding {:?} with {} sats at https://faucet.mutinynet.com/",
+        address,
+        amount.to_sat()
+    );
     let resp = client
         .post(format!("{}api/onchain", ESPLORA_FUNDING_URL))
         .body(payload)
@@ -66,24 +71,21 @@ async fn fund_input_http(address: &Address, amount: Amount) -> Result<Response, 
 }
 
 pub async fn fund_input(address: &Address, amount: Amount) -> Txid {
-    println!(
-        "Funding {:?} with {} sats at https://faucet.mutinynet.com/",
-        address,
-        amount.to_sat()
-    );
-
-    let mut resp = fund_input_http(address, amount).await.unwrap_or_else(|e| {
+    let client_err_handler = |e: Error| {
         panic!("Could not fund {} due to {:?}", address, e);
-    });
+    };
+    let mut resp = fund_input_http(address, amount)
+        .await
+        .unwrap_or_else(client_err_handler);
 
     let mut retry = ESPLORA_RETRIES;
     while resp.status().eq(&StatusCode::SERVICE_UNAVAILABLE) && retry > 0 {
         eprintln!("Retrying({}/{}) {:?}...", retry, ESPLORA_RETRIES, address);
         retry -= 1;
         sleep(Duration::from_secs(ESPLORA_RETRY_WAIT_TIME)).await;
-        resp = fund_input_http(address, amount).await.unwrap_or_else(|e| {
-            panic!("Could not fund {} due to {:?}", address, e);
-        });
+        resp = fund_input_http(address, amount)
+            .await
+            .unwrap_or_else(client_err_handler);
     }
 
     if resp.status().is_client_error() || resp.status().is_server_error() {
