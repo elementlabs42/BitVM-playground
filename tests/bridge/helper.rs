@@ -1,11 +1,20 @@
+use std::time::Duration;
+
+use alloy::transports::http::{
+    reqwest::{Error, Response, StatusCode},
+    Client,
+};
 use bitcoin::{Address, Amount, OutPoint, Txid};
 
 use bitvm::bridge::client::client::BitVMClient;
-use esplora_client::Builder;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
+use tokio::time::sleep;
 
 pub const TX_WAIT_TIME: u64 = 45; // in seconds
 pub const ESPLORA_FUNDING_URL: &str = "https://faucet.mutinynet.com/";
+pub const ESPLORA_RETRIES: usize = 3;
+pub const ESPLORA_RETRY_WAIT_TIME: u64 = 5;
 
 pub async fn generate_stub_outpoint(
     client: &BitVMClient,
@@ -34,30 +43,52 @@ struct FundResult {
     address: String,
 }
 
-pub async fn fund_utxo(address: &Address, amount: Amount) -> Txid {
-    println!(
-        "Funding {:?} with {} sats at https://faucet.mutinynet.com/",
-        address,
-        amount.to_sat()
-    );
-    let esplora = Builder::new(ESPLORA_FUNDING_URL)
-        .build_async()
-        .expect("Could not build esplora client");
+async fn fund_input_http(address: &Address, amount: Amount) -> Result<Response, Error> {
+    let client = Client::builder()
+        .build()
+        .expect("Unable to build reqwest client");
     let payload = format!(
         "{{\"sats\":{},\"address\":\"{}\"}}",
         amount.to_sat(),
         address
     );
-    let resp = esplora
-        .client()
+
+    println!(
+        "Funding {:?} with {} sats at https://faucet.mutinynet.com/",
+        address,
+        amount.to_sat()
+    );
+    let resp = client
         .post(format!("{}api/onchain", ESPLORA_FUNDING_URL))
         .body(payload)
         .header("CONTENT-TYPE", "application/json")
         .send()
+        .await;
+
+    match resp {
+        Ok(resp) => Ok(resp),
+        Err(e) => Err(e),
+    }
+}
+
+pub async fn fund_input(address: &Address, amount: Amount) -> Txid {
+    let client_err_handler = |e: Error| {
+        panic!("Could not fund {} due to {:?}", address, e);
+    };
+    let mut resp = fund_input_http(address, amount)
         .await
-        .unwrap_or_else(|e| {
-            panic!("Could not fund {} due to {:?}", address, e);
-        });
+        .unwrap_or_else(client_err_handler);
+
+    let mut retry = ESPLORA_RETRIES;
+    while resp.status().eq(&StatusCode::SERVICE_UNAVAILABLE) && retry > 0 {
+        eprintln!("Retrying({}/{}) {:?}...", retry, ESPLORA_RETRIES, address);
+        retry -= 1;
+        sleep(Duration::from_secs(ESPLORA_RETRY_WAIT_TIME)).await;
+        resp = fund_input_http(address, amount)
+            .await
+            .unwrap_or_else(client_err_handler);
+    }
+
     if resp.status().is_client_error() || resp.status().is_server_error() {
         panic!(
             "Could not fund {} with respond code {:?}",
@@ -70,6 +101,31 @@ pub async fn fund_utxo(address: &Address, amount: Amount) -> Txid {
     println!("Funded at: {}", result.txid);
 
     result.txid
+}
+
+pub async fn fund_inputs(inputs_to_fund: &Vec<(&Address, Amount)>) {
+    for input in inputs_to_fund {
+        fund_input(input.0, input.1).await;
+        sleep(Duration::from_micros(TX_WAIT_TIME)).await;
+    }
+}
+
+fn get_random_seconds(from: u64, to: u64) -> u64 {
+    let mut rng = rand::thread_rng();
+    rng.gen_range(from..to)
+}
+
+pub async fn verify_and_fund_inputs(client: &BitVMClient, funding_inputs: &Vec<(&Address, Amount)>) {
+    for input in funding_inputs {
+        if client
+            .get_initial_utxo(input.0.clone(), input.1)
+            .await
+            .is_none()
+        {
+            sleep(Duration::from_secs(get_random_seconds(500, 2000))).await;
+            fund_input(input.0, input.1).await;
+        }
+    }
 }
 
 pub async fn verify_funding_inputs(client: &BitVMClient, funding_inputs: &Vec<(&Address, Amount)>) {

@@ -11,7 +11,7 @@ use bitvm::bridge::{
 use tokio::time::sleep;
 
 use crate::bridge::{
-    helper::{generate_stub_outpoint, verify_funding_inputs, TX_WAIT_TIME},
+    helper::{generate_stub_outpoint, verify_and_fund_inputs, TX_WAIT_TIME},
     setup::setup_test,
 };
 
@@ -113,6 +113,19 @@ async fn test_musig2_peg_out_disprove_chain_with_challenge() {
         .await;
 }
 
+#[tokio::test]
+async fn test_musig2_peg_out_peg_out() {
+    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, _) =
+        create_peg_out_graph(false, false, false).await;
+
+    depositor_operator_verifier_0_client.sync().await;
+    depositor_operator_verifier_0_client.sync_l2().await;
+
+    depositor_operator_verifier_0_client
+        .broadcast_peg_out(&peg_out_graph_id)
+        .await;
+}
+
 async fn create_peg_out_graph(
     with_kick_off_2_tx: bool,
     with_challenge_tx: bool,
@@ -166,7 +179,8 @@ async fn create_peg_out_graph(
         funding_inputs.push((&challenge_funding_utxo_address, challenge_input_amount));
     }
 
-    verify_funding_inputs(&depositor_operator_verifier_0_client, &funding_inputs).await;
+    // fund_inputs(&funding_inputs).await;
+    verify_and_fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs).await;
 
     let kick_off_outpoint = generate_stub_outpoint(
         &depositor_operator_verifier_0_client,
