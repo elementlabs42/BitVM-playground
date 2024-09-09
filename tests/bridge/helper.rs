@@ -7,6 +7,7 @@ use alloy::transports::http::{
 use bitcoin::{Address, Amount, OutPoint, Txid};
 
 use bitvm::bridge::client::client::BitVMClient;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
@@ -106,6 +107,24 @@ pub async fn fund_inputs(inputs_to_fund: &Vec<(&Address, Amount)>) {
     for input in inputs_to_fund {
         fund_input(input.0, input.1).await;
         sleep(Duration::from_micros(TX_WAIT_TIME)).await;
+    }
+}
+
+fn get_random_seconds(from: u64, to: u64) -> u64 {
+    let mut rng = rand::thread_rng();
+    rng.gen_range(from..to)
+}
+
+pub async fn verify_and_fund_inputs(client: &BitVMClient, funding_inputs: &Vec<(&Address, Amount)>) {
+    for input in funding_inputs {
+        if client
+            .get_initial_utxo(input.0.clone(), input.1)
+            .await
+            .is_none()
+        {
+            sleep(Duration::from_secs(get_random_seconds(500, 2000))).await;
+            fund_input(input.0, input.1).await;
+        }
     }
 }
 
