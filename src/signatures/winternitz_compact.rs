@@ -283,9 +283,9 @@ mod test {
             script.len() as f64 / (N0_320 * 4) as f64
         );
 
-        let script = script! {
-            { sign::<N0_320, N1_320>(MY_SECKEY, MESSAGE) }
-            { checksig_verify::<N0_320, N1_320>(MY_SECKEY) }
+        run(script! {
+            { sign(MY_SECKEY, MESSAGE) }
+            { checksig_verify(MY_SECKEY) }
 
             0x21 OP_EQUALVERIFY
             0x43 OP_EQUALVERIFY
@@ -330,10 +330,8 @@ mod test {
             0x7F OP_EQUALVERIFY
             0x77 OP_EQUALVERIFY
             0x77 OP_EQUAL
-        };
+        });
 
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
     }
 
     #[test]

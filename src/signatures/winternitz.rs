@@ -24,18 +24,118 @@ const LOG_D: u32 = 4;
 /// Digits are base d+1
 pub const D: u32 = (1 << LOG_D) - 1;
 /// Number of digits of the message
-const N0: u32 = 80;
+const N0: u32 = 40;
 /// Number of digits of the checksum.  N1 = ⌈log_{D+1}(D*N0)⌉ + 1
 const N1: usize = 4;
 /// Total number of digits to be signed
 const N: u32 = N0 + N1 as u32;
+/// The public key type
+pub type PublicKey = [[u8; 20]; N as usize];
 
-/// Winternitz Signature verification
-///
-/// Note that the script inputs are malleable.
-///
-/// Optimized by @SergioDemianLerner, @tomkosm [*locking script]
-pub fn checksig_verify(secret_key: &str) -> Script {
+//
+// Helper functions
+//
+
+/// Generate a public key for the i-th digit of the message
+pub fn public_key_for_digit(secret_key: &str, digit_index: u32) -> [u8; 20] {
+    // Convert secret_key from hex string to bytes
+    let mut secret_i = match hex_decode(secret_key) {
+        Ok(bytes) => bytes,
+        Err(_) => panic!("Invalid hex string"),
+    };
+
+    secret_i.push(digit_index as u8);
+
+    let mut hash = hash160::Hash::hash(&secret_i);
+
+    for _ in 0..D {
+        hash = hash160::Hash::hash(&hash[..]);
+    }
+
+    *hash.as_byte_array()
+}
+
+/// Generate a public key from a secret key 
+pub fn generate_public_key(secret_key: &str) -> PublicKey {
+    let mut public_key_array = [[0u8; 20]; N as usize];
+    for i in 0..N {
+        public_key_array[i as usize] = public_key_for_digit(secret_key, i);
+    }
+    public_key_array
+}
+
+/// Compute the signature for the i-th digit of the message
+pub fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) -> Script {
+    // Convert secret_key from hex string to bytes
+    let mut secret_i = match hex_decode(secret_key) {
+        Ok(bytes) => bytes,
+        Err(_) => panic!("Invalid hex string"),
+    };
+
+    secret_i.push(digit_index as u8);
+
+    let mut hash = hash160::Hash::hash(&secret_i);
+
+    for _ in 0..message_digit {
+        hash = hash160::Hash::hash(&hash[..]);
+    }
+
+    let hash_bytes = hash.as_byte_array().to_vec();
+
+    script! {
+        { hash_bytes }
+        { message_digit }
+    }
+}
+
+/// Compute the checksum of the message's digits.
+/// Further infos in chapter "A domination free function for Winternitz signatures"
+pub fn checksum(digits: [u8; N0 as usize]) -> u32 {
+    let mut sum = 0;
+    for digit in digits {
+        sum += digit as u32;
+    }
+    D * N0 - sum
+}
+
+/// Convert a number to digits
+pub fn to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
+    let mut digits: [u8; DIGIT_COUNT] = [0; DIGIT_COUNT];
+    for i in 0..DIGIT_COUNT {
+        let digit = number % (D + 1);
+        number = (number - digit) / (D + 1);
+        digits[i] = digit as u8;
+    }
+    digits
+}
+
+
+
+/// Compute the signature for a given message
+pub fn sign_digits(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
+    // const message_digits = to_digits(message, n0)
+    let mut checksum_digits = to_digits::<N1>(checksum(message_digits)).to_vec();
+    checksum_digits.append(&mut message_digits.to_vec());
+
+    script! {
+        for i in 0..N {
+            { digit_signature(secret_key, i, checksum_digits[ (N-1-i) as usize]) }
+        }
+    }
+}
+
+pub fn sign(secret_key: &str, message_bytes: &[u8]) -> Script {
+    // Convert message to digits
+    let mut message_digits = [0u8; 20 * 2 as usize];
+    for (digits, byte) in message_digits.chunks_mut(2).zip(message_bytes) {
+        digits[0] = byte & 0b00001111;
+        digits[1] = byte >> 4;
+    }
+
+    sign_digits(secret_key, message_digits)
+}
+
+pub fn checksig_verify(public_key: &PublicKey) -> Script {
     script! {
         //
         // Verify the hash chain for each digit
@@ -61,7 +161,7 @@ pub fn checksig_verify(secret_key: &str) -> Script {
             // Verify the signature for this digit
             OP_FROMALTSTACK
             OP_PICK
-            { public_key(secret_key, N - 1 - digit_index) }
+            { public_key[N as usize - 1 - digit_index as usize].to_vec() }
             OP_EQUALVERIFY
 
             // Drop the d+1 stack items
@@ -69,7 +169,6 @@ pub fn checksig_verify(secret_key: &str) -> Script {
                 OP_2DROP
             }
         }
-
 
         //
         // Verify the Checksum
@@ -118,90 +217,6 @@ pub fn checksig_verify(secret_key: &str) -> Script {
     }
 }
 
-/// Compute the signature for a given message
-pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
-    // const message_digits = to_digits(message, n0)
-    let mut checksum_digits = to_digits::<N1>(checksum(message_digits)).to_vec();
-    checksum_digits.append(&mut message_digits.to_vec());
-
-    script! {
-        for i in 0..N {
-            { digit_signature(secret_key, i, checksum_digits[ (N-1-i) as usize]) }
-        }
-    }
-}
-
-//
-// Helper functions
-//
-
-/// Generate the public key for the i-th digit of the message
-fn public_key(secret_key: &str, digit_index: u32) -> Script {
-    // Convert secret_key from hex string to bytes
-    let mut secret_i = match hex_decode(secret_key) {
-        Ok(bytes) => bytes,
-        Err(_) => panic!("Invalid hex string"),
-    };
-
-    secret_i.push(digit_index as u8);
-
-    let mut hash = hash160::Hash::hash(&secret_i);
-
-    for _ in 0..D {
-        hash = hash160::Hash::hash(&hash[..]);
-    }
-
-    let hash_bytes = hash.as_byte_array().to_vec();
-
-    script! {
-        { hash_bytes }
-    }
-}
-
-/// Compute the signature for the i-th digit of the message [*unlocking script]
-fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) -> Script {
-    // Convert secret_key from hex string to bytes
-    let mut secret_i = match hex_decode(secret_key) {
-        Ok(bytes) => bytes,
-        Err(_) => panic!("Invalid hex string"),
-    };
-
-    secret_i.push(digit_index as u8);
-
-    let mut hash = hash160::Hash::hash(&secret_i);
-
-    for _ in 0..message_digit {
-        hash = hash160::Hash::hash(&hash[..]);
-    }
-
-    let hash_bytes = hash.as_byte_array().to_vec();
-
-    script! {
-        { hash_bytes }
-        { message_digit }
-    }
-}
-
-/// Compute the checksum of the message's digits.
-/// Further infos in chapter "A domination free function for Winternitz signatures"
-fn checksum(digits: [u8; N0 as usize]) -> u32 {
-    let mut sum = 0;
-    for digit in digits {
-        sum += digit as u32;
-    }
-    D * N0 - sum
-}
-
-/// Convert a number to digits
-pub fn to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
-    let mut digits: [u8; DIGIT_COUNT] = [0; DIGIT_COUNT];
-    for i in 0..DIGIT_COUNT {
-        let digit = number % (D + 1);
-        number = (number - digit) / (D + 1);
-        digits[i] = digit as u8;
-    }
-    digits
-}
 
 #[cfg(test)]
 mod test {
@@ -210,6 +225,7 @@ mod test {
     // The secret key
     const MY_SECKEY: &str = "b138982ce17ac813d505b5b40b665d404e9528e7";
 
+
     #[test]
     fn test_winternitz() {
         // The message to sign
@@ -217,12 +233,13 @@ mod test {
         const MESSAGE: [u8; N0 as usize] = [
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
         ];
+
+        let public_key = generate_public_key(MY_SECKEY);
+
         let script = script! {
-            { sign(MY_SECKEY, MESSAGE) }
-            { checksig_verify(MY_SECKEY) }
+            { sign_digits(MY_SECKEY, MESSAGE) }
+            { checksig_verify(&public_key) }
         };
 
         println!(
@@ -232,32 +249,9 @@ mod test {
             script.len() as f64 / (N0 * 4) as f64
         );
 
-        let script = script! {
-            { sign(MY_SECKEY, MESSAGE) }
-            { checksig_verify(MY_SECKEY) }
-
-            // Inverted, grouped version of message in 217
-            0x21 OP_EQUALVERIFY
-            0x43 OP_EQUALVERIFY
-            0x65 OP_EQUALVERIFY
-            0x87 OP_EQUALVERIFY
-            0xA9 OP_EQUALVERIFY
-            0xCB OP_EQUALVERIFY
-            0xED OP_EQUALVERIFY
-            0x7F OP_EQUALVERIFY
-            0x77 OP_EQUALVERIFY
-            0x77 OP_EQUALVERIFY
-
-            0x21 OP_EQUALVERIFY
-            0x43 OP_EQUALVERIFY
-            0x65 OP_EQUALVERIFY
-            0x87 OP_EQUALVERIFY
-            0xA9 OP_EQUALVERIFY
-            0xCB OP_EQUALVERIFY
-            0xED OP_EQUALVERIFY
-            0x7F OP_EQUALVERIFY
-            0x77 OP_EQUALVERIFY
-            0x77 OP_EQUALVERIFY
+        run(script! {
+            { sign_digits(MY_SECKEY, MESSAGE) }
+            { checksig_verify(&public_key) }
 
             0x21 OP_EQUALVERIFY
             0x43 OP_EQUALVERIFY
@@ -280,10 +274,7 @@ mod test {
             0x7F OP_EQUALVERIFY
             0x77 OP_EQUALVERIFY
             0x77 OP_EQUAL
-        };
-
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        });
     }
 
     // TODO: test the error cases: negative digits, digits > D, ...
