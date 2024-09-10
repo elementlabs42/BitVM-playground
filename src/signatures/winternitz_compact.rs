@@ -22,6 +22,7 @@
 use crate::treepp::*;
 use bitcoin::hashes::{hash160, Hash};
 use hex::decode as hex_decode;
+use num_traits::ToPrimitive;
 
 /// Bits per digit
 const LOG_D: u32 = 4;
@@ -44,12 +45,22 @@ pub const N1_32: usize = 2;
 /// Total number of digits to be signed
 // const N_32: usize = N0_32 + N1_32;
 
+fn checksum_digit_count_from_message_digit_count(digit_count: usize) -> usize {
+    // log2(N0 * D + 1) / log2(D + 1)
+    let numerator =
+        (digit_count.to_f64().unwrap() * D.to_f64().unwrap() + 1.to_f64().unwrap()).log2();
+    let denominator = (D.to_f64().unwrap() + 1.to_f64().unwrap()).log2();
+    (numerator / denominator).ceil().to_usize().unwrap()
+}
+
 /// Winternitz Signature verification
 ///
 /// Note that the script inputs are malleable.
 ///
 /// Optimized by @SergioDemianLerner, @tomkosm
-pub fn checksig_verify<const DIGIT_COUNT: usize, const CHECKSUM_DIGIT_COUNT: usize>(secret_key: &str) -> Script {
+pub fn checksig_verify<const DIGIT_COUNT: usize, const CHECKSUM_DIGIT_COUNT: usize>(
+    secret_key: &str,
+) -> Script {
     script! {
         //
         // Verify the hash chain for each digit
@@ -125,7 +136,7 @@ pub fn checksig_verify<const DIGIT_COUNT: usize, const CHECKSUM_DIGIT_COUNT: usi
 
         // No need to convert message digits to bytes.
         // We can get the actual number by calling `message_digits_to_number()`.
-  
+
         // // Convert the message's digits to bytes
         // for i in 0..DIGIT_COUNT / 2 {
         //     OP_SWAP
@@ -145,7 +156,10 @@ pub fn checksig_verify<const DIGIT_COUNT: usize, const CHECKSUM_DIGIT_COUNT: usi
 }
 
 /// Compute the signature for a given message
-pub fn sign<const DIGIT_COUNT: usize, const CHECKSUM_DIGIT_COUNT: usize>(secret_key: &str, message_digits: [u8; DIGIT_COUNT]) -> Script {
+pub fn sign<const DIGIT_COUNT: usize, const CHECKSUM_DIGIT_COUNT: usize>(
+    secret_key: &str,
+    message_digits: [u8; DIGIT_COUNT],
+) -> Script {
     // const message_digits = to_digits(message, n0)
     let mut checksum_digits = to_digits::<CHECKSUM_DIGIT_COUNT>(checksum(message_digits)).to_vec();
     checksum_digits.append(&mut message_digits.to_vec());
@@ -328,9 +342,7 @@ mod test {
         #[rustfmt::skip]
         let block: u32 = 860033;
         // // 0000 0000 0000 1101 0001 1111 1000 0001
-        const MESSAGE: [u8; N0_32] = [
-            0, 0, 0, 13, 1, 15, 8, 1
-        ];
+        const MESSAGE: [u8; N0_32] = [0, 0, 0, 13, 1, 15, 8, 1];
         let script = script! {
             { sign::<N0_32, N1_32>(MY_SECKEY, MESSAGE) }
             { checksig_verify::<N0_32, N1_32>(MY_SECKEY) }
@@ -353,6 +365,20 @@ mod test {
 
         let exec_result = execute_script(script);
         assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_winternitz_checksum_digit_count_from_message_digit_count() {
+        println!(
+            "N0_32 {:?}",
+            checksum_digit_count_from_message_digit_count(N0_32)
+        );
+        assert!(checksum_digit_count_from_message_digit_count(N0_32) == N1_32);
+        println!(
+            "N0_320 {:?}",
+            checksum_digit_count_from_message_digit_count(N0_320)
+        );
+        assert!(checksum_digit_count_from_message_digit_count(N0_320) == N1_320);
     }
 
     // TODO: test the error cases: negative digits, digits > D, ...
