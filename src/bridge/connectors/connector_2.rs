@@ -1,4 +1,4 @@
-use crate::treepp::script;
+use crate::{signatures::winternitz_compact::digits_to_number, treepp::script};
 use bitcoin::{
     key::Secp256k1,
     opcodes::all::{OP_ADD, OP_CLTV, OP_LSHIFT},
@@ -44,7 +44,7 @@ impl Connector2 {
             // BITVM1 opcodes
             // block peg out was mined in (left on stack)
             { checksig_verify(secret_key) }
-            { bytes_to_number() }
+            { digits_to_number() }
             OP_CLTV
             OP_DROP
             { self.operator_taproot_public_key }
@@ -58,7 +58,7 @@ impl Connector2 {
         let block: u32 = 860033;
 
         let message = number_to_digits(block);
-        sign(&secret_key, message)
+        sign(&secret_key, message).compile()
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }

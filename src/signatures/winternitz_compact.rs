@@ -113,22 +113,24 @@ pub fn checksig_verify(secret_key: &str) -> Script {
         OP_EQUALVERIFY
 
 
-        // Convert the message's digits to bytes
-        for i in 0..N0 / 2 {
-            OP_SWAP
-            for _ in 0..LOG_D {
-                OP_DUP OP_ADD
-            }
-            OP_ADD
-            // Push all bytes to the altstack, except for the last byte
-            if i != (N0/2) - 1 {
-                OP_TOALTSTACK
-            }
-        }
-        for _ in 0..N0 / 2 - 1 {
-            OP_FROMALTSTACK
-        }
-
+        // No need to convert message digits to bytes.
+        // We can get the actual number by calling `message_digits_to_number()`.
+  
+        // // Convert the message's digits to bytes
+        // for i in 0..N0 / 2 {
+        //     OP_SWAP
+        //     for _ in 0..LOG_D {
+        //         OP_DUP OP_ADD
+        //     }
+        //     OP_ADD
+        //     // Push all bytes to the altstack, except for the last byte
+        //     if i != (N0/2) - 1 {
+        //         OP_TOALTSTACK
+        //     }
+        // }
+        // for _ in 0..N0 / 2 - 1 {
+        //     OP_FROMALTSTACK
+        // }
     }
 }
 
@@ -217,11 +219,12 @@ fn to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
 }
 
 pub fn number_to_digits(number: u32) -> [u8; N0 as usize] {
-    to_digits::<N0>(number)
+    const N0_usize: usize = N0 as usize;
+    to_digits::<N0_usize>(number)
 }
 
-pub fn bytes_to_number() -> Script {
-    // Expects numbers in reverse order on stack in Big Endian (most significant bytes at bottom of stack, least significant bytes at top of stack)
+pub fn digits_to_number() -> Script {
+    // Expects numbers in order on stack in Little Endian (most significant bytes at top of stack, least significant bytes at bottom of stack)
     script!(
         for _ in 0..N0 - 1 {
             for _ in 0..LOG_D {
@@ -342,24 +345,24 @@ mod test {
             { sign(MY_SECKEY, MESSAGE) } // M0
 
             { checksig_verify(MY_SECKEY) } // M0
-            { bytes_to_number() }
-            {  } // sum of number
+            { digits_to_number() }
+            // {  } // sum of number
             OP_EQUALVERIFY
 
             // left with decoded bytes of M0
             // move decoded(M0) it to end of stack
             // leaving M1 on top of stack
             { checksig_verify(MY_SECKEY) } // M1
-            { bytes_to_number() }
-            {  } // sum of number
+            { digits_to_number() }
+            // {  } // sum of number
             OP_EQUALVERIFY
 
             // left with decoded bytes of M1
             // move decoded(M1) it to end of stack
             // leaving M2 on top of stack
             { checksig_verify(MY_SECKEY) } // M2
-            { bytes_to_number() }
-            {  } // sum of number
+            { digits_to_number() }
+            // {  } // sum of number
             OP_EQUALVERIFY
 
             // left with decoded bytes of M2
