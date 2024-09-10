@@ -215,6 +215,10 @@ impl BitVMClient {
         }
     }
 
+    pub fn set_chain_adaptor(&mut self, chain_adaptor: Chain) {
+        self.chain_adaptor = chain_adaptor;
+    }
+
     async fn read_from_l2(&mut self) {
         let peg_out_result = self.chain_adaptor.get_peg_out_init().await;
         if peg_out_result.is_ok() {

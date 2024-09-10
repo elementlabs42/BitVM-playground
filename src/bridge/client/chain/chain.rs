@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use bitcoin::{Amount, OutPoint, PubkeyHash, PublicKey};
 use serde::{Deserialize, Serialize};
 
@@ -32,18 +34,22 @@ pub struct PegInEvent {
     pub depositor_pubkey: PublicKey,
 }
 
-static CLIENT_MISSING_ORACLE_DRIVER_ERROR: &str = "Bridge client is missing chain adaptor";
+static CLIENT_MISSING_CHAIN_DRIVER_ERROR: &str = "Bridge client is missing chain adaptor";
 
 pub struct Chain {
     ethereum: Option<EthereumAdaptor>,
+    default: Option<Box<dyn ChainAdaptor>>,
 }
 
 impl Chain {
     pub fn new() -> Self {
         Self {
             ethereum: EthereumAdaptor::new(),
+            default: None,
         }
     }
+
+    pub fn init_default(&mut self, adaptor: Box<dyn ChainAdaptor>) { self.default = Some(adaptor); }
 
     pub fn init_ethereum(&mut self, conf: EthereumInitConfig) {
         self.ethereum = Some(EthereumAdaptor::from_config(conf));
@@ -67,10 +73,12 @@ impl Chain {
     }
 
     fn get_driver(&self) -> Result<&dyn ChainAdaptor, &str> {
-        if self.ethereum.is_some() {
+        if self.default.is_some() {
+            return Ok((*self.default.as_ref().unwrap()).borrow());
+        } else if self.ethereum.is_some() {
             return Ok(self.ethereum.as_ref().unwrap());
         } else {
-            Err(CLIENT_MISSING_ORACLE_DRIVER_ERROR)
+            Err(CLIENT_MISSING_CHAIN_DRIVER_ERROR)
         }
     }
 }

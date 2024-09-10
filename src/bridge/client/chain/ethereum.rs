@@ -196,6 +196,7 @@ impl EthereumAdaptor {
         let rpc_url_str = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_RPC_URL");
         let bridge_address_str = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_ADDRESS");
         let bridge_creation = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_CREATION");
+        let to_block = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_TO_BLOCK");
         if bridge_address_str.is_err() || bridge_creation.is_err() {
             return None;
         }
@@ -209,7 +210,10 @@ impl EthereumAdaptor {
             rpc_url: rpc_url.unwrap(),
             bridge_address: bridge_address.unwrap(),
             bridge_creation_block: bridge_creation.unwrap().parse::<u64>().unwrap(),
-            to_block: None,
+            to_block: match to_block {
+                Ok(block) => Some(BlockNumberOrTag::from_str(block.as_str()).unwrap()),
+                Err(_) => Some(BlockNumberOrTag::Finalized),
+            },
         }))
     }
 

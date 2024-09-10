@@ -6,7 +6,10 @@ use alloy::transports::http::{
 };
 use bitcoin::{Address, Amount, OutPoint, Txid};
 
-use bitvm::bridge::client::client::BitVMClient;
+use bitvm::bridge::{
+    client::client::BitVMClient,
+    graphs::{base::BaseGraph, peg_in::PegInGraph, peg_out::PegOutGraph},
+};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
@@ -110,19 +113,22 @@ pub async fn fund_inputs(inputs_to_fund: &Vec<(&Address, Amount)>) {
     }
 }
 
-fn get_random_seconds(from: u64, to: u64) -> u64 {
+fn get_random_millis(from: u64, to: u64) -> u64 {
     let mut rng = rand::thread_rng();
     rng.gen_range(from..to)
 }
 
-pub async fn verify_and_fund_inputs(client: &BitVMClient, funding_inputs: &Vec<(&Address, Amount)>) {
+pub async fn verify_and_fund_inputs(
+    client: &BitVMClient,
+    funding_inputs: &Vec<(&Address, Amount)>,
+) {
     for input in funding_inputs {
         if client
             .get_initial_utxo(input.0.clone(), input.1)
             .await
             .is_none()
         {
-            sleep(Duration::from_secs(get_random_seconds(500, 2000))).await;
+            sleep(Duration::from_millis(get_random_millis(500, 2000))).await;
             fund_input(input.0, input.1).await;
         }
     }
@@ -150,5 +156,42 @@ pub async fn verify_funding_inputs(client: &BitVMClient, funding_inputs: &Vec<(&
     }
     if inputs_to_fund.len() > 0 {
         panic!("You need to fund {} addresses first.", inputs_to_fund.len());
+    }
+}
+
+pub fn find_peg_in_graph(client: &BitVMClient, peg_in_graph_id: &str) -> Option<PegInGraph> {
+    let peg_in_graph = client
+        .get_data()
+        .peg_in_graphs
+        .iter()
+        .find(|&graph| graph.id().eq(peg_in_graph_id));
+
+    match peg_in_graph {
+        Some(peg_in_graph) => Some(peg_in_graph.clone()),
+        None => None,
+    }
+}
+
+pub fn find_peg_out_graph(client: &BitVMClient, peg_out_graph_id: &str) -> Option<PegOutGraph> {
+    let peg_out_graph = client
+        .get_data()
+        .peg_out_graphs
+        .iter()
+        .find(|&graph| graph.id().eq(&peg_out_graph_id));
+
+    match peg_out_graph {
+        Some(peg_out_graph) => Some(peg_out_graph.clone()),
+        None => None,
+    }
+}
+
+pub fn find_peg_in_graph_by_peg_out(
+    client: &BitVMClient,
+    peg_out_graph_id: &str,
+) -> Option<PegInGraph> {
+    let peg_out_graph = find_peg_out_graph(client, peg_out_graph_id);
+    match peg_out_graph {
+        Some(peg_out_graph) => find_peg_in_graph(client, &peg_out_graph.peg_in_graph_id),
+        None => None,
     }
 }

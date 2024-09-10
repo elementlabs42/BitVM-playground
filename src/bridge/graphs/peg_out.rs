@@ -392,7 +392,7 @@ impl PegOutGraph {
             script_index,
         );
 
-        let disprove_chain_vout_0 = 2;
+        let disprove_chain_vout_0 = 1;
         let disprove_chain_transaction = DisproveChainTransaction::new(
             context,
             Input {
