@@ -1,7 +1,6 @@
-use crate::{signatures::winternitz_compact::digits_to_number, treepp::script};
+use crate::treepp::script;
 use bitcoin::{
     key::Secp256k1,
-    opcodes::all::{OP_ADD, OP_CLTV, OP_LSHIFT},
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
@@ -9,7 +8,9 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        super::signatures::winternitz_compact::{checksig_verify, number_to_digits, sign},
+        super::signatures::winternitz_compact::{
+            checksig_verify, digits_to_number, sign, to_digits, N0_32, N1_32,
+        },
         scripts::*,
         transactions::base::Input,
     },
@@ -43,8 +44,8 @@ impl Connector2 {
             // pre-image (pushed to stack from witness)
             // BITVM1 opcodes
             // block peg out was mined in (left on stack)
-            { checksig_verify(secret_key) }
-            { digits_to_number() }
+            { checksig_verify::<N0_32, N1_32>(secret_key) }
+            { digits_to_number::<N0_32>() }
             OP_CLTV
             OP_DROP
             { self.operator_taproot_public_key }
@@ -56,9 +57,8 @@ impl Connector2 {
     fn generate_taproot_leaf_0_unlock(&self) -> ScriptBuf {
         let secret_key = "ASDF"; // TODO replace with secret key for specific variable, generate and store secrets in local client
         let block: u32 = 860033;
-
-        let message = number_to_digits(block);
-        sign(&secret_key, message).compile()
+        let message = to_digits::<N0_32>(block);
+        sign::<N0_32, N1_32>(&secret_key, message).compile()
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
