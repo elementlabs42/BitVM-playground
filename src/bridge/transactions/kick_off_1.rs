@@ -1,13 +1,14 @@
 use bitcoin::{
-    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Sequence,
-    Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
+    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction,
+    TxOut, XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
         connectors::{
-            connector::*, connector_1::Connector1, connector_2::Connector2, connector_6::Connector6, connector_a::ConnectorA,
+            connector::*, connector_1::Connector1, connector_2::Connector2,
+            connector_6::Connector6, connector_a::ConnectorA,
         },
         contexts::operator::OperatorContext,
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
@@ -68,12 +69,7 @@ impl KickOff1Transaction {
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
         );
-        let connector_6 = Connector6::new(
-            network,
-            operator_public_key,
-            evm_txid,
-            peg_out_txid,
-        );
+        let connector_6 = Connector6::new(network, operator_public_key);
         let connector_a = ConnectorA::new(
             network,
             operator_taproot_public_key,

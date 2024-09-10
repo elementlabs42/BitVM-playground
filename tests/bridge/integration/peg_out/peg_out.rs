@@ -1,3 +1,4 @@
+use alloy::primitives::FixedBytes;
 use bitcoin::Amount;
 
 use bitvm::bridge::{
@@ -62,6 +63,7 @@ async fn test_peg_out_success() {
         withdrawer_chain_address: withdrawer_evm_address,
         withdrawer_public_key_hash: withdrawer_context.withdrawer_public_key.pubkey_hash(),
         operator_public_key: operator_context.operator_public_key,
+        tx_hash: FixedBytes::<32>::default(),
     };
 
     let peg_out = PegOutTransaction::new(&operator_context, &stub_event);

@@ -115,7 +115,10 @@ fn get_random_seconds(from: u64, to: u64) -> u64 {
     rng.gen_range(from..to)
 }
 
-pub async fn verify_and_fund_inputs(client: &BitVMClient, funding_inputs: &Vec<(&Address, Amount)>) {
+pub async fn verify_and_fund_inputs(
+    client: &BitVMClient,
+    funding_inputs: &Vec<(&Address, Amount)>,
+) {
     for input in funding_inputs {
         if client
             .get_initial_utxo(input.0.clone(), input.1)
