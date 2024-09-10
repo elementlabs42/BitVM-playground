@@ -284,8 +284,8 @@ mod test {
         );
 
         run(script! {
-            { sign(MY_SECKEY, MESSAGE) }
-            { checksig_verify(MY_SECKEY) }
+            { sign::<N0_320, N1_320>(MY_SECKEY, MESSAGE) }
+            { checksig_verify::<N0_320, N1_320>(MY_SECKEY) }
 
             0x21 OP_EQUALVERIFY
             0x43 OP_EQUALVERIFY
