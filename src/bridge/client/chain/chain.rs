@@ -1,4 +1,3 @@
-use alloy::primitives::FixedBytes;
 use std::borrow::Borrow;
 
 use bitcoin::{Amount, OutPoint, PubkeyHash, PublicKey};
@@ -17,7 +16,7 @@ pub struct PegOutEvent {
     pub amount: Amount,
     pub operator_public_key: PublicKey,
     pub timestamp: u32,
-    pub tx_hash: FixedBytes<32>,
+    pub tx_hash: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
