@@ -379,5 +379,24 @@ mod test {
         assert!(checksum_digit_count_from_message_digit_count(N0_320) == N1_320);
     }
 
+    #[test]
+    fn test_winternitz_u32_signature_success() {
+      let secret_key = "3076ca1dfc1e383be26d5dd3c0c427340f96139fa8c2520862cf551ec2d670ac"; // TODO replace with secret key for specific variable, generate and store secrets in local client
+      let block: u32 = 860033;
+      // 0000 0000 0000 1101 0001 1111 1000 0001
+      let message = [0, 0, 0, 13, 1, 15, 8, 1];
+    
+      let signature = sign::<N0_32, N1_32>(&secret_key, message);
+      let locking_script = checksig_verify::<N0_32, N1_32>(secret_key);
+
+      run(script!{
+        { signature }
+        { locking_script }
+        { digits_to_number::<N0_32>() }
+        { block }
+        OP_EQUAL
+      });
+    }
+
     // TODO: test the error cases: negative digits, digits > D, ...
 }
