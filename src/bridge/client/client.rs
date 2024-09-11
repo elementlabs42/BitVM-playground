@@ -215,6 +215,10 @@ impl BitVMClient {
         }
     }
 
+    pub fn set_chain_adaptor(&mut self, chain_adaptor: Chain) {
+        self.chain_adaptor = chain_adaptor;
+    }
+
     async fn read_from_l2(&mut self) {
         let peg_out_result = self.chain_adaptor.get_peg_out_init().await;
         if peg_out_result.is_ok() {
@@ -699,7 +703,7 @@ impl BitVMClient {
         peg_out_graph_id
     }
 
-    pub async fn broadcast_peg_out(&mut self, peg_out_graph_id: &str) {
+    pub async fn broadcast_peg_out(&mut self, peg_out_graph_id: &str, input: Input) {
         let peg_out_graph = self
             .data
             .peg_out_graphs
@@ -712,7 +716,11 @@ impl BitVMClient {
         if self.operator_context.is_some() {
             peg_out_graph
                 .unwrap()
-                .peg_out(self.operator_context.as_ref().unwrap(), &self.esplora)
+                .peg_out(
+                    &self.esplora,
+                    self.operator_context.as_ref().unwrap(),
+                    input,
+                )
                 .await;
         }
     }

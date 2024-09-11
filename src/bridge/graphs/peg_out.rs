@@ -392,7 +392,7 @@ impl PegOutGraph {
             script_index,
         );
 
-        let disprove_chain_vout_0 = 2;
+        let disprove_chain_vout_0 = 1;
         let disprove_chain_transaction = DisproveChainTransaction::new(
             context,
             Input {
@@ -999,7 +999,7 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn peg_out(&mut self, context: &OperatorContext, client: &AsyncClient) {
+    pub async fn peg_out(&mut self, client: &AsyncClient, context: &OperatorContext, input: Input) {
         if !self.is_peg_out_initiated() {
             panic!("Peg out not initiated on L2 chain");
         }
@@ -1014,11 +1014,11 @@ impl PegOutGraph {
             verify_if_not_mined(&client, txid).await;
         } else {
             let event = self.peg_out_chain_event.as_ref().unwrap();
-            let tx = PegOutTransaction::new(context, event);
+            let tx = PegOutTransaction::new(context, event, input);
             self.peg_out_transaction = Some(tx);
         }
 
-        let peg_out_tx = self.peg_out_transaction.as_mut().unwrap().finalize();
+        let peg_out_tx = self.peg_out_transaction.as_ref().unwrap().finalize();
 
         let peg_out_result = client.broadcast(&peg_out_tx).await;
 

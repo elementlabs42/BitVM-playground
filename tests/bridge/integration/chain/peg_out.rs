@@ -9,7 +9,10 @@ use bitvm::bridge::{
     client::chain::{chain::Chain, ethereum::EthereumInitConfig},
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
-    transactions::{base::BaseTransaction, peg_out::PegOutTransaction},
+    transactions::{
+        base::{BaseTransaction, Input},
+        peg_out::PegOutTransaction,
+    },
 };
 use tokio::time::sleep;
 
@@ -64,7 +67,11 @@ async fn test_peg_out_for_chain() {
     peg_out_event.source_outpoint = operator_funding_outpoint;
     peg_out_event.amount = operator_input_amount;
 
-    let peg_out = PegOutTransaction::new(&operator_context, &peg_out_event);
+    let input = Input {
+        outpoint: operator_funding_outpoint,
+        amount: operator_input_amount,
+    };
+    let peg_out = PegOutTransaction::new(&operator_context, &peg_out_event, input);
 
     let peg_out_tx = peg_out.finalize();
     let peg_out_tx_id = peg_out_tx.compute_txid();
