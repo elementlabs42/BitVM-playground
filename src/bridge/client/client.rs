@@ -703,7 +703,7 @@ impl BitVMClient {
         peg_out_graph_id
     }
 
-    pub async fn broadcast_peg_out(&mut self, peg_out_graph_id: &str) {
+    pub async fn broadcast_peg_out(&mut self, peg_out_graph_id: &str, input: Input) {
         let peg_out_graph = self
             .data
             .peg_out_graphs
@@ -716,7 +716,11 @@ impl BitVMClient {
         if self.operator_context.is_some() {
             peg_out_graph
                 .unwrap()
-                .peg_out(self.operator_context.as_ref().unwrap(), &self.esplora)
+                .peg_out(
+                    &self.esplora,
+                    self.operator_context.as_ref().unwrap(),
+                    input,
+                )
                 .await;
         }
     }

@@ -21,7 +21,8 @@ use tokio::time::sleep;
 
 use crate::bridge::{
     helper::{
-        find_peg_in_graph_by_peg_out, generate_stub_outpoint, verify_and_fund_inputs, TX_WAIT_TIME,
+        find_peg_in_graph_by_peg_out, fund_input_and_wait, generate_stub_outpoint,
+        verify_and_fund_inputs, TX_WAIT_TIME,
     },
     mock::chain::mock::MockAdaptor,
     setup::setup_test,
@@ -146,6 +147,7 @@ async fn test_musig2_peg_out_peg_out() {
         "peg_in_confirm_txid: {:?}",
         peg_in_confirm.tx().compute_txid()
     );
+    let peg_in_confirm_amount = peg_in_confirm.tx().output[peg_in_confirm_vout].value;
 
     let mut mock_adaptor = MockAdaptor::new();
     mock_adaptor.peg_out_init_events = vec![PegOutEvent {
@@ -153,7 +155,7 @@ async fn test_musig2_peg_out_peg_out() {
             txid: peg_in_confirm.tx().compute_txid(),
             vout: peg_in_confirm_vout.to_u32().unwrap(),
         },
-        amount: peg_in_confirm.tx().output[0].value,
+        amount: peg_in_confirm_amount,
         timestamp: 1722328130u32,
         withdrawer_chain_address: withdrawer_evm_address,
         withdrawer_public_key_hash: withdrawer_context.withdrawer_public_key.pubkey_hash(),
@@ -164,9 +166,32 @@ async fn test_musig2_peg_out_peg_out() {
     depositor_operator_verifier_0_client.set_chain_adaptor(chain_adaptor);
     depositor_operator_verifier_0_client.sync_l2().await;
 
+    let operator_funding_utxo_address = generate_pay_to_pubkey_script_address(
+        operator_context.network,
+        &operator_context.operator_public_key,
+    );
+    println!(
+        "operator_funding_utxo_address: {:?}",
+        operator_funding_utxo_address
+    );
+    fund_input_and_wait(&operator_funding_utxo_address, peg_in_confirm_amount).await;
+    let operator_funding_outpoint = generate_stub_outpoint(
+        &depositor_operator_verifier_0_client,
+        &operator_funding_utxo_address,
+        peg_in_confirm_amount,
+    )
+    .await;
+    println!(
+        "operator_funding_utxo.txid: {:?}",
+        operator_funding_outpoint.txid
+    );
+    let input = Input {
+        outpoint: operator_funding_outpoint,
+        amount: peg_in_confirm_amount,
+    };
     eprintln!("Broadcasting peg out...");
     depositor_operator_verifier_0_client
-        .broadcast_peg_out(&peg_out_graph_id)
+        .broadcast_peg_out(&peg_out_graph_id, input)
         .await;
 }
 

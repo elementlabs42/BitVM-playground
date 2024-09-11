@@ -74,6 +74,13 @@ async fn fund_input_http(address: &Address, amount: Amount) -> Result<Response, 
     }
 }
 
+pub async fn fund_input_and_wait(address: &Address, amount: Amount) -> Txid {
+    let txid = fund_input(address, amount).await;
+    println!("Waiting for funding inputs tx...");
+    sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+    txid
+}
+
 pub async fn fund_input(address: &Address, amount: Amount) -> Txid {
     let client_err_handler = |e: Error| {
         panic!("Could not fund {} due to {:?}", address, e);

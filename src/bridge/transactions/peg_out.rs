@@ -32,9 +32,13 @@ impl PreSignedTransaction for PegOutTransaction {
 }
 
 impl PegOutTransaction {
-    pub fn new(context: &OperatorContext, peg_out_event: &PegOutEvent) -> Self {
-        let mut this =
-            Self::new_for_validation(context.network, &context.operator_public_key, peg_out_event);
+    pub fn new(context: &OperatorContext, peg_out_event: &PegOutEvent, input_0: Input) -> Self {
+        let mut this = Self::new_for_validation(
+            context.network,
+            &context.operator_public_key,
+            peg_out_event,
+            input_0,
+        );
 
         this.sign_input_0(context);
 
@@ -45,11 +49,8 @@ impl PegOutTransaction {
         network: Network,
         operator_public_key: &PublicKey,
         peg_out_event: &PegOutEvent,
+        input_0: Input,
     ) -> Self {
-        let input_0 = Input {
-            outpoint: peg_out_event.source_outpoint,
-            amount: peg_out_event.amount,
-        };
         let _input_0 = TxIn {
             previous_output: input_0.outpoint,
             script_sig: ScriptBuf::new(),
