@@ -20,10 +20,8 @@ use num_traits::ToPrimitive;
 use tokio::time::sleep;
 
 use crate::bridge::{
-    helper::{
-        find_peg_in_graph_by_peg_out, fund_input_and_wait, generate_stub_outpoint,
-        verify_and_fund_inputs, TX_WAIT_TIME,
-    },
+    faucet::Faucet,
+    helper::{find_peg_in_graph_by_peg_out, generate_stub_outpoint, TX_WAIT_TIME},
     mock::chain::mock::MockAdaptor,
     setup::setup_test,
 };
@@ -174,7 +172,10 @@ async fn test_musig2_peg_out_peg_out() {
         "operator_funding_utxo_address: {:?}",
         operator_funding_utxo_address
     );
-    fund_input_and_wait(&operator_funding_utxo_address, peg_in_confirm_amount).await;
+    let faucet = Faucet::new();
+    faucet
+        .fund_input_and_wait(&operator_funding_utxo_address, peg_in_confirm_amount)
+        .await;
     let operator_funding_outpoint = generate_stub_outpoint(
         &depositor_operator_verifier_0_client,
         &operator_funding_utxo_address,
@@ -256,8 +257,10 @@ async fn create_peg_out_graph(
         funding_inputs.push((&challenge_funding_utxo_address, challenge_input_amount));
     }
 
-    // fund_inputs(&funding_inputs).await;
-    verify_and_fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs).await;
+    let faucet = Faucet::new();
+    faucet
+        .verify_and_fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs)
+        .await;
     println!("Waiting for funding inputs tx...");
     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 

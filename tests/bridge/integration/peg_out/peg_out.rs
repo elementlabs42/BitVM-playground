@@ -10,10 +10,7 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::{
-    helper::{fund_input_and_wait, generate_stub_outpoint},
-    setup::setup_test,
-};
+use crate::bridge::{faucet::Faucet, helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_out_success() {
@@ -52,7 +49,10 @@ async fn test_peg_out_success() {
         operator_funding_utxo_address
     );
 
-    fund_input_and_wait(&operator_funding_utxo_address, operator_input_amount).await;
+    let faucet = Faucet::new();
+    faucet
+        .fund_input_and_wait(&operator_funding_utxo_address, operator_input_amount)
+        .await;
 
     let operator_funding_outpoint = generate_stub_outpoint(
         &client,
