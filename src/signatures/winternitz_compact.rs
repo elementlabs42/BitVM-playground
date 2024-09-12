@@ -243,13 +243,34 @@ pub fn to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT]
 }
 
 pub fn digits_to_number<const DIGIT_COUNT: usize>() -> Script {
-    // Expects numbers in order on stack in Little Endian (most significant bytes at top of stack, least significant bytes at bottom of stack)
+    // Expects digits in order on stack in Little Endian (most significant bytes at top of stack, least significant bytes at bottom of stack)
     script!(
         for _ in 0..DIGIT_COUNT - 1 {
             for _ in 0..LOG_D {
                 OP_DUP OP_ADD
             }
             OP_ADD
+        }
+    )
+}
+
+pub fn digits_to_bytes<const DIGIT_COUNT: usize>() -> Script {
+    // Expects digits in order on stack in Little Endian (most significant bytes at top of stack, least significant bytes at bottom of stack)
+    script!(
+        // Convert the message's digits to bytes
+        for i in 0..DIGIT_COUNT / 2 {
+          OP_SWAP
+          for _ in 0..LOG_D {
+              OP_DUP OP_ADD
+          }
+          OP_ADD
+          // Push all bytes to the altstack, except for the last byte
+          if i != (DIGIT_COUNT/2) - 1 {
+              OP_TOALTSTACK
+          }
+        }
+        for _ in 0..DIGIT_COUNT / 2 - 1 {
+            OP_FROMALTSTACK
         }
     )
 }
@@ -389,13 +410,38 @@ mod test {
       let signature = sign::<N0_32, N1_32>(&secret_key, message);
       let locking_script = checksig_verify::<N0_32, N1_32>(secret_key);
 
-      run(script!{
+      run(script! {
         { signature }
         { locking_script }
         { digits_to_number::<N0_32>() }
         { block }
         OP_EQUAL
       });
+    }
+
+    #[test]
+    fn test_digits_to_bytes() {
+        let secret_key = "3076ca1dfc1e383be26d5dd3c0c427340f96139fa8c2520862cf551ec2d670ac"; // TODO replace with secret key for specific variable, generate and store secrets in local client
+        // 0000 0000 0000 1101 0001 1111 1000 0001
+        // message = [0x0, 0x0, 0x0, 0xD, 0x1, 0xF, 0x8, 0x1]
+        let message = [0, 0, 0, 13, 1, 15, 8, 1];
+
+        let signature = sign::<N0_32, N1_32>(&secret_key, message);
+        let locking_script = checksig_verify::<N0_32, N1_32>(secret_key);
+
+        run(script! {
+          { signature }
+          { locking_script }
+          { digits_to_bytes::<N0_32>() }
+          0x00
+          OP_EQUALVERIFY
+          0xD0
+          OP_EQUALVERIFY
+          0xF1
+          OP_EQUALVERIFY
+          0x18
+          OP_EQUAL
+        });
     }
 
     // TODO: test the error cases: negative digits, digits > D, ...
