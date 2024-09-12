@@ -400,37 +400,25 @@ mod test {
     }
 
     #[test]
-    fn test_winternitz_u32_signature_success() {
-        let secret_key = "3076ca1dfc1e383be26d5dd3c0c427340f96139fa8c2520862cf551ec2d670ac"; // TODO replace with secret key for specific variable, generate and store secrets in local client
-        let block: u32 = 860033;
+    fn test_winternitz_digits_to_bytes() {
         // 0000 0000 0000 1101 0001 1111 1000 0001
-        let message = [0, 0, 0, 13, 1, 15, 8, 1];
+        // message = [0x0, 0x0, 0x0, 0xD, 0x1, 0xF, 0x8, 0x1]
+        const MESSAGE: [u8; N0_32] = [0, 0, 0, 13, 1, 15, 8, 1];
+        let script = script! {
+            { sign::<N0_32, N1_32>(MY_SECKEY, MESSAGE) }
+            { checksig_verify::<N0_32, N1_32>(MY_SECKEY) }
+        };
 
-        let signature = sign::<N0_32, N1_32>(&secret_key, message);
-        let locking_script = checksig_verify::<N0_32, N1_32>(secret_key);
-
-        run(script! {
-          { signature }
-          { locking_script }
-          { digits_to_number::<N0_32>() }
-          { block }
-          OP_EQUAL
-        });
-    }
-
-    #[test]
-    fn test_digits_to_bytes() {
-        let secret_key = "3076ca1dfc1e383be26d5dd3c0c427340f96139fa8c2520862cf551ec2d670ac"; // TODO replace with secret key for specific variable, generate and store secrets in local client
-                                                                                             // 0000 0000 0000 1101 0001 1111 1000 0001
-                                                                                             // message = [0x0, 0x0, 0x0, 0xD, 0x1, 0xF, 0x8, 0x1]
-        let message = [0, 0, 0, 13, 1, 15, 8, 1];
-
-        let signature = sign::<N0_32, N1_32>(&secret_key, message);
-        let locking_script = checksig_verify::<N0_32, N1_32>(secret_key);
+        println!(
+            "Winternitz signature size:\n \t{:?} bytes / {:?} bits \n\t{:?} bytes / bit",
+            script.len(),
+            N0_32 * 4,
+            script.len() as f64 / (N0_32 * 4) as f64
+        );
 
         run(script! {
-          { signature }
-          { locking_script }
+          { sign::<N0_32, N1_32>(MY_SECKEY, MESSAGE) }
+          { checksig_verify::<N0_32, N1_32>(MY_SECKEY) }
           { digits_to_bytes::<N0_32>() }
           0x00
           OP_EQUALVERIFY
