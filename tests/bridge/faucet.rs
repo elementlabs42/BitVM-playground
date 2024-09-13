@@ -11,8 +11,8 @@ use tokio::time::sleep;
 
 use crate::bridge::helper::{ESPLORA_FUNDING_URL, TX_WAIT_TIME};
 
-const ESPLORA_RETRIES: usize = 3;
-const ESPLORA_RETRY_WAIT_TIME: u64 = 5;
+const ESPLORA_RETRIES: usize = 5;
+const ESPLORA_RETRY_WAIT_TIME: u64 = 10;
 
 #[derive(Serialize, Deserialize)]
 struct FundResult {
@@ -69,11 +69,16 @@ impl Faucet {
             .await
             .unwrap_or_else(client_err_handler);
 
-        let mut retry = ESPLORA_RETRIES;
-        while resp.status().eq(&StatusCode::SERVICE_UNAVAILABLE) && retry > 0 {
+        let mut retry = 0;
+        while resp.status().eq(&StatusCode::SERVICE_UNAVAILABLE) && retry <= ESPLORA_RETRIES {
+            retry += 1;
             eprintln!("Retrying({}/{}) {:?}...", retry, ESPLORA_RETRIES, address);
-            retry -= 1;
-            sleep(Duration::from_secs(ESPLORA_RETRY_WAIT_TIME)).await;
+            sleep(Duration::from_millis(Self::get_random_millis(
+                ESPLORA_RETRY_WAIT_TIME * 1000,
+                ESPLORA_RETRY_WAIT_TIME * 10000,
+            )))
+            .await;
+            // sleep(Duration::from_secs(ESPLORA_RETRY_WAIT_TIME)).await;
             resp = self
                 .fund_input(address, amount)
                 .await

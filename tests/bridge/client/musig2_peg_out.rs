@@ -17,6 +17,7 @@ use bitvm::bridge::{
     },
 };
 use num_traits::ToPrimitive;
+use serial_test::serial;
 use tokio::time::sleep;
 
 use crate::bridge::{
@@ -27,6 +28,7 @@ use crate::bridge::{
 };
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_peg_out_take_1() {
     let with_kick_off_2_tx = false;
     let with_challenge_tx = false;
@@ -41,6 +43,7 @@ async fn test_musig2_peg_out_take_1() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_peg_out_take_2() {
     let with_kick_off_2_tx = true;
     let with_challenge_tx = false;
@@ -56,6 +59,7 @@ async fn test_musig2_peg_out_take_2() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_start_time_timeout() {
     let with_kick_off_2_tx = false;
     let with_challenge_tx = false;
@@ -73,6 +77,7 @@ async fn test_musig2_start_time_timeout() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_kick_off_timeout() {
     let with_kick_off_2_tx = false;
     let with_challenge_tx = false;
@@ -90,6 +95,7 @@ async fn test_musig2_kick_off_timeout() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_peg_out_disprove_with_challenge() {
     let with_kick_off_2_tx = true;
     let with_challenge_tx = true;
@@ -108,6 +114,7 @@ async fn test_musig2_peg_out_disprove_with_challenge() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_peg_out_disprove_chain_with_challenge() {
     let with_kick_off_2_tx = true;
     let with_challenge_tx = true;
@@ -125,6 +132,7 @@ async fn test_musig2_peg_out_disprove_chain_with_challenge() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_peg_out_peg_out() {
     let (
         mut depositor_operator_verifier_0_client,
