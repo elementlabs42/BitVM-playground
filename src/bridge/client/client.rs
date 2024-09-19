@@ -9,7 +9,10 @@ use std::{
 use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid};
 use esplora_client::{AsyncClient, Builder, Utxo};
 
-use crate::bridge::{constants::DestinationNetwork, contexts::base::generate_n_of_n_public_key};
+use crate::bridge::{
+    constants::{DestinationNetwork, SHA256_DIGEST_LENGTH_IN_BYTES},
+    contexts::base::generate_n_of_n_public_key,
+};
 
 use super::{
     super::{
@@ -45,6 +48,9 @@ pub struct BitVMClientPrivateData {
     // Peg in and peg out nonces all go into the same file for now
     // Verifier public key -> Graph ID -> Tx ID -> Input index
     pub secret_nonces: HashMap<PublicKey, HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>>,
+    // Operator Winternitz secrets for all the graphs.
+    // Graph ID -> Winternitz secret
+    pub winternitz_secrets_kickoff_2: HashMap<String, String>,
 }
 
 pub struct BitVMClient {
@@ -673,6 +679,8 @@ impl BitVMClient {
 
         self.data.peg_out_graphs.push(peg_out_graph);
 
+        // TODO: Generate Winternitz secrets for all required messages in the graphand store them in the private data file.
+
         peg_out_graph_id
     }
 
@@ -722,7 +730,11 @@ impl BitVMClient {
             .await;
     }
 
-    pub async fn broadcast_kick_off_2(&mut self, peg_out_graph_id: &str) {
+    pub async fn broadcast_kick_off_2(
+        &mut self,
+        peg_out_graph_id: &str,
+        sb_hash: &[u8; SHA256_DIGEST_LENGTH_IN_BYTES],
+    ) {
         let peg_out_graph = self
             .data
             .peg_out_graphs
@@ -732,7 +744,15 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().kick_off_2(&self.esplora).await;
+        peg_out_graph
+            .unwrap()
+            .kick_off_2(
+                &self.esplora,
+                &self.operator_context.as_ref().unwrap(),
+                &self.private_data.winternitz_secrets_kickoff_2[peg_out_graph_id],
+                sb_hash,
+            )
+            .await;
     }
 
     pub async fn broadcast_kick_off_timeout(
@@ -1066,6 +1086,7 @@ impl BitVMClient {
                 println!("New private data will be generated.");
                 BitVMClientPrivateData {
                     secret_nonces: HashMap::new(),
+                    winternitz_secrets_kickoff_2: HashMap::new(),
                 }
             }
         }

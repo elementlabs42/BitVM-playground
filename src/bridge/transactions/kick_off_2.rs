@@ -2,7 +2,12 @@ use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
+use bitcoin_script::script;
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    bridge::constants::SHA256_DIGEST_LENGTH_IN_BYTES, signatures::winternitz_hash::sign_hash,
+};
 
 use super::{
     super::{
@@ -46,7 +51,7 @@ impl KickOff2Transaction {
             input_0,
         );
 
-        this.sign_input_0(context);
+        // this.sign_input_0(context);
 
         this
     }
@@ -99,13 +104,27 @@ impl KickOff2Transaction {
 
     pub fn num_blocks_timelock_0(&self) -> u32 { self.connector_1.num_blocks_timelock_0 }
 
-    fn sign_input_0(&mut self, context: &OperatorContext) {
+    pub fn sign_input_0(
+        &mut self,
+        context: &OperatorContext,
+        winternitz_secret: &str,
+        sb_hash: &[u8; SHA256_DIGEST_LENGTH_IN_BYTES],
+    ) {
         let input_index = 0;
 
         // // context.paul.unlock.y()
         // self.tx.input[input_index]
         //     .witness
         //     .push(prevout_leaf.0.to_bytes());
+
+        // Push the winternitz signature of the SB hash to the witness
+        let winternitz_signature = script! {
+            { sign_hash(winternitz_secret, sb_hash) }
+        }
+        .compile();
+        self.tx.input[input_index]
+            .witness
+            .push(winternitz_signature);
 
         // // context.paul.unlock.sb()
         // self.tx.input[input_index]

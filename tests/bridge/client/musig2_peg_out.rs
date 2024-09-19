@@ -236,9 +236,11 @@ async fn create_peg_out_graph(
         println!("Waiting for peg-out start time tx...");
         sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
+        let sb_hash = [0u8; SHA256_DIGEST_LENGTH_IN_BYTES];
+
         eprintln!("Broadcasting kick-off 2...");
         depositor_operator_verifier_0_client
-            .broadcast_kick_off_2(&peg_out_graph_id)
+            .broadcast_kick_off_2(&peg_out_graph_id, &sb_hash)
             .await;
 
         println!("Waiting for peg-out kick-off 2 tx...");

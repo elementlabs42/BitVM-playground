@@ -10,6 +10,8 @@ pub const NUM_BLOCKS_PER_WEEK: u32 = NUM_BLOCKS_PER_DAY * 7;
 pub const NUM_BLOCKS_PER_2_WEEKS: u32 = NUM_BLOCKS_PER_WEEK * 2;
 pub const NUM_BLOCKS_PER_4_WEEKS: u32 = NUM_BLOCKS_PER_WEEK * 4;
 
+pub const SHA256_DIGEST_LENGTH_IN_BYTES: usize = 32;
+
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub enum DestinationNetwork {
     /// Mainnet Ethereum.

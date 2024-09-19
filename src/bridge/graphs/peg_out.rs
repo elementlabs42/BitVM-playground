@@ -13,6 +13,8 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
 };
 
+use crate::bridge::constants::SHA256_DIGEST_LENGTH_IN_BYTES;
+
 use super::{
     super::{
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
@@ -1114,13 +1116,23 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn kick_off_2(&mut self, client: &AsyncClient) {
-        verify_if_not_mined(client, self.kick_off_2_transaction.tx().compute_txid()).await;
+    pub async fn kick_off_2(
+        &mut self,
+        network_client: &AsyncClient,
+        context: &OperatorContext,
+        winternitz_secret: &str,
+        sb_hash: &[u8; SHA256_DIGEST_LENGTH_IN_BYTES],
+    ) {
+        verify_if_not_mined(
+            network_client,
+            self.kick_off_2_transaction.tx().compute_txid(),
+        )
+        .await;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
-        let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
+        let kick_off_1_status = network_client.get_tx_status(&kick_off_1_txid).await;
 
-        let blockchain_height = get_block_height(client).await;
+        let blockchain_height = get_block_height(network_client).await;
 
         if kick_off_1_status
             .as_ref()
@@ -1136,10 +1148,12 @@ impl PegOutGraph {
                 })
             {
                 // complete kick-off 2 tx
+                self.kick_off_2_transaction
+                    .sign_input_0(context, winternitz_secret, sb_hash);
                 let kick_off_2_tx = self.kick_off_2_transaction.finalize();
 
                 // broadcast kick-off 2 tx
-                let kick_off_2_result = client.broadcast(&kick_off_2_tx).await;
+                let kick_off_2_result = network_client.broadcast(&kick_off_2_tx).await;
 
                 // verify kick-off 2 tx result
                 verify_tx_result(&kick_off_2_result);

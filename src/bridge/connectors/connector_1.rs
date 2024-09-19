@@ -3,7 +3,13 @@ use bitcoin::{
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
+use bitcoin_script::script;
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    bridge::constants::SHA256_DIGEST_LENGTH_IN_BYTES,
+    signatures::{winternitz::generate_public_key, winternitz_hash::check_hash_sig},
+};
 
 use super::{
     super::{
@@ -45,10 +51,17 @@ impl Connector1 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        generate_timelock_taproot_script(
-            &self.operator_taproot_public_key,
-            self.num_blocks_timelock_0,
-        )
+        let secret = "3076ca1dfc1e383be26d5dd3c0c427340f96139fa8c2520862cf551ec2d670ac"; // TODO: change to pubkey passed by the caller
+
+        script! {
+            { self.num_blocks_timelock_0 }
+            OP_CSV
+            OP_DROP
+            { self.operator_taproot_public_key }
+            OP_CHECKSIG
+            { check_hash_sig(&generate_public_key(secret), SHA256_DIGEST_LENGTH_IN_BYTES) }
+        }
+        .compile()
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
