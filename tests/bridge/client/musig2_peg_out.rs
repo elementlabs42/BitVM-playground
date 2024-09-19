@@ -3,6 +3,7 @@ use std::time::Duration;
 use bitcoin::{Address, Amount};
 use bitvm::bridge::{
     client::client::BitVMClient,
+    constants::SHA256_DIGEST_LENGTH_IN_BYTES,
     contexts::depositor::DepositorContext,
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
