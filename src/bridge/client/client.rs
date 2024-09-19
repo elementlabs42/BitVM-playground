@@ -1079,16 +1079,19 @@ impl BitVMClient {
     }
 
     fn get_private_data(file_path: &String) -> BitVMClientPrivateData {
-        match Self::read_local_private_file(file_path) {
-            Some(data) => try_deserialize::<BitVMClientPrivateData>(&data)
-                .expect("Could not deserialize private data"),
-            None => {
-                println!("New private data will be generated.");
-                BitVMClientPrivateData {
-                    secret_nonces: HashMap::new(),
-                    winternitz_secrets_kickoff_2: HashMap::new(),
+        if let Some(data) = Self::read_local_private_file(file_path) {
+            match try_deserialize::<BitVMClientPrivateData>(&data) {
+                Ok(private_data) => return private_data,
+                Err(e) => {
+                    eprintln!("Could not deserialize private data: {e}");
                 }
             }
+        }
+
+        println!("New private data will be generated.");
+        BitVMClientPrivateData {
+            secret_nonces: HashMap::new(),
+            winternitz_secrets_kickoff_2: HashMap::new(),
         }
     }
 
