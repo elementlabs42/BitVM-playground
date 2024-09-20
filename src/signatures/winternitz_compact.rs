@@ -159,16 +159,21 @@ pub fn checksig_verify<const DIGIT_COUNT: usize, const CHECKSUM_DIGIT_COUNT: usi
 pub fn sign<const DIGIT_COUNT: usize, const CHECKSUM_DIGIT_COUNT: usize>(
     secret_key: &str,
     message_digits: [u8; DIGIT_COUNT],
-) -> Script {
-    // const message_digits = to_digits(message, n0)
-    let mut checksum_digits = to_digits::<CHECKSUM_DIGIT_COUNT>(checksum(message_digits)).to_vec();
+) -> Vec<Vec<u8>> {
+    let mut checksum_digits =
+        checksum_to_digits::<CHECKSUM_DIGIT_COUNT>(checksum(message_digits)).to_vec();
     checksum_digits.append(&mut message_digits.to_vec());
 
-    script! {
-        for i in 0..(DIGIT_COUNT + CHECKSUM_DIGIT_COUNT) as u32 {
-            { digit_signature(secret_key, i, checksum_digits[ DIGIT_COUNT + CHECKSUM_DIGIT_COUNT-1-i as usize ]) }
-        }
+    let mut signatures = Vec::new();
+    for i in 0..(DIGIT_COUNT + CHECKSUM_DIGIT_COUNT) as u32 {
+        signatures.push(digit_signature(
+            secret_key,
+            i,
+            checksum_digits[DIGIT_COUNT + CHECKSUM_DIGIT_COUNT - 1 - i as usize],
+        ));
     }
+
+    signatures
 }
 
 //
@@ -199,7 +204,7 @@ fn public_key(secret_key: &str, digit_index: u32) -> Script {
 }
 
 /// Compute the signature for the i-th digit of the message
-fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) -> Script {
+fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) -> Vec<u8> {
     // Convert secret_key from hex string to bytes
     let mut secret_i = match hex_decode(secret_key) {
         Ok(bytes) => bytes,
@@ -216,9 +221,7 @@ fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) -> Scr
 
     let hash_bytes = hash.as_byte_array().to_vec();
 
-    script! {
-        { hash_bytes }
-    }
+    hash_bytes
 }
 
 /// Compute the checksum of the message's digits.
@@ -231,13 +234,24 @@ fn checksum<const DIGIT_COUNT: usize>(digits: [u8; DIGIT_COUNT]) -> u32 {
     D * DIGIT_COUNT as u32 - sum
 }
 
-/// Convert a number to digits
-pub fn to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
+/// Convert a number to digits in Little Endian order
+pub fn checksum_to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
     let mut digits: [u8; DIGIT_COUNT] = [0; DIGIT_COUNT];
     for i in 0..DIGIT_COUNT {
         let digit = number % (D + 1);
         number = (number - digit) / (D + 1);
         digits[i] = digit as u8;
+    }
+    digits
+}
+
+/// Convert a number to digits in Big Endian order
+pub fn message_to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
+    let mut digits: [u8; DIGIT_COUNT] = [0; DIGIT_COUNT];
+    for i in 0..DIGIT_COUNT {
+        let digit = number % (D + 1);
+        number = (number - digit) / (D + 1);
+        digits[DIGIT_COUNT - 1 - i] = digit as u8;
     }
     digits
 }
@@ -378,7 +392,7 @@ mod test {
             { checksig_verify::<N0_32, N1_32>(MY_SECKEY) }
             { digits_to_number::<N0_32>() }
             { block }
-            OP_EQUALVERIFY
+            OP_EQUAL
         };
 
         let exec_result = execute_script(script);
@@ -403,9 +417,10 @@ mod test {
     fn test_winternitz_digits_to_bytes() {
         // 0000 0000 0000 1101 0001 1111 1000 0001
         // message = [0x0, 0x0, 0x0, 0xD, 0x1, 0xF, 0x8, 0x1]
-        const MESSAGE: [u8; N0_32] = [0, 0, 0, 13, 1, 15, 8, 1];
+        let block: u32 = 860033;
+        let message: [u8; N0_32] = message_to_digits::<N0_32>(block);
         let script = script! {
-            { sign::<N0_32, N1_32>(MY_SECKEY, MESSAGE) }
+            { sign::<N0_32, N1_32>(MY_SECKEY, message) }
             { checksig_verify::<N0_32, N1_32>(MY_SECKEY) }
         };
 
@@ -417,7 +432,7 @@ mod test {
         );
 
         run(script! {
-          { sign::<N0_32, N1_32>(MY_SECKEY, MESSAGE) }
+          { sign::<N0_32, N1_32>(MY_SECKEY, message) }
           { checksig_verify::<N0_32, N1_32>(MY_SECKEY) }
           { digits_to_bytes::<N0_32>() }
           0x00

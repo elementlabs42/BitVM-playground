@@ -1,4 +1,7 @@
-use crate::treepp::script;
+use crate::{
+    bridge::constants::N_SEQUENCE_FOR_LOCK_TIME, signatures::winternitz_compact::sign,
+    treepp::script,
+};
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
@@ -9,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         super::signatures::winternitz_compact::{
-            checksig_verify, digits_to_number, sign, to_digits, N0_32, N1_32,
+            checksig_verify, digits_to_number, message_to_digits, N0_32, N1_32,
         },
         scripts::*,
         transactions::base::Input,
@@ -38,7 +41,7 @@ impl Connector2 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let secret_key = "ASDF"; // TODO replace with secret key for specific variable, generate and store secrets in local client
+        let secret_key = "b138982ce17ac813d505b5b40b665d404e9528e7"; // TODO replace with secret key for specific variable, generate and store secrets in local client
 
         script! {
             // pre-image (pushed to stack from witness)
@@ -54,14 +57,15 @@ impl Connector2 {
         .compile()
     }
 
-    fn generate_taproot_leaf_0_unlock(&self) -> ScriptBuf {
-        let secret_key = "ASDF"; // TODO replace with secret key for specific variable, generate and store secrets in local client
-        let block: u32 = 860033;
-        let message = to_digits::<N0_32>(block);
-        sign::<N0_32, N1_32>(&secret_key, message).compile()
+    pub fn generate_taproot_leaf_0_unlock(&self, start_time_block: u32) -> Vec<Vec<u8>> {
+        let secret_key = "b138982ce17ac813d505b5b40b665d404e9528e7"; // TODO replace with secret key for specific variable, generate and store secrets in local client
+        let message = message_to_digits::<N0_32>(start_time_block);
+        sign::<N0_32, N1_32>(&secret_key, message)
     }
 
-    fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
+    fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
+        generate_timelock_tx_in(input, N_SEQUENCE_FOR_LOCK_TIME)
+    }
 
     fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
         generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)

@@ -112,7 +112,7 @@ impl KickOff2Transaction {
         //     .witness
         //     .push(prevout_leaf.0.to_bytes());
 
-        pre_sign_taproot_input(
+        pre_sign_taproot_input_default(
             self,
             context,
             input_index,
