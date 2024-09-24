@@ -8,7 +8,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bridge::constants::SHA256_DIGEST_LENGTH_IN_BYTES,
-    signatures::{winternitz::generate_public_key, winternitz_hash::check_hash_sig},
+    signatures::{
+        winternitz::{generate_public_key, PublicKey},
+        winternitz_hash::{check_hash_sig, sign_hash},
+    },
 };
 
 use super::{
@@ -50,18 +53,25 @@ impl Connector1 {
         }
     }
 
-    fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let secret = "3076ca1dfc1e383be26d5dd3c0c427340f96139fa8c2520862cf551ec2d670ac"; // TODO: change to pubkey passed by the caller
-
+    fn generate_taproot_leaf_0_script(&self, winternitz_pubkey: &PublicKey) -> ScriptBuf {
         script! {
+            { check_hash_sig(winternitz_pubkey, SHA256_DIGEST_LENGTH_IN_BYTES) }
+            OP_DROP
             { self.num_blocks_timelock_0 }
             OP_CSV
             OP_DROP
             { self.operator_taproot_public_key }
             OP_CHECKSIG
-            { check_hash_sig(&generate_public_key(secret), SHA256_DIGEST_LENGTH_IN_BYTES) }
         }
         .compile()
+    }
+
+    pub fn generate_taproot_leaf_0_unlock(
+        &self,
+        winternitz_secret: &str,
+        sb_hash: &[u8; SHA256_DIGEST_LENGTH_IN_BYTES],
+    ) -> Vec<Vec<u8>> {
+        sign_hash(&winternitz_secret, sb_hash)
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
@@ -93,8 +103,10 @@ impl Connector1 {
 
 impl TaprootConnector for Connector1 {
     fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
+        // TODO: This is WIP, needs a refactor of how we handle the winternitz secret.
+        let winternitz_secret = "3076ca1dfc1e383be26d5dd3c0c427340f96139fa8c2520862cf551ec2d670ac";
         match leaf_index {
-            0 => self.generate_taproot_leaf_0_script(),
+            0 => self.generate_taproot_leaf_0_script(&generate_public_key(winternitz_secret)),
             1 => self.generate_taproot_leaf_1_script(),
             2 => self.generate_taproot_leaf_2_script(),
             _ => panic!("Invalid leaf index."),
@@ -111,8 +123,13 @@ impl TaprootConnector for Connector1 {
     }
 
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
+        // TODO: This is WIP, needs a refactor of how we handle the winternitz secret.
+        let winternitz_secret = "3076ca1dfc1e383be26d5dd3c0c427340f96139fa8c2520862cf551ec2d670ac";
         TaprootBuilder::new()
-            .add_leaf(2, self.generate_taproot_leaf_0_script())
+            .add_leaf(
+                2,
+                self.generate_taproot_leaf_0_script(&generate_public_key(winternitz_secret)),
+            )
             .expect("Unable to add leaf 0")
             .add_leaf(2, self.generate_taproot_leaf_1_script())
             .expect("Unable to add leaf 1")

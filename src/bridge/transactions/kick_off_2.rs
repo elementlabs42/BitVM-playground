@@ -19,6 +19,7 @@ use super::{
     },
     base::*,
     pre_signed::*,
+    signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -109,35 +110,50 @@ impl KickOff2Transaction {
         context: &OperatorContext,
         winternitz_secret: &str,
         sb_hash: &[u8; SHA256_DIGEST_LENGTH_IN_BYTES],
+        _sb_weight: u32,
     ) {
         let input_index = 0;
+        let prev_outs = &self.prev_outs().clone();
+        let script = &self.prev_scripts()[input_index].clone();
+        let taproot_spend_info = self.connector_1.generate_taproot_spend_info();
+        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
+
+        // get schnorr signature
+        let schnorr_signature = generate_taproot_leaf_schnorr_signature(
+            context,
+            self.tx_mut(),
+            prev_outs,
+            input_index,
+            TapSighashType::All,
+            script,
+            &context.operator_keypair,
+        );
+        unlock_data.push(schnorr_signature.to_vec());
 
         // // context.paul.unlock.y()
         // self.tx.input[input_index]
         //     .witness
         //     .push(prevout_leaf.0.to_bytes());
 
-        // Push the winternitz signature of the SB hash to the witness
-        let winternitz_signature = script! {
-            { sign_hash(winternitz_secret, sb_hash) }
-        }
-        .compile();
-        self.tx.input[input_index]
-            .witness
-            .push(winternitz_signature);
-
         // // context.paul.unlock.sb()
         // self.tx.input[input_index]
         //     .witness
         //     .push(prevout_leaf.0.to_bytes());
 
-        pre_sign_taproot_input_default(
-            self,
-            context,
+        // Push the winternitz signatures of the SB properties to the witness
+        let winternitz_signatures = self
+            .connector_1
+            .generate_taproot_leaf_0_unlock(winternitz_secret, sb_hash);
+        for winternitz_signature in winternitz_signatures {
+            unlock_data.push(winternitz_signature);
+        }
+
+        populate_taproot_input_witness(
+            self.tx_mut(),
             input_index,
-            TapSighashType::All,
-            self.connector_1.generate_taproot_spend_info(),
-            &vec![&context.operator_keypair],
+            &taproot_spend_info,
+            script,
+            unlock_data,
         );
     }
 }

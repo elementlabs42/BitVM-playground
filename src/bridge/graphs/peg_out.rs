@@ -1120,8 +1120,9 @@ impl PegOutGraph {
         &mut self,
         network_client: &AsyncClient,
         context: &OperatorContext,
-        winternitz_secret: &str,
+        winternitz_secrets: &HashMap<Txid, String>,
         sb_hash: &[u8; SHA256_DIGEST_LENGTH_IN_BYTES],
+        sb_weight: u32,
     ) {
         verify_if_not_mined(
             network_client,
@@ -1148,8 +1149,12 @@ impl PegOutGraph {
                 })
             {
                 // complete kick-off 2 tx
-                self.kick_off_2_transaction
-                    .sign_input_0(context, winternitz_secret, sb_hash);
+                self.kick_off_2_transaction.sign_input_0(
+                    context,
+                    winternitz_secrets[&self.kick_off_2_transaction.tx().compute_txid()].as_str(),
+                    sb_hash,
+                    sb_weight,
+                );
                 let kick_off_2_tx = self.kick_off_2_transaction.finalize();
 
                 // broadcast kick-off 2 tx

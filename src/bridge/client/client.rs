@@ -46,11 +46,11 @@ pub struct BitVMClientPublicData {
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct BitVMClientPrivateData {
     // Peg in and peg out nonces all go into the same file for now
-    // Verifier public key -> Graph ID -> Tx ID -> Input index
+    // Verifier public key -> Graph ID -> Tx ID -> Input index -> Secret nonce
     pub secret_nonces: HashMap<PublicKey, HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>>,
     // Operator Winternitz secrets for all the graphs.
-    // Graph ID -> Winternitz secret
-    pub winternitz_secrets_kickoff_2: HashMap<String, String>,
+    // Operator public key -> Graph ID -> Tx ID -> Winternitz secret
+    pub winternitz_secrets: HashMap<PublicKey, HashMap<String, HashMap<Txid, String>>>,
 }
 
 pub struct BitVMClient {
@@ -679,7 +679,7 @@ impl BitVMClient {
 
         self.data.peg_out_graphs.push(peg_out_graph);
 
-        // TODO: Generate Winternitz secrets for all required messages in the graphand store them in the private data file.
+        // TODO: Generate Winternitz secrets for all required messages in the graph and store them in the private data file.
 
         peg_out_graph_id
     }
@@ -734,6 +734,7 @@ impl BitVMClient {
         &mut self,
         peg_out_graph_id: &str,
         sb_hash: &[u8; SHA256_DIGEST_LENGTH_IN_BYTES],
+        sb_weight: u32,
     ) {
         let peg_out_graph = self
             .data
@@ -749,8 +750,11 @@ impl BitVMClient {
             .kick_off_2(
                 &self.esplora,
                 &self.operator_context.as_ref().unwrap(),
-                &self.private_data.winternitz_secrets_kickoff_2[peg_out_graph_id],
+                &self.private_data.winternitz_secrets
+                    [&self.operator_context.as_ref().unwrap().operator_public_key]
+                    [peg_out_graph_id],
                 sb_hash,
+                sb_weight,
             )
             .await;
     }
@@ -1096,7 +1100,7 @@ impl BitVMClient {
         println!("New private data will be generated.");
         BitVMClientPrivateData {
             secret_nonces: HashMap::new(),
-            winternitz_secrets_kickoff_2: HashMap::new(),
+            winternitz_secrets: HashMap::new(),
         }
     }
 
