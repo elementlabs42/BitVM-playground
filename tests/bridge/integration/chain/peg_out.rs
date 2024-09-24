@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use alloy::{
     eips::BlockNumberOrTag, primitives::Address as EvmAddress, transports::http::reqwest::Url,
 };
@@ -14,11 +12,11 @@ use bitvm::bridge::{
         peg_out::PegOutTransaction,
     },
 };
-use tokio::time::sleep;
 
 use crate::bridge::{
-    helper::{fund_input, generate_stub_outpoint},
+    helper::{generate_stub_outpoint},
     setup::setup_test,
+    faucet::Faucet,
 };
 
 #[tokio::test]
@@ -51,8 +49,10 @@ async fn test_peg_out_for_chain() {
         operator_funding_utxo_address
     );
 
-    fund_input(&operator_funding_utxo_address, operator_input_amount).await;
-    sleep(Duration::from_secs(5)).await;
+    let faucet = Faucet::new();
+    faucet
+        .fund_input_and_wait(&operator_funding_utxo_address, operator_input_amount)
+        .await;
 
     let operator_funding_outpoint = generate_stub_outpoint(
         &client,
