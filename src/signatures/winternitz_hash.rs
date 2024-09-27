@@ -32,17 +32,28 @@ pub fn check_hash_sig(public_key: &PublicKey, input_len: usize) -> Script {
 }
 
 /// Create a Winternitz signature for the blake3 hash of a given message
-pub fn sign_hash(sec_key: &str, message: &[u8]) -> Script {
+pub fn sign_hash(sec_key: &str, message: &[u8]) -> Vec<Vec<u8>> {
     let message_hash = hash(message);
     let message_hash_bytes = &message_hash.as_bytes()[0..20];
-    script! {
-        { sign(sec_key, message_hash_bytes) }
-    }
+
+    sign(sec_key, message_hash_bytes)
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    fn signatures_to_script(signatures: Vec<Vec<u8>>) -> Script {
+        script! {
+          for signature in signatures {
+            if signature.len() == 1 {
+              { signature[0] }
+            } else {
+              { signature }
+            }
+          }
+        }
+    }
 
     #[test]
     fn test_check_hash_sig() {
@@ -55,6 +66,9 @@ mod test {
         // The message to sign
         let message = *b"This is an arbitrary length input intended for testing purposes....";
 
+        let signatures = sign_hash(my_sec_key, &message);
+        let signatures_script = signatures_to_script(signatures);
+
         run(script! {
             //
             // Unlocking Script
@@ -65,7 +79,7 @@ mod test {
                 { *byte }
             }
             // 2. Push the signature
-            { sign_hash(my_sec_key, &message) }
+            { signatures_script }
 
 
             //
