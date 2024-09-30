@@ -15,7 +15,7 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_kick_off_1_tx() {
-    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) =
+    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _, connector_6, _, _) =
         setup_test().await;
 
     let input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);

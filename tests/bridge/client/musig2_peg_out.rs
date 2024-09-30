@@ -236,6 +236,7 @@ async fn create_peg_out_graph(
         _,
         _,
         _,
+        _,
         depositor_evm_address,
         withdrawer_evm_address,
     ) = setup_test().await;

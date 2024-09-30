@@ -10,11 +10,7 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::{
-    helper::{generate_stub_outpoint},
-    setup::setup_test,
-    faucet::Faucet
-};
+use crate::bridge::{faucet::Faucet, helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_out_success() {
@@ -26,6 +22,7 @@ async fn test_peg_out_success() {
         _,
         _,
         withdrawer_context,
+        _,
         _,
         _,
         _,

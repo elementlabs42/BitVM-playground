@@ -13,15 +13,11 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::{
-    helper::{generate_stub_outpoint},
-    setup::setup_test,
-    faucet::Faucet,
-};
+use crate::bridge::{faucet::Faucet, helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_out_for_chain() {
-    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) =
+    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) =
         setup_test().await;
     let mut adaptors = Chain::new();
     adaptors.init_ethereum(EthereumInitConfig {
