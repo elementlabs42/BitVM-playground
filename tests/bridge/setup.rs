@@ -115,7 +115,10 @@ pub async fn setup_test() -> (
     let connector_3 = Connector3::new(source_network, &operator_context.operator_public_key);
     let connector_4 = Connector4::new(source_network, &operator_context.operator_public_key);
     let connector_5 = Connector5::new(source_network, &operator_context.n_of_n_taproot_public_key);
-    let connector_6 = Connector6::new(source_network, &operator_context.operator_public_key);
+    let connector_6 = Connector6::new(
+        source_network,
+        &operator_context.operator_taproot_public_key,
+    );
 
     return (
         client_0,

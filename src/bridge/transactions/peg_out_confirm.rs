@@ -1,6 +1,6 @@
 use bitcoin::{
     absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction,
-    TxOut,
+    TxOut, XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
 
@@ -36,8 +36,12 @@ impl PreSignedTransaction for PegOutConfirmTransaction {
 
 impl PegOutConfirmTransaction {
     pub fn new(context: &OperatorContext, input_0: Input) -> Self {
-        let mut this =
-            Self::new_for_validation(context.network, &context.operator_public_key, input_0);
+        let mut this = Self::new_for_validation(
+            context.network,
+            &context.operator_public_key,
+            &context.operator_taproot_public_key,
+            input_0,
+        );
 
         this.sign_input_0(context);
 
@@ -47,9 +51,10 @@ impl PegOutConfirmTransaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
+        operator_taproot_public_key: &XOnlyPublicKey,
         input_0: Input,
     ) -> Self {
-        let connector_6 = Connector6::new(network, operator_public_key);
+        let connector_6 = Connector6::new(network, operator_taproot_public_key);
 
         let _input_0 = generate_default_tx_in(&input_0);
 
@@ -57,7 +62,7 @@ impl PegOutConfirmTransaction {
 
         let _output_0 = TxOut {
             value: total_output_amount,
-            script_pubkey: connector_6.generate_address().script_pubkey(),
+            script_pubkey: connector_6.generate_taproot_address().script_pubkey(),
         };
 
         PegOutConfirmTransaction {
