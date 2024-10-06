@@ -34,6 +34,7 @@ async fn test_musig2_peg_in() {
         _,
         depositor_evm_address,
         _,
+        _,
     ) = setup_test().await;
 
     // Depositor: generate graph

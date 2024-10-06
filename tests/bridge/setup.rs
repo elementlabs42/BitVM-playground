@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bitcoin::{Network, PublicKey};
 
 use bitvm::bridge::{
@@ -16,6 +18,9 @@ use bitvm::bridge::{
     graphs::base::{
         DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
         VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
+    },
+    transactions::signing_winternitz::{
+        winternitz_public_key_from_secret, WinternitzPublicKey, WinternitzSecret,
     },
 };
 
@@ -39,6 +44,7 @@ pub async fn setup_test() -> (
     Connector5,
     String,
     String,
+    HashMap<u8, WinternitzSecret>,
 ) {
     let source_network = Network::Testnet;
     let destination_network = DestinationNetwork::EthereumSepolia;
@@ -101,11 +107,17 @@ pub async fn setup_test() -> (
         &operator_context.n_of_n_taproot_public_key,
     );
     let connector_0 = Connector0::new(source_network, &operator_context.n_of_n_taproot_public_key);
-    let connector_1 = Connector1::new(
+
+    let (mut connector_1, _) = Connector1::new(
         source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
     );
+    // Swap out the secrets for testing.
+    let (connector_1_winternitz_secrets, connector_1_winternitz_public_keys) =
+        get_test_winternitz_keys(&[0]);
+    connector_1.winternitz_public_keys = connector_1_winternitz_public_keys;
+
     let connector_2 = Connector2::new(
         source_network,
         &operator_context.operator_taproot_public_key,
@@ -135,5 +147,30 @@ pub async fn setup_test() -> (
         connector_5,
         DEPOSITOR_EVM_ADDRESS.to_string(),
         WITHDRAWER_EVM_ADDRESS.to_string(),
+        connector_1_winternitz_secrets,
     );
+}
+
+// Use fixed secrets for testing to ensure repeatable tx output addresses.
+fn get_test_winternitz_keys(
+    leaf_indexes: &[u8],
+) -> (
+    HashMap<u8, WinternitzSecret>,
+    HashMap<u8, WinternitzPublicKey>,
+) {
+    let winternitz_secrets: HashMap<u8, WinternitzSecret> = leaf_indexes
+        .iter()
+        .map(|leaf_index| (*leaf_index, generate_test_winternitz_secret(leaf_index)))
+        .collect();
+
+    let winternitz_public_keys: HashMap<u8, WinternitzPublicKey> = winternitz_secrets
+        .iter()
+        .map(|(&k, v)| (k, winternitz_public_key_from_secret(&v)))
+        .collect();
+
+    (winternitz_secrets, winternitz_public_keys)
+}
+
+fn generate_test_winternitz_secret(leaf_index: &u8) -> String {
+    format!("b138982ce17ac813d505b5b40b665d404e9528{:02x}", leaf_index)
 }

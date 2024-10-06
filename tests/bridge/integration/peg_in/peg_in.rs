@@ -40,6 +40,7 @@ async fn test_peg_in_success() {
         _,
         depositor_evm_address,
         _,
+        _,
     ) = setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
@@ -145,6 +146,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
         _,
         depositor_evm_address,
         _,
+        _,
     ) = setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
@@ -219,6 +221,7 @@ async fn test_peg_in_time_lock_surpassed() {
         _,
         _,
         depositor_evm_address,
+        _,
         _,
     ) = setup_test().await;
 

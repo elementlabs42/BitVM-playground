@@ -4,11 +4,11 @@ use bitcoin::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::bridge::connectors::connector_1::Connector1;
+
 use super::{
     super::{
-        connectors::{
-            connector::*, connector_1::Connector1, connector_2::Connector2, connector_a::ConnectorA,
-        },
+        connectors::{connector::*, connector_2::Connector2, connector_a::ConnectorA},
         contexts::operator::OperatorContext,
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
         scripts::*,
@@ -37,12 +37,13 @@ impl PreSignedTransaction for KickOff1Transaction {
 }
 
 impl KickOff1Transaction {
-    pub fn new(context: &OperatorContext, operator_input: Input) -> Self {
+    pub fn new(context: &OperatorContext, connector_1: &Connector1, operator_input: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
+            connector_1,
             operator_input,
         );
 
@@ -56,13 +57,9 @@ impl KickOff1Transaction {
         operator_public_key: &PublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
+        connector_1: &Connector1,
         operator_input: Input,
     ) -> Self {
-        let connector_1 = Connector1::new(
-            network,
-            operator_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
         let connector_a = ConnectorA::new(
             network,
             operator_taproot_public_key,

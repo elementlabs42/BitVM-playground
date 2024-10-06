@@ -35,6 +35,7 @@ async fn test_peg_out_graph_serialization() {
         _,
         depositor_evm_address,
         _,
+        _,
     ) = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
@@ -67,7 +68,7 @@ async fn test_peg_out_graph_serialization() {
     )
     .await;
 
-    let peg_out_graph = PegOutGraph::new(
+    let (peg_out_graph, _) = PegOutGraph::new(
         &operator_context,
         &peg_in_graph,
         Input {

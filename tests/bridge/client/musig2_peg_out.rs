@@ -7,6 +7,7 @@ use bitvm::bridge::{
     contexts::depositor::DepositorContext,
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
+    superblock::{get_superblock_message, Superblock, SuperblockHash},
     transactions::base::{Input, InputWithScript},
 };
 use tokio::time::sleep;
@@ -139,6 +140,7 @@ async fn create_peg_out_graph(
         _,
         depositor_evm_address,
         _,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs
@@ -237,12 +239,15 @@ async fn create_peg_out_graph(
         println!("Waiting for peg-out start time tx...");
         sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
-        // TODO: Get valid SB properties.
-        let sb_hash = [0u8; SHA256_DIGEST_LENGTH_IN_BYTES];
-        let sb_weight: u32 = 1;
+        let sb_hash: SuperblockHash = [0xf0u8; SHA256_DIGEST_LENGTH_IN_BYTES];
+        let sb = Superblock {
+            height: 123,
+            time: 45678,
+            weight: 9012345,
+        };
         eprintln!("Broadcasting kick-off 2...");
         depositor_operator_verifier_0_client
-            .broadcast_kick_off_2(&peg_out_graph_id, &sb_hash, sb_weight)
+            .broadcast_kick_off_2(&peg_out_graph_id, &get_superblock_message(&sb, &sb_hash))
             .await;
 
         println!("Waiting for peg-out kick-off 2 tx...");

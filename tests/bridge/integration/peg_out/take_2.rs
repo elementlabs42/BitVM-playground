@@ -40,6 +40,7 @@ async fn test_take_2_success() {
         _,
         depositor_evm_address,
         _,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs

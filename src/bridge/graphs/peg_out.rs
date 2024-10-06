@@ -13,7 +13,11 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
 };
 
-use crate::bridge::constants::SHA256_DIGEST_LENGTH_IN_BYTES;
+use crate::bridge::{
+    connectors::connector_1::Connector1,
+    superblock::SuperblockMessage,
+    transactions::signing_winternitz::{generate_winternitz_secret, WinternitzSecret},
+};
 
 use super::{
     super::{
@@ -178,6 +182,11 @@ pub struct PegOutGraph {
     pub peg_in_graph_id: String,
     peg_in_confirm_txid: Txid,
 
+    // Only connectors that include message commitments (i.e. require Winternitz
+    // signatures) need to be stored here, because they carry the Winternitz public
+    // keys.
+    connector_1: Connector1,
+
     assert_transaction: AssertTransaction,
     challenge_transaction: ChallengeTransaction,
     disprove_chain_transaction: DisproveChainTransaction,
@@ -207,11 +216,21 @@ impl BaseGraph for PegOutGraph {
 }
 
 impl PegOutGraph {
-    pub fn new(context: &OperatorContext, peg_in_graph: &PegInGraph, kickoff_input: Input) -> Self {
+    pub fn new(
+        context: &OperatorContext,
+        peg_in_graph: &PegInGraph,
+        kickoff_input: Input,
+    ) -> (Self, HashMap<u8, WinternitzSecret>) {
         let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
 
-        let kick_off_1_transaction = KickOff1Transaction::new(context, kickoff_input);
+        let (connector_1, connector_1_winternitz_secrets) = Connector1::new(
+            context.network,
+            &context.operator_taproot_public_key,
+            &context.n_of_n_taproot_public_key,
+        );
+
+        let kick_off_1_transaction = KickOff1Transaction::new(context, &connector_1, kickoff_input);
         let kick_off_1_txid = kick_off_1_transaction.tx().compute_txid();
 
         let start_time_vout_0 = 2;
@@ -230,6 +249,7 @@ impl PegOutGraph {
         let start_time_timeout_vout_1 = 1;
         let start_time_timeout_transaction = StartTimeTimeoutTransaction::new(
             context,
+            &connector_1,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -249,6 +269,7 @@ impl PegOutGraph {
         let kick_off_2_vout_0 = 1;
         let kick_off_2_transaction = KickOff2Transaction::new(
             context,
+            &connector_1,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -262,6 +283,7 @@ impl PegOutGraph {
         let kick_off_timeout_vout_0 = 1;
         let kick_off_timeout_transaction = KickOffTimeoutTransaction::new(
             context,
+            &connector_1,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -404,37 +426,48 @@ impl PegOutGraph {
             },
         );
 
-        PegOutGraph {
-            version: GRAPH_VERSION.to_string(),
-            network: context.network,
-            id: generate_id(peg_in_graph, &context.operator_public_key),
-            n_of_n_presigned: false,
-            n_of_n_public_key: context.n_of_n_public_key,
-            n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
-            peg_in_graph_id: peg_in_graph.id().clone(),
-            peg_in_confirm_txid,
-            assert_transaction,
-            challenge_transaction,
-            disprove_chain_transaction,
-            disprove_transaction,
-            kick_off_1_transaction,
-            kick_off_2_transaction,
-            kick_off_timeout_transaction,
-            start_time_transaction,
-            start_time_timeout_transaction,
-            take_1_transaction,
-            take_2_transaction,
-            operator_public_key: context.operator_public_key,
-            operator_taproot_public_key: context.operator_taproot_public_key,
-            withdrawer_public_key: None,
-            withdrawer_taproot_public_key: None,
-            withdrawer_evm_address: None,
-            peg_out_transaction: None,
-        }
+        (
+            PegOutGraph {
+                version: GRAPH_VERSION.to_string(),
+                network: context.network,
+                id: generate_id(peg_in_graph, &context.operator_public_key),
+                n_of_n_presigned: false,
+                n_of_n_public_key: context.n_of_n_public_key,
+                n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
+                peg_in_graph_id: peg_in_graph.id().clone(),
+                peg_in_confirm_txid,
+                connector_1,
+                assert_transaction,
+                challenge_transaction,
+                disprove_chain_transaction,
+                disprove_transaction,
+                kick_off_1_transaction,
+                kick_off_2_transaction,
+                kick_off_timeout_transaction,
+                start_time_transaction,
+                start_time_timeout_transaction,
+                take_1_transaction,
+                take_2_transaction,
+                operator_public_key: context.operator_public_key,
+                operator_taproot_public_key: context.operator_taproot_public_key,
+                withdrawer_public_key: None,
+                withdrawer_taproot_public_key: None,
+                withdrawer_evm_address: None,
+                peg_out_transaction: None,
+            },
+            connector_1_winternitz_secrets,
+        )
     }
 
     pub fn new_for_validation(&self) -> Self {
         let peg_in_confirm_txid = self.take_1_transaction.tx().input[0].previous_output.txid; // Self-referencing
+
+        let connector_1 = Connector1::new_for_validation(
+            self.network,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_taproot_public_key,
+            &self.connector_1.winternitz_public_keys,
+        );
 
         let kick_off_1_vout_0 = 0;
         let kick_off_1_transaction = KickOff1Transaction::new_for_validation(
@@ -442,6 +475,7 @@ impl PegOutGraph {
             &self.operator_public_key,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
+            &connector_1,
             Input {
                 outpoint: self.kick_off_1_transaction.tx().input[kick_off_1_vout_0].previous_output, // Self-referencing
                 amount: self.kick_off_1_transaction.prev_outs()[kick_off_1_vout_0].value, // Self-referencing
@@ -468,6 +502,7 @@ impl PegOutGraph {
         let start_time_timeout_vout_1 = 1;
         let start_time_timeout_transaction = StartTimeTimeoutTransaction::new_for_validation(
             self.network,
+            &connector_1,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
@@ -490,8 +525,8 @@ impl PegOutGraph {
         let kick_off_2_transaction = KickOff2Transaction::new_for_validation(
             self.network,
             &self.operator_public_key,
-            &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
+            &connector_1,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -505,8 +540,7 @@ impl PegOutGraph {
         let kick_off_timeout_vout_0 = 1;
         let kick_off_timeout_transaction = KickOffTimeoutTransaction::new_for_validation(
             self.network,
-            &self.operator_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
+            &connector_1,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -673,6 +707,7 @@ impl PegOutGraph {
             n_of_n_taproot_public_key: self.n_of_n_taproot_public_key,
             peg_in_graph_id: self.peg_in_graph_id.clone(),
             peg_in_confirm_txid,
+            connector_1,
             assert_transaction,
             challenge_transaction,
             disprove_chain_transaction,
@@ -750,10 +785,12 @@ impl PegOutGraph {
         );
         self.kick_off_timeout_transaction.pre_sign(
             context,
+            &self.connector_1,
             &secret_nonces[&self.kick_off_timeout_transaction.tx().compute_txid()],
         );
         self.start_time_timeout_transaction.pre_sign(
             context,
+            &self.connector_1,
             &secret_nonces[&self.start_time_timeout_transaction.tx().compute_txid()],
         );
         self.take_1_transaction.pre_sign(
@@ -828,8 +865,7 @@ impl PegOutGraph {
                         .unwrap()
                         .block_height
                         .is_some_and(|block_height| {
-                            block_height
-                                + self.start_time_timeout_transaction.num_blocks_timelock_1()
+                            block_height + self.connector_1.num_blocks_timelock_leaf_2
                                 > blockchain_height
                         })
                     {
@@ -842,7 +878,7 @@ impl PegOutGraph {
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
-                        block_height + self.kick_off_timeout_transaction.num_blocks_timelock_0()
+                        block_height + self.connector_1.num_blocks_timelock_leaf_1
                             > blockchain_height
                     })
                 {
@@ -961,7 +997,7 @@ impl PegOutGraph {
                             .unwrap()
                             .block_height
                             .is_some_and(|block_height| {
-                                block_height + self.kick_off_2_transaction.num_blocks_timelock_0()
+                                block_height + self.connector_1.num_blocks_timelock_leaf_0
                                     <= blockchain_height
                             })
                         {
@@ -1094,8 +1130,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.start_time_timeout_transaction.num_blocks_timelock_1()
-                        <= blockchain_height
+                    block_height + self.connector_1.num_blocks_timelock_leaf_2 <= blockchain_height
                 })
             {
                 // complete start time timeout tx
@@ -1120,9 +1155,8 @@ impl PegOutGraph {
         &mut self,
         network_client: &AsyncClient,
         context: &OperatorContext,
-        winternitz_secrets: &HashMap<Txid, String>,
-        sb_hash: &[u8; SHA256_DIGEST_LENGTH_IN_BYTES],
-        sb_weight: u32,
+        connector_1_winternitz_secrets: &HashMap<u8, WinternitzSecret>,
+        sb_message: &SuperblockMessage,
     ) {
         verify_if_not_mined(
             network_client,
@@ -1144,16 +1178,16 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.kick_off_2_transaction.num_blocks_timelock_0()
-                        <= blockchain_height
+                    block_height + self.connector_1.num_blocks_timelock_leaf_0 <= blockchain_height
                 })
             {
                 // complete kick-off 2 tx
+                let connector_1_leaf_index = 0;
                 self.kick_off_2_transaction.sign_input_0(
                     context,
-                    winternitz_secrets[&self.kick_off_2_transaction.tx().compute_txid()].as_str(),
-                    sb_hash,
-                    sb_weight,
+                    &self.connector_1,
+                    &connector_1_winternitz_secrets[&connector_1_leaf_index],
+                    sb_message,
                 );
                 let kick_off_2_tx = self.kick_off_2_transaction.finalize();
 
@@ -1195,8 +1229,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.kick_off_timeout_transaction.num_blocks_timelock_0()
-                        <= blockchain_height
+                    block_height + self.connector_1.num_blocks_timelock_leaf_1 <= blockchain_height
                 })
             {
                 // complete kick-off timeout tx

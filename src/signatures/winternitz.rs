@@ -28,7 +28,7 @@ const N0: u32 = 40;
 /// Number of digits of the checksum.  N1 = ⌈log_{D+1}(D*N0)⌉ + 1
 const N1: usize = 4;
 /// Total number of digits to be signed
-const N: u32 = N0 + N1 as u32;
+pub const N: u32 = N0 + N1 as u32;
 /// The public key type
 pub type PublicKey = [[u8; 20]; N as usize];
 

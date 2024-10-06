@@ -33,6 +33,7 @@ async fn test_kick_off_timeout_tx() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
 
     let input_value0 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
@@ -45,6 +46,7 @@ async fn test_kick_off_timeout_tx() {
 
     let mut kick_off_timeout_tx = KickOffTimeoutTransaction::new(
         &operator_context,
+        &connector_1,
         Input {
             outpoint: outpoint_0,
             amount: input_value0,
@@ -54,8 +56,8 @@ async fn test_kick_off_timeout_tx() {
     let secret_nonces_0 = kick_off_timeout_tx.push_nonces(&verifier_0_context);
     let secret_nonces_1 = kick_off_timeout_tx.push_nonces(&verifier_1_context);
 
-    kick_off_timeout_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
-    kick_off_timeout_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
+    kick_off_timeout_tx.pre_sign(&verifier_0_context, &connector_1, &secret_nonces_0);
+    kick_off_timeout_tx.pre_sign(&verifier_1_context, &connector_1, &secret_nonces_1);
 
     let tx = kick_off_timeout_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);

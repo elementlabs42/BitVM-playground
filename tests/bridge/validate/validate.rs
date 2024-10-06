@@ -111,6 +111,7 @@ async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
         _,
         depositor_evm_address,
         _,
+        _,
     ) = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
@@ -134,7 +135,7 @@ async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
         &depositor_evm_address,
     );
 
-    let peg_out_graph = PegOutGraph::new(
+    let (peg_out_graph, _) = PegOutGraph::new(
         &operator_context,
         &peg_in_graph,
         Input {

@@ -43,6 +43,7 @@ async fn test_take_1_success() {
         _,
         depositor_evm_address,
         _,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs
@@ -74,7 +75,7 @@ async fn test_take_1_success() {
     .await;
 
     // kick-off 1
-    let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
+    let (kick_off_1_tx, kick_off_1_txid, connector_1) = create_and_mine_kick_off_1_tx(
         &client,
         &operator_context,
         &kick_off_1_funding_utxo_address,
@@ -91,7 +92,7 @@ async fn test_take_1_success() {
         },
         amount: kick_off_1_tx.output[vout as usize].value,
     };
-    let kick_off_2 = KickOff2Transaction::new(&operator_context, kick_off_2_input_0);
+    let kick_off_2 = KickOff2Transaction::new(&operator_context, &connector_1, kick_off_2_input_0);
     let kick_off_2_tx = kick_off_2.finalize();
     let kick_off_2_txid = kick_off_2_tx.compute_txid();
 

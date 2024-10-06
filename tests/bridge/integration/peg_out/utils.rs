@@ -1,6 +1,7 @@
 use bitcoin::{Address, Amount, Transaction, Txid};
 use bitvm::bridge::{
     client::client::BitVMClient,
+    connectors::connector_1::Connector1,
     contexts::{depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext},
     transactions::{
         assert::AssertTransaction,
@@ -18,14 +19,19 @@ pub async fn create_and_mine_kick_off_1_tx(
     operator_context: &OperatorContext,
     kick_off_1_funding_utxo_address: &Address,
     input_amount: Amount,
-) -> (Transaction, Txid) {
+) -> (Transaction, Txid, Connector1) {
+    let (connector_1, _) = Connector1::new(
+        operator_context.network,
+        &operator_context.operator_taproot_public_key,
+        &operator_context.n_of_n_taproot_public_key,
+    );
     let kick_off_1_funding_outpoint =
         generate_stub_outpoint(&client, kick_off_1_funding_utxo_address, input_amount).await;
     let kick_off_1_input = Input {
         outpoint: kick_off_1_funding_outpoint,
         amount: input_amount,
     };
-    let kick_off_1 = KickOff1Transaction::new(&operator_context, kick_off_1_input);
+    let kick_off_1 = KickOff1Transaction::new(&operator_context, &connector_1, kick_off_1_input);
     let kick_off_1_tx = kick_off_1.finalize();
     let kick_off_1_txid = kick_off_1_tx.compute_txid();
 
@@ -33,7 +39,7 @@ pub async fn create_and_mine_kick_off_1_tx(
     let kick_off_1_result = client.esplora.broadcast(&kick_off_1_tx).await;
     assert!(kick_off_1_result.is_ok());
 
-    return (kick_off_1_tx, kick_off_1_txid);
+    return (kick_off_1_tx, kick_off_1_txid, connector_1);
 }
 
 pub async fn create_and_mine_kick_off_2_tx(
@@ -41,14 +47,19 @@ pub async fn create_and_mine_kick_off_2_tx(
     operator_context: &OperatorContext,
     kick_off_2_funding_utxo_address: &Address,
     input_amount: Amount,
-) -> (Transaction, Txid) {
+) -> (Transaction, Txid, Connector1) {
+    let (connector_1, _) = Connector1::new(
+        operator_context.network,
+        &operator_context.operator_taproot_public_key,
+        &operator_context.n_of_n_taproot_public_key,
+    );
     let kick_off_2_funding_outpoint =
         generate_stub_outpoint(&client, kick_off_2_funding_utxo_address, input_amount).await;
     let kick_off_2_input = Input {
         outpoint: kick_off_2_funding_outpoint,
         amount: input_amount,
     };
-    let kick_off_2 = KickOff2Transaction::new(&operator_context, kick_off_2_input);
+    let kick_off_2 = KickOff2Transaction::new(&operator_context, &connector_1, kick_off_2_input);
     let kick_off_2_tx = kick_off_2.finalize();
     let kick_off_2_txid = kick_off_2_tx.compute_txid();
 
@@ -56,7 +67,7 @@ pub async fn create_and_mine_kick_off_2_tx(
     let kick_off_2_result = client.esplora.broadcast(&kick_off_2_tx).await;
     assert!(kick_off_2_result.is_ok());
 
-    return (kick_off_2_tx, kick_off_2_txid);
+    return (kick_off_2_tx, kick_off_2_txid, connector_1);
 }
 
 pub async fn create_and_mine_assert_tx(

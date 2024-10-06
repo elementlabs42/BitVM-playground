@@ -38,6 +38,7 @@ async fn test_start_time_timeout_success() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs
@@ -52,7 +53,7 @@ async fn test_start_time_timeout_success() {
     verify_funding_inputs(&client, &funding_inputs).await;
 
     // kick-off 1
-    let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
+    let (kick_off_1_tx, kick_off_1_txid, connector_1) = create_and_mine_kick_off_1_tx(
         &client,
         &operator_context,
         &kick_off_1_funding_utxo_address,
@@ -79,6 +80,7 @@ async fn test_start_time_timeout_success() {
     };
     let mut start_time_timeout = StartTimeTimeoutTransaction::new(
         &operator_context,
+        &connector_1,
         start_time_timeout_input_0,
         start_time_timeout_input_1,
     );
@@ -86,8 +88,8 @@ async fn test_start_time_timeout_success() {
     let secret_nonces_0 = start_time_timeout.push_nonces(&verifier_0_context);
     let secret_nonces_1 = start_time_timeout.push_nonces(&verifier_1_context);
 
-    start_time_timeout.pre_sign(&verifier_0_context, &secret_nonces_0);
-    start_time_timeout.pre_sign(&verifier_1_context, &secret_nonces_1);
+    start_time_timeout.pre_sign(&verifier_0_context, &connector_1, &secret_nonces_0);
+    start_time_timeout.pre_sign(&verifier_1_context, &connector_1, &secret_nonces_1);
 
     let reward_address = generate_pay_to_pubkey_script_address(
         withdrawer_context.network,

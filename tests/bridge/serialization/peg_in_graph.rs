@@ -34,6 +34,7 @@ async fn test_peg_in_graph_serialization() {
         _,
         depositor_evm_address,
         _,
+        _,
     ) = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);

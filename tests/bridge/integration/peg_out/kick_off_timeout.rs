@@ -3,6 +3,7 @@ use tokio::time::sleep;
 
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
+    connectors::connector_1::Connector1,
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
@@ -38,6 +39,7 @@ async fn test_kick_off_timeout_success() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs
@@ -52,7 +54,7 @@ async fn test_kick_off_timeout_success() {
     verify_funding_inputs(&client, &funding_inputs).await;
 
     // kick-off 1
-    let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
+    let (kick_off_1_tx, kick_off_1_txid, operator_connector_1) = create_and_mine_kick_off_1_tx(
         &client,
         &operator_context,
         &kick_off_1_funding_utxo_address,
@@ -70,14 +72,37 @@ async fn test_kick_off_timeout_success() {
         amount: kick_off_1_tx.output[vout as usize].value,
     };
 
-    let mut kick_off_timeout =
-        KickOffTimeoutTransaction::new(&operator_context, kick_off_timeout_input_0);
+    let mut kick_off_timeout = KickOffTimeoutTransaction::new(
+        &operator_context,
+        &operator_connector_1,
+        kick_off_timeout_input_0,
+    );
 
     let secret_nonces_0 = kick_off_timeout.push_nonces(&verifier_0_context);
     let secret_nonces_1 = kick_off_timeout.push_nonces(&verifier_1_context);
 
-    kick_off_timeout.pre_sign(&verifier_0_context, &secret_nonces_0);
-    kick_off_timeout.pre_sign(&verifier_1_context, &secret_nonces_1);
+    let verifier_0_connector_1 = Connector1::new_for_validation(
+        verifier_0_context.network,
+        &operator_context.operator_taproot_public_key, // Verifiers get this via remote storage.
+        &verifier_0_context.n_of_n_taproot_public_key,
+        &operator_connector_1.winternitz_public_keys, // Verifiers get this via remote storage.
+    );
+    kick_off_timeout.pre_sign(
+        &verifier_0_context,
+        &verifier_0_connector_1,
+        &secret_nonces_0,
+    );
+    let verifier_1_connector_1 = Connector1::new_for_validation(
+        verifier_0_context.network,
+        &operator_context.operator_taproot_public_key,
+        &verifier_0_context.n_of_n_taproot_public_key,
+        &operator_connector_1.winternitz_public_keys,
+    );
+    kick_off_timeout.pre_sign(
+        &verifier_1_context,
+        &verifier_1_connector_1,
+        &secret_nonces_1,
+    );
 
     let reward_address = generate_pay_to_pubkey_script_address(
         withdrawer_context.network,

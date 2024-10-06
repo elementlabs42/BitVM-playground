@@ -37,6 +37,7 @@ async fn test_challenge_success() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs
@@ -59,7 +60,7 @@ async fn test_challenge_success() {
     verify_funding_inputs(&client, &funding_inputs).await;
 
     // kick-off 1
-    let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
+    let (kick_off_1_tx, kick_off_1_txid, _) = create_and_mine_kick_off_1_tx(
         &client,
         &operator_context,
         &kick_off_1_funding_utxo_address,

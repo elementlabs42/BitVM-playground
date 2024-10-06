@@ -38,6 +38,7 @@ async fn test_disprove_chain_success() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs
@@ -52,7 +53,7 @@ async fn test_disprove_chain_success() {
     verify_funding_inputs(&client, &funding_inputs).await;
 
     // kick-off 2
-    let (kick_off_2_tx, kick_off_2_txid) = create_and_mine_kick_off_2_tx(
+    let (kick_off_2_tx, kick_off_2_txid, _) = create_and_mine_kick_off_2_tx(
         &client,
         &operator_context,
         &kick_off_2_funding_utxo_address,

@@ -15,7 +15,7 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_kick_off_1_tx() {
-    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) =
+    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, connector_1, _, _, _, _, _, _, _) =
         setup_test().await;
 
     let input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
@@ -30,7 +30,7 @@ async fn test_kick_off_1_tx() {
         amount: input_amount,
     };
 
-    let kick_off_1_tx = KickOff1Transaction::new(&operator_context, input);
+    let kick_off_1_tx = KickOff1Transaction::new(&operator_context, &connector_1, input);
 
     let tx = kick_off_1_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);

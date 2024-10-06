@@ -41,6 +41,7 @@ async fn test_peg_out_for_chain() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
     let mut adaptors = Chain::new();
     adaptors.init_ethereum(EthereumInitConfig {

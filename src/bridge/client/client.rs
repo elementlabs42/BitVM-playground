@@ -1,3 +1,4 @@
+use core::hash;
 use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -10,8 +11,8 @@ use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, PublicKey, S
 use esplora_client::{AsyncClient, Builder, Utxo};
 
 use crate::bridge::{
-    constants::{DestinationNetwork, SHA256_DIGEST_LENGTH_IN_BYTES},
-    contexts::base::generate_n_of_n_public_key,
+    constants::DestinationNetwork, contexts::base::generate_n_of_n_public_key,
+    superblock::SuperblockMessage, transactions::signing_winternitz::WinternitzSecret,
 };
 
 use super::{
@@ -49,8 +50,9 @@ pub struct BitVMClientPrivateData {
     // Verifier public key -> Graph ID -> Tx ID -> Input index -> Secret nonce
     pub secret_nonces: HashMap<PublicKey, HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>>,
     // Operator Winternitz secrets for all the graphs.
-    // Operator public key -> Graph ID -> Tx ID -> Winternitz secret
-    pub winternitz_secrets: HashMap<PublicKey, HashMap<String, HashMap<Txid, String>>>,
+    // Operator public key -> Graph ID -> Leaf index -> Winternitz secret
+    pub connector_1_winternitz_secrets:
+        HashMap<PublicKey, HashMap<String, HashMap<u8, WinternitzSecret>>>,
 }
 
 pub struct BitVMClient {
@@ -671,15 +673,19 @@ impl BitVMClient {
             panic!("Peg out graph already exists");
         }
 
-        let peg_out_graph = PegOutGraph::new(
+        let (peg_out_graph, connector_1_winternitz_secrets) = PegOutGraph::new(
             self.operator_context.as_ref().unwrap(),
             peg_in_graph.unwrap(),
             kickoff_input,
         );
 
-        self.data.peg_out_graphs.push(peg_out_graph);
+        self.private_data.connector_1_winternitz_secrets = HashMap::from([(
+            operator_public_key.clone(),
+            HashMap::from([(peg_out_graph_id.to_string(), connector_1_winternitz_secrets)]),
+        )]);
+        Self::save_local_private_file(&self.file_path, &serialize(&self.private_data));
 
-        // TODO: Generate Winternitz secrets for all required messages in the graph and store them in the private data file.
+        self.data.peg_out_graphs.push(peg_out_graph);
 
         peg_out_graph_id
     }
@@ -733,8 +739,7 @@ impl BitVMClient {
     pub async fn broadcast_kick_off_2(
         &mut self,
         peg_out_graph_id: &str,
-        sb_hash: &[u8; SHA256_DIGEST_LENGTH_IN_BYTES],
-        sb_weight: u32,
+        sb_message: &SuperblockMessage,
     ) {
         let peg_out_graph = self
             .data
@@ -750,11 +755,10 @@ impl BitVMClient {
             .kick_off_2(
                 &self.esplora,
                 &self.operator_context.as_ref().unwrap(),
-                &self.private_data.winternitz_secrets
+                &self.private_data.connector_1_winternitz_secrets
                     [&self.operator_context.as_ref().unwrap().operator_public_key]
                     [peg_out_graph_id],
-                sb_hash,
-                sb_weight,
+                sb_message,
             )
             .await;
     }
@@ -1100,7 +1104,7 @@ impl BitVMClient {
         println!("New private data will be generated.");
         BitVMClientPrivateData {
             secret_nonces: HashMap::new(),
-            winternitz_secrets: HashMap::new(),
+            connector_1_winternitz_secrets: HashMap::new(),
         }
     }
 

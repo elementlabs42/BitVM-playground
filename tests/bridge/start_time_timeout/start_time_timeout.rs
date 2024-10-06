@@ -33,6 +33,7 @@ async fn test_start_time_timeout_tx() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
 
     let input_value0 = Amount::from_sat(DUST_AMOUNT);
@@ -47,6 +48,7 @@ async fn test_start_time_timeout_tx() {
 
     let mut start_time_timeout_tx = StartTimeTimeoutTransaction::new(
         &operator_context,
+        &connector_1,
         Input {
             outpoint: funding_outpoint0,
             amount: input_value0,
@@ -60,8 +62,8 @@ async fn test_start_time_timeout_tx() {
     let secret_nonces_0 = start_time_timeout_tx.push_nonces(&verifier_0_context);
     let secret_nonces_1 = start_time_timeout_tx.push_nonces(&verifier_1_context);
 
-    start_time_timeout_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
-    start_time_timeout_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
+    start_time_timeout_tx.pre_sign(&verifier_0_context, &connector_1, &secret_nonces_0);
+    start_time_timeout_tx.pre_sign(&verifier_1_context, &connector_1, &secret_nonces_0);
 
     let tx = start_time_timeout_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
