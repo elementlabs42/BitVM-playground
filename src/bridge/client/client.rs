@@ -1086,25 +1086,17 @@ impl BitVMClient {
         );
     }
 
-    /// Read the private data from a file on the local file system.
-    ///
-    /// Note: If there is an error when reading the file, or when parsing JSON data stored in the file
-    /// (e.g. due to a mismatch of the serialized data format), a new private data is generated and returned.
-    /// This will result in the loss of all previously stored private data.
     fn get_private_data(file_path: &String) -> BitVMClientPrivateData {
-        if let Some(data) = Self::read_local_private_file(file_path) {
-            match try_deserialize::<BitVMClientPrivateData>(&data) {
-                Ok(private_data) => return private_data,
-                Err(e) => {
-                    eprintln!("Could not deserialize private data: {e}");
+        match Self::read_local_private_file(file_path) {
+            Some(data) => try_deserialize::<BitVMClientPrivateData>(&data)
+                .expect("Could not deserialize private data"),
+            None => {
+                println!("New private data will be generated.");
+                BitVMClientPrivateData {
+                    secret_nonces: HashMap::new(),
+                    connector_1_winternitz_secrets: HashMap::new(),
                 }
             }
-        }
-
-        println!("New private data will be generated.");
-        BitVMClientPrivateData {
-            secret_nonces: HashMap::new(),
-            connector_1_winternitz_secrets: HashMap::new(),
         }
     }
 
