@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bridge::{
-        constants::SHA256_DIGEST_LENGTH_IN_BYTES,
+        superblock::SuperblockMessage,
         transactions::signing_winternitz::{
             convert_winternitz_public_key, generate_winternitz_secret,
             winternitz_public_key_from_secret, WinternitzPublicKey, WinternitzSecret,
@@ -88,8 +88,7 @@ impl Connector1 {
             convert_winternitz_public_key(&self.winternitz_public_keys[&leaf_index]);
 
         script! {
-            { check_hash_sig(&winternitz_public_key, SHA256_DIGEST_LENGTH_IN_BYTES) }
-            OP_DROP
+            { check_hash_sig(&winternitz_public_key, size_of::<SuperblockMessage>()) }
             { self.num_blocks_timelock_leaf_0 }
             OP_CSV
             OP_DROP
@@ -104,7 +103,20 @@ impl Connector1 {
         winternitz_secret: &WinternitzSecret,
         message: &[u8],
     ) -> Vec<Vec<u8>> {
-        sign_hash(&winternitz_secret, message)
+        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
+
+        // Push the message in reverse order
+        for byte in message.iter().rev() {
+            unlock_data.push(vec![*byte]);
+        }
+
+        // Push the signatures
+        let winternitz_signatures = sign_hash(&winternitz_secret, message);
+        for winternitz_signature in winternitz_signatures {
+            unlock_data.push(winternitz_signature);
+        }
+
+        unlock_data
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
