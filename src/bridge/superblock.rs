@@ -40,6 +40,8 @@ pub fn get_superblock_message(sb: &Superblock, sb_hash: &SuperblockHash) -> Supe
     buffer
 }
 
+pub fn find_superblock() -> (Superblock, SuperblockHash) { todo!() }
+
 #[cfg(test)]
 mod tests {
     use super::*;
