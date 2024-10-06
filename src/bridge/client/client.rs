@@ -35,6 +35,8 @@ use super::{
 const ESPLORA_URL: &str = "https://mutinynet.com/api";
 const TEN_MINUTES: u64 = 10 * 60;
 
+const PRIVATE_DATA_FILE_NAME: &str = "data.json";
+
 pub type UtxoSet = HashMap<OutPoint, Height>;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -1109,13 +1111,16 @@ impl BitVMClient {
     fn save_local_private_file(file_path: &String, json: &String) {
         Self::create_directories_if_non_existent(file_path);
         println!("Saving private data in local file...");
-        fs::write(format!("{file_path}/private/private_nonces.json"), json)
-            .expect("Unable to write a file");
+        fs::write(
+            format!("{file_path}/private/{PRIVATE_DATA_FILE_NAME}"),
+            json,
+        )
+        .expect("Unable to write a file");
     }
 
     fn read_local_private_file(file_path: &String) -> Option<String> {
         println!("Reading private data from local file...");
-        match fs::read_to_string(format!("{file_path}/private/private_nonces.json")) {
+        match fs::read_to_string(format!("{file_path}/private/{PRIVATE_DATA_FILE_NAME}")) {
             Ok(content) => Some(content),
             Err(e) => {
                 eprintln!("Could not read file {file_path} due to error: {e}");
