@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::bridge::{
     connectors::connector::{P2wshConnector, TaprootCommitmentConnector, TaprootConnector},
+    graphs::base::MESSAGE_COMMITMENT_FEE_AMOUNT,
     transactions::signing_winternitz::WinternitzSecret,
 };
 
@@ -13,7 +14,7 @@ use super::{
     super::{
         connectors::{connector_1::Connector1, connector_3::Connector3, connector_b::ConnectorB},
         contexts::operator::OperatorContext,
-        graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
+        graphs::base::DUST_AMOUNT,
     },
     base::*,
     pre_signed::*,
@@ -63,7 +64,7 @@ impl KickOff2Transaction {
         let input_0_leaf = 0;
         let _input_0 = connector_1.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MESSAGE_COMMITMENT_FEE_AMOUNT);
 
         let _output_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
