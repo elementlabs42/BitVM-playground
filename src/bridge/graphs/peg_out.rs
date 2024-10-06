@@ -16,9 +16,8 @@ use std::{
 use crate::bridge::client::chain::chain::PegOutEvent;
 
 use crate::bridge::{
-    connectors::connector_1::Connector1,
-    superblock::SuperblockMessage,
-    transactions::signing_winternitz::{generate_winternitz_secret, WinternitzSecret},
+    connectors::connector_1::Connector1, superblock::SuperblockMessage,
+    transactions::signing_winternitz::WinternitzSecret,
 };
 
 use super::{
