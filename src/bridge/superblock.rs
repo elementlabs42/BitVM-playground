@@ -33,7 +33,7 @@ pub type SuperblockHash = [u8; SHA256_DIGEST_LENGTH_IN_BYTES];
 pub(crate) type SuperblockMessage = [u8; size_of::<Superblock>() + size_of::<SuperblockHash>()];
 
 pub fn get_superblock_message(sb: &Superblock, sb_hash: &SuperblockHash) -> SuperblockMessage {
-    let mut buffer = [0u8; size_of::<Superblock>() + size_of::<SuperblockHash>()];
+    let mut buffer = [0u8; size_of::<SuperblockMessage>()];
     buffer[..size_of::<Superblock>()].copy_from_slice(&serialize_superblock(sb));
     buffer[size_of::<Superblock>()..].copy_from_slice(&sb_hash[..]);
 
