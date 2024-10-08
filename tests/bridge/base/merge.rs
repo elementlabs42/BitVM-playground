@@ -17,8 +17,29 @@ use crate::bridge::setup::setup_test;
 // TODO: test merging signatures after Musig2 feature is ready
 async fn test_merge_add_new_input_and_output() {
     // Arrange
-    let (_, _, depositor_context, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) =
-        setup_test().await;
+    let (
+        _,
+        _,
+        depositor_context,
+        operator_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
 

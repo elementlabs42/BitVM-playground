@@ -14,8 +14,29 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_start_time_tx() {
-    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, _, connector_2, _, _, _, _, _, _, _) =
-        setup_test().await;
+    let (
+        client,
+        _,
+        _,
+        operator_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        connector_2,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = setup_test().await;
 
     let input_value0 = Amount::from_sat(DUST_AMOUNT);
     let funding_utxo_address0 = connector_2.generate_taproot_address();
