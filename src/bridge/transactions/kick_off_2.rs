@@ -126,7 +126,7 @@ impl KickOff2Transaction {
         //     .push(prevout_leaf.0.to_bytes());
 
         let winternitz_signatures =
-            connector_1.generate_taproot_leaf_witness(0, winternitz_secret, message);
+            connector_1.generate_taproot_commitment_witness(0, winternitz_secret, message);
         for winternitz_signature in winternitz_signatures {
             unlock_data.push(winternitz_signature);
         }

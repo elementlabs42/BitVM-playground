@@ -40,6 +40,7 @@ mod tests {
             _,
             _,
             _,
+            _,
         ) = setup_test().await;
 
         let amount = Amount::from_sat(INITIAL_AMOUNT);
@@ -78,6 +79,7 @@ mod tests {
             _,
             _,
             connector_b,
+            _,
             _,
             _,
             _,

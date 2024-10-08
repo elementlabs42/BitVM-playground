@@ -32,6 +32,11 @@ pub const N: u32 = N0 + N1 as u32;
 /// The public key type
 pub type PublicKey = [[u8; 20]; N as usize];
 
+pub struct DigitSignature {
+    pub hash_bytes: Vec<u8>,
+    pub message_digit: u8,
+}
+
 //
 // Helper functions
 //
@@ -65,11 +70,7 @@ pub fn generate_public_key(secret_key: &str) -> PublicKey {
 }
 
 /// Compute the signature for the i-th digit of the message
-pub fn digit_signature(
-    secret_key: &str,
-    digit_index: u32,
-    message_digit: u8,
-) -> (Vec<u8>, Vec<u8>) {
+pub fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) -> DigitSignature {
     // Convert secret_key from hex string to bytes
     let mut secret_i = match hex_decode(secret_key) {
         Ok(bytes) => bytes,
@@ -86,7 +87,10 @@ pub fn digit_signature(
 
     let hash_bytes = hash.as_byte_array().to_vec();
 
-    (hash_bytes, vec![message_digit])
+    DigitSignature {
+        hash_bytes,
+        message_digit,
+    }
 }
 
 /// Compute the checksum of the message's digits.
@@ -111,23 +115,20 @@ pub fn to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT]
 }
 
 /// Compute the signature for a given message
-pub fn sign_digits(secret_key: &str, message_digits: [u8; N0 as usize]) -> Vec<Vec<u8>> {
+pub fn sign_digits(secret_key: &str, message_digits: [u8; N0 as usize]) -> Vec<DigitSignature> {
     // const message_digits = to_digits(message, n0)
     let mut checksum_digits = to_digits::<N1>(checksum(message_digits)).to_vec();
     checksum_digits.append(&mut message_digits.to_vec());
 
     let mut signatures = Vec::new();
     for i in 0..N {
-        let (hash_bytes, message_digit) =
-            digit_signature(secret_key, i, checksum_digits[(N - 1 - i) as usize]);
-        signatures.push(hash_bytes);
-        signatures.push(message_digit);
+        let digit_signature = digit_signature(secret_key, i, checksum_digits[(N - 1 - i) as usize]);
+        signatures.push(digit_signature);
     }
-
     signatures
 }
 
-pub fn sign(secret_key: &str, message_bytes: &[u8]) -> Vec<Vec<u8>> {
+pub fn sign(secret_key: &str, message_bytes: &[u8]) -> Vec<DigitSignature> {
     // Convert message to digits
     let mut message_digits = [0u8; 20 * 2 as usize];
     for (digits, byte) in message_digits.chunks_mut(2).zip(message_bytes) {
@@ -251,7 +252,10 @@ mod test {
         let public_key = generate_public_key(MY_SECKEY);
 
         let script = script! {
-            { sign_digits(MY_SECKEY, MESSAGE) }
+            for signature in sign_digits(MY_SECKEY, MESSAGE) {
+              { signature.hash_bytes }
+              { signature.message_digit }
+            }
             { checksig_verify(&public_key) }
         };
 
@@ -262,11 +266,11 @@ mod test {
             script.len() as f64 / (N0 * 4) as f64
         );
 
-        let signatures = sign_digits(MY_SECKEY, MESSAGE);
-        let signatures_script = signatures_to_script(signatures);
-
         run(script! {
-            { signatures_script }
+            for signature in sign_digits(MY_SECKEY, MESSAGE) {
+              { signature.hash_bytes }
+              { signature.message_digit }
+            }
             { checksig_verify(&public_key) }
 
             0x21 OP_EQUALVERIFY

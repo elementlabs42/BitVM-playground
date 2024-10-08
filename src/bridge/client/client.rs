@@ -53,7 +53,7 @@ pub struct BitVMClientPrivateData {
     // Verifier public key -> Graph ID -> Tx ID -> Input index -> Secret nonce
     pub secret_nonces: HashMap<PublicKey, HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>>,
     // Operator Winternitz secrets for all the graphs.
-    // Operator public key -> Graph ID -> Leaf index -> Winternitz secret
+    // TODO: Operator public key -> Graph ID -> [connector ID] -> Leaf index -> Winternitz secret
     pub connector_1_winternitz_secrets:
         HashMap<PublicKey, HashMap<String, HashMap<u8, WinternitzSecret>>>,
 }

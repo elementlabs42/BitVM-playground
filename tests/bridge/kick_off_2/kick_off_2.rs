@@ -35,6 +35,7 @@ async fn test_kick_off_2_tx() {
         _,
         _,
         _,
+        _,
         connector_1_winternitz_secrets,
     ) = setup_test().await;
 

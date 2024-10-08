@@ -57,7 +57,7 @@ pub trait TaprootConnector {
 }
 
 pub trait TaprootCommitmentConnector {
-    fn generate_taproot_leaf_witness(
+    fn generate_taproot_commitment_witness(
         &self,
         leaf_index: u32,
         winternitz_secret: &WinternitzSecret,

@@ -113,7 +113,8 @@ impl Connector1 {
         // Push the signatures
         let winternitz_signatures = sign_hash(&winternitz_secret, message);
         for winternitz_signature in winternitz_signatures {
-            unlock_data.push(winternitz_signature);
+            unlock_data.push(winternitz_signature.hash_bytes);
+            unlock_data.push(vec![winternitz_signature.message_digit]);
         }
 
         unlock_data
