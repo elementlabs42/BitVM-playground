@@ -5,7 +5,7 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 
 use crate::bridge::{
-    connectors::connector::{P2wshConnector, TaprootCommitmentConnector, TaprootConnector},
+    connectors::base::{CommitmentConnector, P2wshConnector, TaprootConnector},
     graphs::base::MESSAGE_COMMITMENT_FEE_AMOUNT,
     transactions::signing_winternitz::WinternitzSecret,
 };
@@ -126,7 +126,7 @@ impl KickOff2Transaction {
         //     .push(prevout_leaf.0.to_bytes());
 
         let winternitz_signatures =
-            connector_1.generate_taproot_commitment_witness(0, winternitz_secret, message);
+            connector_1.generate_commitment_witness(0, winternitz_secret, message);
         for winternitz_signature in winternitz_signatures {
             unlock_data.push(winternitz_signature);
         }

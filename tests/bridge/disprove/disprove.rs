@@ -7,7 +7,7 @@ mod tests {
     };
 
     use bitvm::bridge::{
-        connectors::connector::TaprootConnector,
+        connectors::base::TaprootConnector,
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
         scripts::generate_pay_to_pubkey_script,
         transactions::{

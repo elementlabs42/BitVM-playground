@@ -26,7 +26,7 @@ use super::{
         transactions::base::Input,
         utils::num_blocks_per_network,
     },
-    connector::*,
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -147,6 +147,10 @@ impl Connector1 {
     }
 }
 
+impl BaseConnector for Connector1 {
+    fn id(&self) -> ConnectorId { ConnectorId::Connector1 }
+}
+
 impl TaprootConnector for Connector1 {
     fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
         match leaf_index {
@@ -186,8 +190,8 @@ impl TaprootConnector for Connector1 {
     }
 }
 
-impl TaprootCommitmentConnector for Connector1 {
-    fn generate_taproot_leaf_witness(
+impl CommitmentConnector for Connector1 {
+    fn generate_commitment_witness(
         &self,
         leaf_index: u32,
         winternitz_secret: &WinternitzSecret,

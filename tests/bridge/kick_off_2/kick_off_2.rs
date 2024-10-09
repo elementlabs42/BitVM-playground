@@ -1,7 +1,7 @@
 use bitcoin::Amount;
 
 use bitvm::bridge::{
-    connectors::connector::TaprootConnector,
+    connectors::base::TaprootConnector,
     constants::SHA256_DIGEST_LENGTH_IN_BYTES,
     graphs::base::ONE_HUNDRED,
     superblock::{get_superblock_message, Superblock, SuperblockHash},

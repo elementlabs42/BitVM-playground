@@ -3,7 +3,7 @@ use std::time::Duration;
 use bitcoin::{Amount, OutPoint};
 
 use bitvm::bridge::{
-    connectors::{connector::TaprootConnector, connector_0::Connector0},
+    connectors::{base::TaprootConnector, connector_0::Connector0},
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{

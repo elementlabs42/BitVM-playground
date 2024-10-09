@@ -1,7 +1,7 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
-    connectors::connector::{P2wshConnector, TaprootConnector},
+    connectors::base::{P2wshConnector, TaprootConnector},
     graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
     transactions::{
         base::{BaseTransaction, Input},

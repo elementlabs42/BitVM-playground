@@ -158,6 +158,7 @@ pub async fn setup_test() -> (
 }
 
 // Use fixed secrets for testing to ensure repeatable tx output addresses.
+// The keys in the returned hash maps are the leaf indexes.
 fn get_test_winternitz_keys(
     leaf_indexes: &[u8],
 ) -> (

@@ -1,7 +1,15 @@
+use std::collections::HashMap;
+
 use crate::{
     bridge::{
         constants::{BITCOIN_TXID_LENGTH_IN_DIGITS, ETHEREUM_TXID_LENGTH_IN_DIGITS},
-        transactions::base::Input,
+        transactions::{
+            base::Input,
+            signing_winternitz::{
+                generate_winternitz_secret, winternitz_public_key_from_secret, WinternitzPublicKey,
+                WinternitzSecret,
+            },
+        },
     },
     signatures::{
         winternitz::generate_public_key,
@@ -17,24 +25,39 @@ use bitcoin::{
 
 use serde::{Deserialize, Serialize};
 
-use super::connector::{generate_default_tx_in, TaprootConnector};
+use super::base::{generate_default_tx_in, BaseConnector, ConnectorId, TaprootConnector};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Connector6 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
+    pub winternitz_public_keys: HashMap<u8, WinternitzPublicKey>, // Leaf index -> WinternitzPublicKey
     pub evm_txid: Option<String>,
     pub peg_out_txid: Option<Txid>,
 }
 
 impl Connector6 {
-    pub fn new(network: Network, operator_taproot_public_key: &XOnlyPublicKey) -> Self {
-        Connector6 {
-            network,
-            operator_taproot_public_key: operator_taproot_public_key.clone(),
-            evm_txid: None,
-            peg_out_txid: None,
-        }
+    pub fn new(
+        network: Network,
+        operator_taproot_public_key: &XOnlyPublicKey,
+    ) -> (Self, HashMap<u8, WinternitzSecret>) {
+        let leaf_index = 0;
+        let winternitz_secrets = HashMap::from([(leaf_index, generate_winternitz_secret())]);
+        let winternitz_public_keys = winternitz_secrets
+            .iter()
+            .map(|(k, v)| (*k, winternitz_public_key_from_secret(&v)))
+            .collect();
+
+        (
+            Connector6 {
+                network,
+                operator_taproot_public_key: operator_taproot_public_key.clone(),
+                winternitz_public_keys,
+                evm_txid: None,
+                peg_out_txid: None,
+            },
+            winternitz_secrets,
+        )
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
@@ -71,6 +94,10 @@ impl Connector6 {
 
         unlock_data
     }
+}
+
+impl BaseConnector for Connector6 {
+    fn id(&self) -> ConnectorId { ConnectorId::Connector6 }
 }
 
 impl TaprootConnector for Connector6 {

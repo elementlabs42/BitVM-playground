@@ -13,7 +13,14 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
 };
 
-use crate::bridge::client::chain::chain::PegOutEvent;
+use crate::bridge::{
+    client::chain::chain::PegOutEvent,
+    connectors::{
+        base::{BaseConnector, ConnectorId},
+        connector_2::Connector2,
+        connector_6::Connector6,
+    },
+};
 
 use crate::bridge::{
     connectors::connector_1::Connector1, superblock::SuperblockMessage,
@@ -191,7 +198,8 @@ pub struct PegOutGraph {
     // signatures) need to be stored here, because they carry the Winternitz public
     // keys.
     connector_1: Connector1,
-
+    connector_2: Connector2,
+    // connector_6: Connector6,
     assert_transaction: AssertTransaction,
     challenge_transaction: ChallengeTransaction,
     disprove_chain_transaction: DisproveChainTransaction,
@@ -222,7 +230,7 @@ impl PegOutGraph {
         context: &OperatorContext,
         peg_in_graph: &PegInGraph,
         kickoff_input: Input,
-    ) -> (Self, HashMap<u8, WinternitzSecret>) {
+    ) -> (Self, HashMap<ConnectorId, HashMap<u8, WinternitzSecret>>) {
         let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
 
@@ -231,6 +239,16 @@ impl PegOutGraph {
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
         );
+        let (connector_2, connector_2_winternitz_secrets) = Connector2::new(
+            context.network,
+            &context.operator_taproot_public_key,
+            &context.n_of_n_taproot_public_key,
+        );
+
+        let winternitz_secrets = HashMap::from([
+            (ConnectorId::Connector1, connector_1_winternitz_secrets),
+            (ConnectorId::Connector2, connector_2_winternitz_secrets),
+        ]);
 
         let kick_off_1_transaction = KickOff1Transaction::new(context, &connector_1, kickoff_input);
         let kick_off_1_txid = kick_off_1_transaction.tx().compute_txid();
@@ -238,6 +256,7 @@ impl PegOutGraph {
         let start_time_vout_0 = 2;
         let start_time_transaction = StartTimeTransaction::new(
             context,
+            &connector_2,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -252,6 +271,7 @@ impl PegOutGraph {
         let start_time_timeout_transaction = StartTimeTimeoutTransaction::new(
             context,
             &connector_1,
+            &connector_2,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -439,6 +459,8 @@ impl PegOutGraph {
                 peg_in_graph_id: peg_in_graph.id().clone(),
                 peg_in_confirm_txid,
                 connector_1,
+                connector_2,
+                // connector_6,
                 assert_transaction,
                 challenge_transaction,
                 disprove_chain_transaction,
@@ -455,7 +477,7 @@ impl PegOutGraph {
                 peg_out_chain_event: None,
                 peg_out_transaction: None,
             },
-            connector_1_winternitz_secrets,
+            winternitz_secrets,
         )
     }
 
@@ -467,6 +489,12 @@ impl PegOutGraph {
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             &self.connector_1.winternitz_public_keys,
+        );
+        let connector_2 = Connector2::new_for_validation(
+            self.network,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_taproot_public_key,
+            &self.connector_2.winternitz_public_keys,
         );
 
         let kick_off_1_vout_0 = 0;
@@ -486,8 +514,7 @@ impl PegOutGraph {
         let start_time_transaction = StartTimeTransaction::new_for_validation(
             self.network,
             &self.operator_public_key,
-            &self.operator_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
+            &connector_2,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -502,8 +529,7 @@ impl PegOutGraph {
         let start_time_timeout_transaction = StartTimeTimeoutTransaction::new_for_validation(
             self.network,
             &connector_1,
-            &self.operator_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
+            &connector_2,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -707,6 +733,8 @@ impl PegOutGraph {
             peg_in_graph_id: self.peg_in_graph_id.clone(),
             peg_in_confirm_txid,
             connector_1,
+            connector_2,
+            // connector_6,
             assert_transaction,
             challenge_transaction,
             disprove_chain_transaction,
@@ -724,6 +752,10 @@ impl PegOutGraph {
             peg_out_transaction: None,
         }
     }
+
+    pub fn connector_1_id(&self) -> ConnectorId { self.connector_1.id() }
+    pub fn connector_2_id(&self) -> ConnectorId { self.connector_2.id() }
+    // pub fn connector_6_id(&self) -> ConnectorId { self.connector_6.id() }
 
     pub fn push_nonces(
         &mut self,
@@ -788,6 +820,7 @@ impl PegOutGraph {
         self.start_time_timeout_transaction.pre_sign(
             context,
             &self.connector_1,
+            &self.connector_2,
             &secret_nonces[&self.start_time_timeout_transaction.tx().compute_txid()],
         );
         self.take_1_transaction.pre_sign(
@@ -1108,7 +1141,12 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn start_time(&mut self, client: &AsyncClient, context: &OperatorContext) {
+    pub async fn start_time(
+        &mut self,
+        client: &AsyncClient,
+        context: &OperatorContext,
+        connector_2_winternitz_secrets: &HashMap<u8, WinternitzSecret>,
+    ) {
         verify_if_not_mined(client, self.start_time_transaction.tx().compute_txid()).await;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
@@ -1116,8 +1154,14 @@ impl PegOutGraph {
 
         if kick_off_1_status.is_ok_and(|status| status.confirmed) {
             // sign start time tx
+            let connector_2_leaf_index = 0;
             let start_time_block = get_start_time_block();
-            self.start_time_transaction.sign(context, start_time_block);
+            self.start_time_transaction.sign(
+                context,
+                &self.connector_2,
+                &connector_2_winternitz_secrets[&connector_2_leaf_index],
+                start_time_block,
+            );
 
             // complete start time tx
             let start_time_tx = self.start_time_transaction.finalize();

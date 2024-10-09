@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{
-            connector::*, connector_1::Connector1, connector_2::Connector2,
-            connector_6::Connector6, connector_a::ConnectorA,
+            base::*, connector_1::Connector1, connector_2::Connector2, connector_6::Connector6,
+            connector_a::ConnectorA,
         },
         contexts::operator::OperatorContext,
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
