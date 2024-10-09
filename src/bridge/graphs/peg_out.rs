@@ -13,6 +13,8 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
 };
 
+use crate::bridge::client::chain::chain::PegOutEvent;
+
 use super::{
     super::{
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
@@ -35,6 +37,7 @@ use super::{
             take_1::Take1Transaction,
             take_2::Take2Transaction,
         },
+        utils::get_start_time_block,
     },
     base::{get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
     peg_in::PegInGraph,
@@ -135,7 +138,10 @@ impl Display for PegOutOperatorStatus {
                 write!(f, "Peg-out complete, reimbursement failed. Done.")
             }
             PegOutOperatorStatus::PegOutStartPegOut => {
-                write!(f, "Peg-out requested. Broadcast peg-out transaction?")
+                write!(
+                    f,
+                    "Peg-out requested. Create and broadcast peg-out transaction?"
+                )
             }
             PegOutOperatorStatus::PegOutKickOff1Available => {
                 write!(f, "Peg-out confirmed. Broadcast kick-off 1 transaction?")
@@ -191,10 +197,7 @@ pub struct PegOutGraph {
     operator_public_key: PublicKey,
     operator_taproot_public_key: XOnlyPublicKey,
 
-    withdrawer_public_key: Option<PublicKey>,
-    withdrawer_taproot_public_key: Option<XOnlyPublicKey>,
-    withdrawer_evm_address: Option<String>,
-
+    peg_out_chain_event: Option<PegOutEvent>,
     peg_out_transaction: Option<PegOutTransaction>,
 }
 
@@ -390,7 +393,7 @@ impl PegOutGraph {
             script_index,
         );
 
-        let disprove_chain_vout_0 = 2;
+        let disprove_chain_vout_0 = 1;
         let disprove_chain_transaction = DisproveChainTransaction::new(
             context,
             Input {
@@ -424,9 +427,7 @@ impl PegOutGraph {
             take_2_transaction,
             operator_public_key: context.operator_public_key,
             operator_taproot_public_key: context.operator_taproot_public_key,
-            withdrawer_public_key: None,
-            withdrawer_taproot_public_key: None,
-            withdrawer_evm_address: None,
+            peg_out_chain_event: None,
             peg_out_transaction: None,
         }
     }
@@ -437,7 +438,6 @@ impl PegOutGraph {
         let kick_off_1_vout_0 = 0;
         let kick_off_1_transaction = KickOff1Transaction::new_for_validation(
             self.network,
-            &self.operator_public_key,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
@@ -684,9 +684,7 @@ impl PegOutGraph {
             take_2_transaction,
             operator_public_key: self.operator_public_key,
             operator_taproot_public_key: self.operator_taproot_public_key,
-            withdrawer_public_key: None,
-            withdrawer_taproot_public_key: None,
-            withdrawer_evm_address: None,
+            peg_out_chain_event: None,
             peg_out_transaction: None,
         }
     }
@@ -862,7 +860,7 @@ impl PegOutGraph {
     }
 
     pub async fn operator_status(&self, client: &AsyncClient) -> PegOutOperatorStatus {
-        if self.n_of_n_presigned {
+        if self.n_of_n_presigned && self.is_peg_out_initiated() {
             let (
                 assert_status,
                 challenge_status,
@@ -1001,6 +999,32 @@ impl PegOutGraph {
         }
     }
 
+    pub async fn peg_out(&mut self, client: &AsyncClient, context: &OperatorContext, input: Input) {
+        if !self.is_peg_out_initiated() {
+            panic!("Peg out not initiated on L2 chain");
+        }
+
+        if self.peg_out_transaction.is_some() {
+            let txid = self
+                .peg_out_transaction
+                .as_ref()
+                .unwrap()
+                .tx()
+                .compute_txid();
+            verify_if_not_mined(&client, txid).await;
+        } else {
+            let event = self.peg_out_chain_event.as_ref().unwrap();
+            let tx = PegOutTransaction::new(context, event, input);
+            self.peg_out_transaction = Some(tx);
+        }
+
+        let peg_out_tx = self.peg_out_transaction.as_ref().unwrap().finalize();
+
+        let peg_out_result = client.broadcast(&peg_out_tx).await;
+
+        verify_tx_result(&peg_out_result);
+    }
+
     pub async fn kick_off_1(&mut self, client: &AsyncClient) {
         verify_if_not_mined(&client, self.kick_off_1_transaction.tx().compute_txid()).await;
 
@@ -1047,13 +1071,17 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn start_time(&mut self, client: &AsyncClient) {
+    pub async fn start_time(&mut self, client: &AsyncClient, context: &OperatorContext) {
         verify_if_not_mined(client, self.start_time_transaction.tx().compute_txid()).await;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
         let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
 
         if kick_off_1_status.is_ok_and(|status| status.confirmed) {
+            // sign start time tx
+            let start_time_block = get_start_time_block();
+            self.start_time_transaction.sign(context, start_time_block);
+
             // complete start time tx
             let start_time_tx = self.start_time_transaction.finalize();
 
@@ -1368,6 +1396,36 @@ impl PegOutGraph {
             }
         } else {
             panic!("Peg-in confirm tx and assert tx have not been confirmed!");
+        }
+    }
+
+    pub fn is_peg_out_initiated(&self) -> bool { return self.peg_out_chain_event.is_some(); }
+
+    pub async fn match_and_set_peg_out_event(
+        &mut self,
+        all_events: &mut Vec<PegOutEvent>,
+    ) -> Result<Option<PegOutEvent>, String> {
+        let mut events: Vec<PegOutEvent> = Vec::new();
+        let mut ids: Vec<usize> = Vec::new();
+        for (i, event) in all_events.iter().enumerate() {
+            if self.peg_in_confirm_txid.eq(&event.source_outpoint.txid)
+                && self.operator_public_key.eq(&event.operator_public_key)
+            {
+                events.push(event.clone());
+                ids.push(i);
+            }
+        }
+        ids.iter().for_each(|x| {
+            all_events.swap_remove(*x);
+        });
+
+        match events.len() {
+            0 => Ok(None),
+            1 => {
+                self.peg_out_chain_event = Some(events[0].clone());
+                Ok(Some(events[0].clone()))
+            }
+            _ => Err(String::from("Event from L2 chain is not unique")),
         }
     }
 
