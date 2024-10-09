@@ -114,12 +114,7 @@ pub async fn setup_test() -> (
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
     );
-    // Swap out the secrets for testing.
-    let (connector_1_winternitz_secrets, connector_1_winternitz_public_keys) =
-        get_test_winternitz_keys(&[0]);
-    connector_1.winternitz_public_keys = connector_1_winternitz_public_keys;
-
-    let connector_2 = Connector2::new(
+    let (mut connector_2, _) = Connector2::new(
         source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
@@ -127,10 +122,21 @@ pub async fn setup_test() -> (
     let connector_3 = Connector3::new(source_network, &operator_context.operator_public_key);
     let connector_4 = Connector4::new(source_network, &operator_context.operator_public_key);
     let connector_5 = Connector5::new(source_network, &operator_context.n_of_n_taproot_public_key);
-    let connector_6 = Connector6::new(
+    let (mut connector_6, _) = Connector6::new(
         source_network,
         &operator_context.operator_taproot_public_key,
     );
+
+    // Swap out Winternitz secrets for testing.
+    let (connector_1_winternitz_secrets, connector_1_winternitz_public_keys) =
+        get_test_winternitz_keys(&[0]);
+    let (_connector_2_winternitz_secrets, connector_2_winternitz_public_keys) =
+        get_test_winternitz_keys(&[0]);
+    let (_connector_6_winternitz_secrets, connector_6_winternitz_public_keys) =
+        get_test_winternitz_keys(&[0]);
+    connector_1.winternitz_public_keys = connector_1_winternitz_public_keys;
+    connector_2.winternitz_public_keys = connector_2_winternitz_public_keys;
+    connector_6.winternitz_public_keys = connector_6_winternitz_public_keys;
 
     return (
         client_0,
