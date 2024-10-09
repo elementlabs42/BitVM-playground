@@ -1,25 +1,28 @@
-use clap::{arg, Command, ArgMatches};
-use colored::Colorize;
-use tokio::io::{AsyncBufRead, AsyncBufReadExt, BufReader};
-use std::io::{self, Write};
-use crate::bridge::contexts::base::generate_keys_from_secret;
-use crate::bridge::graphs::base::{BaseGraph, VERIFIER_0_SECRET, VERIFIER_1_SECRET};
+use super::key_command::KeysCommand;
 use crate::bridge::client::client::BitVMClient;
 use crate::bridge::constants::DestinationNetwork;
+use crate::bridge::contexts::base::generate_keys_from_secret;
+use crate::bridge::graphs::base::{BaseGraph, VERIFIER_0_SECRET, VERIFIER_1_SECRET};
 use crate::bridge::graphs::peg_in::PegInDepositorStatus;
 use crate::bridge::graphs::peg_out::PegOutOperatorStatus;
-use bitcoin::PublicKey;
 use bitcoin::Network;
-use super::key_command::KeysCommand;
+use bitcoin::PublicKey;
+use clap::{arg, ArgMatches, Command};
+use colored::Colorize;
+use std::io::{self, Write};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, BufReader};
 
 pub struct ClientCommand {
     client: BitVMClient,
 }
 
-
 impl ClientCommand {
     pub async fn new(sub_matches: &ArgMatches) -> Self {
-        let (source_network, destination_network) = match sub_matches.get_one::<String>("environment").unwrap().as_str()  {
+        let (source_network, destination_network) = match sub_matches
+            .get_one::<String>("environment")
+            .unwrap()
+            .as_str()
+        {
             "mainnet" => (Network::Bitcoin, DestinationNetwork::Ethereum),
             "testnet" => (Network::Testnet, DestinationNetwork::EthereumSepolia),
             _ => {
@@ -48,11 +51,13 @@ impl ClientCommand {
             config.keys.operator.as_deref(),
             config.keys.verifier.as_deref(),
             config.keys.withdrawer.as_deref(),
-        ).await;
+        )
+        .await;
 
-        Self { client: bitvm_client }
+        Self {
+            client: bitvm_client,
+        }
     }
-
 
     pub fn get_automatic_command() -> Command {
         Command::new("automatic")
@@ -69,15 +74,26 @@ impl ClientCommand {
             let peg_in_graphs = self.client.get_data().peg_in_graphs.clone();
 
             for peg_in_graph in peg_in_graphs.iter() {
-
-                let status =  peg_in_graph.depositor_status(&self.client.esplora).await;
+                let status = peg_in_graph.depositor_status(&self.client.esplora).await;
 
                 self.client.pre_sign_peg_in(peg_in_graph.id());
                 match status {
-                    PegInDepositorStatus::PegInDepositWait => self.client.broadcast_peg_in_deposit(peg_in_graph.id()).await,
-                    PegInDepositorStatus::PegInConfirmWait => self.client.broadcast_peg_in_confirm(peg_in_graph.id()).await,
+                    PegInDepositorStatus::PegInDepositWait => {
+                        self.client
+                            .broadcast_peg_in_deposit(peg_in_graph.id())
+                            .await
+                    }
+                    PegInDepositorStatus::PegInConfirmWait => {
+                        self.client
+                            .broadcast_peg_in_confirm(peg_in_graph.id())
+                            .await
+                    }
                     _ => {
-                        println!("Peg-in graph {} is in status: {}", peg_in_graph.id(), status);
+                        println!(
+                            "Peg-in graph {} is in status: {}",
+                            peg_in_graph.id(),
+                            status
+                        );
                     }
                 }
             }
@@ -86,14 +102,30 @@ impl ClientCommand {
             for peg_out_graph in peg_out_graphs.iter() {
                 let status = peg_out_graph.operator_status(&self.client.esplora).await;
                 match status {
-                    PegOutOperatorStatus::PegOutStartTimeAvailable => self.client.broadcast_start_time(peg_out_graph.id()).await,
-                    PegOutOperatorStatus::PegOutKickOff1Available => self.client.broadcast_kick_off_1(peg_out_graph.id()).await,
-                    PegOutOperatorStatus::PegOutKickOff2Available => self.client.broadcast_kick_off_2(peg_out_graph.id()).await,
-                    PegOutOperatorStatus::PegOutAssertAvailable => self.client.broadcast_assert(peg_out_graph.id()).await,
-                    PegOutOperatorStatus::PegOutTake1Available => self.client.broadcast_take_1(peg_out_graph.id()).await,
-                    PegOutOperatorStatus::PegOutTake2Available => self.client.broadcast_take_2(peg_out_graph.id()).await,
+                    PegOutOperatorStatus::PegOutStartTimeAvailable => {
+                        self.client.broadcast_start_time(peg_out_graph.id()).await
+                    }
+                    PegOutOperatorStatus::PegOutKickOff1Available => {
+                        self.client.broadcast_kick_off_1(peg_out_graph.id()).await
+                    }
+                    PegOutOperatorStatus::PegOutKickOff2Available => {
+                        self.client.broadcast_kick_off_2(peg_out_graph.id()).await
+                    }
+                    PegOutOperatorStatus::PegOutAssertAvailable => {
+                        self.client.broadcast_assert(peg_out_graph.id()).await
+                    }
+                    PegOutOperatorStatus::PegOutTake1Available => {
+                        self.client.broadcast_take_1(peg_out_graph.id()).await
+                    }
+                    PegOutOperatorStatus::PegOutTake2Available => {
+                        self.client.broadcast_take_2(peg_out_graph.id()).await
+                    }
                     _ => {
-                        println!("Peg-out graph {} is in status: {}", peg_out_graph.id(), status);
+                        println!(
+                            "Peg-out graph {} is in status: {}",
+                            peg_out_graph.id(),
+                            status
+                        );
                     }
                 }
             }
@@ -175,7 +207,11 @@ impl ClientCommand {
     }
 
     pub async fn handle_interactive_command(&mut self, main_command: &Command) -> io::Result<()> {
-        println!("{}", "Entering interactive mode. Type 'help' for a list of commands and 'exit' to quit.".green());
+        println!(
+            "{}",
+            "Entering interactive mode. Type 'help' for a list of commands and 'exit' to quit."
+                .green()
+        );
 
         let mut stdin_reader = BufReader::new(tokio::io::stdin());
         loop {
@@ -190,7 +226,7 @@ impl ClientCommand {
                 break;
             }
 
-            let mut args = vec!["bitvm"]; 
+            let mut args = vec!["bitvm"];
             args.extend(input.split_whitespace());
 
             let matches = match main_command.clone().try_get_matches_from(args) {
@@ -198,7 +234,7 @@ impl ClientCommand {
                 Err(e) => {
                     if !e.to_string().to_lowercase().contains("error") {
                         println!("{}", format!("{}", e).green());
-                    } else  {
+                    } else {
                         println!("{}", format!("{}", e).red());
                     }
                     continue;
@@ -217,7 +253,10 @@ impl ClientCommand {
             } else if let Some(_sub_matches) = matches.subcommand_matches("interactive") {
                 println!("{}", "Already in interactive mode.".yellow());
             } else {
-                println!("{}", "Unknown command. Type 'help' for a list of commands.".red());
+                println!(
+                    "{}",
+                    "Unknown command. Type 'help' for a list of commands.".red()
+                );
             }
         }
 
