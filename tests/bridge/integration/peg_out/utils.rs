@@ -32,8 +32,8 @@ pub async fn create_and_mine_kick_off_1_tx(
     let kick_off_1 = KickOff1Transaction::new(
         &operator_context,
         &connector_1,
-        // &connector_2,
-        // &connector_6,
+        &connector_2,
+        &connector_6,
         kick_off_1_input,
     );
     let kick_off_1_tx = kick_off_1.finalize();

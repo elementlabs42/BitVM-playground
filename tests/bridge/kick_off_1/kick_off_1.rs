@@ -31,18 +31,18 @@ async fn test_kick_off_1_tx() {
     let mut kick_off_1_tx = KickOff1Transaction::new(
         &config.operator_context,
         &config.connector_1,
-        // &config.connector_2,
-        // &config.connector_6,
+        &config.connector_2,
+        &config.connector_6,
         input,
     );
     let ethereum_txid = "8b274fbb76c72f66c467c976c61d5ac212620e036818b5986a33f7b557cb2de8";
     let bitcoin_txid = "8b4cce4a1a9522392c095df6416533d89e1e6ac7bdf8ab3c1685426b321ed182";
     kick_off_1_tx.sign(
         &config.operator_context,
-        // &config.connector_6,
-        bitcoin_txid,
-        ethereum_txid,
-        // &config.connector_6_winternitz_secrets[&0],
+        &config.connector_6,
+        bitcoin_txid.as_bytes(),
+        ethereum_txid.as_bytes(),
+        &config.connector_6_winternitz_secrets[&0],
     );
 
     let tx = kick_off_1_tx.finalize();

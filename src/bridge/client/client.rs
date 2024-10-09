@@ -741,6 +741,19 @@ impl BitVMClient {
         }
     }
 
+    pub async fn broadcast_peg_out_confirm(&mut self, peg_out_graph_id: &str) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().peg_out_confirm(&self.esplora).await;
+    }
+
     pub async fn broadcast_kick_off_1(&mut self, peg_out_graph_id: &str) {
         let peg_out_graph = self
             .data
@@ -751,7 +764,19 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().kick_off_1(&self.esplora).await;
+        if self.operator_context.is_some() {
+            let connector_6_id = peg_out_graph.as_ref().unwrap().connector_6_id();
+            peg_out_graph
+                .unwrap()
+                .kick_off_1(
+                    &self.esplora,
+                    self.operator_context.as_ref().unwrap(),
+                    &self.private_data.winternitz_secrets
+                        [&self.operator_context.as_ref().unwrap().operator_public_key]
+                        [peg_out_graph_id][&connector_6_id],
+                )
+                .await;
+        }
     }
 
     pub async fn broadcast_start_time(&mut self, peg_out_graph_id: &str) {
