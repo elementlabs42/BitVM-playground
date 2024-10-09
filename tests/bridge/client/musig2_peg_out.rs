@@ -220,51 +220,31 @@ async fn create_peg_out_graph(
     WithdrawerContext,
     OperatorContext,
 ) {
-    let (
-        mut depositor_operator_verifier_0_client,
-        mut verifier_1_client,
-        depositor_context,
-        operator_context,
-        _,
-        _,
-        withdrawer_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        depositor_evm_address,
-        withdrawer_evm_address,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
+    let mut depositor_operator_verifier_0_client = config.client_0;
+    let mut verifier_1_client = config.client_1;
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
     let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let deposit_funding_address = generate_pay_to_pubkey_script_address(
-        depositor_context.network,
-        &depositor_context.depositor_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
     );
     funding_inputs.push((&deposit_funding_address, deposit_input_amount));
 
     let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        operator_context.network,
-        &operator_context.operator_public_key,
+        config.operator_context.network,
+        &config.operator_context.operator_public_key,
     );
     funding_inputs.push((&kick_off_funding_utxo_address, kick_off_input_amount));
 
     let challenge_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let challenge_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        depositor_context.network,
-        &depositor_context.depositor_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
     );
     if with_challenge_tx {
         funding_inputs.push((&challenge_funding_utxo_address, challenge_input_amount));
@@ -291,7 +271,7 @@ async fn create_peg_out_graph(
         &mut verifier_1_client,
         deposit_funding_address,
         deposit_input_amount,
-        &depositor_evm_address,
+        &config.depositor_evm_address,
     )
     .await;
 
@@ -370,14 +350,14 @@ async fn create_peg_out_graph(
         let challenge_crowdfunding_input = InputWithScript {
             outpoint: challenge_funding_outpoint,
             amount: challenge_input_amount,
-            script: &generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
+            script: &generate_pay_to_pubkey_script(&config.depositor_context.depositor_public_key),
         };
         eprintln!("Broadcasting challenge...");
         depositor_operator_verifier_0_client
             .broadcast_challenge(
                 &peg_out_graph_id,
                 &vec![challenge_crowdfunding_input],
-                generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
+                generate_pay_to_pubkey_script(&config.depositor_context.depositor_public_key),
             )
             .await;
 
@@ -399,10 +379,10 @@ async fn create_peg_out_graph(
         depositor_operator_verifier_0_client,
         verifier_1_client,
         peg_out_graph_id,
-        depositor_context,
-        withdrawer_evm_address,
-        withdrawer_context,
-        operator_context,
+        config.depositor_context,
+        config.withdrawer_evm_address,
+        config.withdrawer_context,
+        config.operator_context,
     );
 }
 

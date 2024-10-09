@@ -1,7 +1,7 @@
 use bitcoin::{Address, Amount, Transaction, Txid};
 use bitvm::bridge::{
     client::client::BitVMClient,
-    connectors::connector_1::Connector1,
+    connectors::{connector_1::Connector1, connector_2::Connector2, connector_6::Connector6},
     contexts::{depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext},
     transactions::{
         assert::AssertTransaction,
@@ -18,20 +18,24 @@ pub async fn create_and_mine_kick_off_1_tx(
     client: &BitVMClient,
     operator_context: &OperatorContext,
     kick_off_1_funding_utxo_address: &Address,
+    connector_1: &Connector1,
+    connector_2: &Connector2,
+    connector_6: &Connector6,
     input_amount: Amount,
-) -> (Transaction, Txid, Connector1) {
-    let (connector_1, _) = Connector1::new(
-        operator_context.network,
-        &operator_context.operator_taproot_public_key,
-        &operator_context.n_of_n_taproot_public_key,
-    );
+) -> (Transaction, Txid) {
     let kick_off_1_funding_outpoint =
         generate_stub_outpoint(&client, kick_off_1_funding_utxo_address, input_amount).await;
     let kick_off_1_input = Input {
         outpoint: kick_off_1_funding_outpoint,
         amount: input_amount,
     };
-    let kick_off_1 = KickOff1Transaction::new(&operator_context, &connector_1, kick_off_1_input);
+    let kick_off_1 = KickOff1Transaction::new(
+        &operator_context,
+        &connector_1,
+        // &connector_2,
+        // &connector_6,
+        kick_off_1_input,
+    );
     let kick_off_1_tx = kick_off_1.finalize();
     let kick_off_1_txid = kick_off_1_tx.compute_txid();
 
@@ -39,7 +43,7 @@ pub async fn create_and_mine_kick_off_1_tx(
     let kick_off_1_result = client.esplora.broadcast(&kick_off_1_tx).await;
     assert!(kick_off_1_result.is_ok());
 
-    return (kick_off_1_tx, kick_off_1_txid, connector_1);
+    return (kick_off_1_tx, kick_off_1_txid);
 }
 
 pub async fn create_and_mine_kick_off_2_tx(
