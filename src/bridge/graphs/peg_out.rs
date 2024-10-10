@@ -43,20 +43,20 @@ use super::{
     peg_in::PegInGraph,
 };
 
-pub enum PegOutDepositorStatus {
+pub enum PegOutWithdrawerStatus {
     PegOutNotStarted, // peg-out transaction not created yet
     PegOutWait,       // peg-out not confirmed yet, wait
     PegOutComplete,   // peg-out complete
 }
 
-impl Display for PegOutDepositorStatus {
+impl Display for PegOutWithdrawerStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            PegOutDepositorStatus::PegOutNotStarted => {
+            PegOutWithdrawerStatus::PegOutNotStarted => {
                 write!(f, "Peg-out available. Request peg-out?")
             }
-            PegOutDepositorStatus::PegOutWait => write!(f, "No action available. Wait..."),
-            PegOutDepositorStatus::PegOutComplete => write!(f, "Peg-out complete. Done."),
+            PegOutWithdrawerStatus::PegOutWait => write!(f, "No action available. Wait..."),
+            PegOutWithdrawerStatus::PegOutComplete => write!(f, "Peg-out complete. Done."),
         }
     }
 }
@@ -197,8 +197,8 @@ pub struct PegOutGraph {
     operator_public_key: PublicKey,
     operator_taproot_public_key: XOnlyPublicKey,
 
-    peg_out_chain_event: Option<PegOutEvent>,
-    peg_out_transaction: Option<PegOutTransaction>,
+    pub peg_out_chain_event: Option<PegOutEvent>,
+    pub peg_out_transaction: Option<PegOutTransaction>,
 }
 
 impl BaseGraph for PegOutGraph {
@@ -979,7 +979,7 @@ impl PegOutGraph {
         return PegOutOperatorStatus::PegOutWait;
     }
 
-    pub async fn depositor_status(&self, client: &AsyncClient) -> PegOutDepositorStatus {
+    pub async fn withdrawer_status(&self, client: &AsyncClient) -> PegOutWithdrawerStatus {
         if self.peg_out_transaction.is_some() {
             let peg_out_txid = self
                 .peg_out_transaction
@@ -990,12 +990,12 @@ impl PegOutGraph {
             let peg_out_status = client.get_tx_status(&peg_out_txid).await;
 
             if peg_out_status.is_ok_and(|status| status.confirmed) {
-                return PegOutDepositorStatus::PegOutComplete;
+                return PegOutWithdrawerStatus::PegOutComplete;
             } else {
-                return PegOutDepositorStatus::PegOutWait;
+                return PegOutWithdrawerStatus::PegOutWait;
             }
         } else {
-            return PegOutDepositorStatus::PegOutNotStarted;
+            return PegOutWithdrawerStatus::PegOutNotStarted;
         }
     }
 

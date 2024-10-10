@@ -1,0 +1,116 @@
+use alloy::primitives::Address;
+use bitcoin::Network;
+use bitcoin::PublicKey;
+use clap::{arg, ArgMatches, Command};
+use core::str::FromStr;
+
+use super::query_response::Response;
+use super::query_response::ResponseStatus;
+use crate::bridge::client::client::BitVMClient;
+use crate::bridge::client::sdk::query::GraphQuery;
+use crate::bridge::constants::DestinationNetwork;
+use crate::bridge::contexts::base::generate_keys_from_secret;
+use crate::bridge::graphs::base::{VERIFIER_0_SECRET, VERIFIER_1_SECRET};
+
+pub struct QueryCommand {
+    client: BitVMClient,
+}
+
+pub const FAKE_SECRET: &str = "1000000000000000000000000000000000000000000000000000000000000000";
+
+impl QueryCommand {
+    pub async fn new(source_network: Network, destination_network: DestinationNetwork) -> Self {
+        let (_, _, verifier_0_public_key) =
+            generate_keys_from_secret(Network::Bitcoin, VERIFIER_0_SECRET);
+        let (_, _, verifier_1_public_key) =
+            generate_keys_from_secret(Network::Bitcoin, VERIFIER_1_SECRET);
+
+        let mut n_of_n_public_keys: Vec<PublicKey> = Vec::new();
+        n_of_n_public_keys.push(verifier_0_public_key);
+        n_of_n_public_keys.push(verifier_1_public_key);
+
+        let bitvm_client = BitVMClient::new(
+            source_network,
+            destination_network,
+            &n_of_n_public_keys,
+            Some(FAKE_SECRET),
+            Some(FAKE_SECRET),
+            Some(FAKE_SECRET),
+            Some(FAKE_SECRET),
+        )
+        .await;
+
+        Self {
+            client: bitvm_client,
+        }
+    }
+
+    pub fn depositor_command() -> Command {
+        Command::new("depositor")
+            .about("fetch peg-in graphs related to the specified depositor")
+            .arg(arg!(<DEPOSITOR_PUBLIC_KEY> "Depositor public key").required(true))
+    }
+
+    pub async fn handle_depositor_command(&self, sub_matches: &ArgMatches) -> Response {
+        let pubkey = PublicKey::from_str(
+            sub_matches
+                .get_one::<String>("DEPOSITOR_PUBLIC_KEY")
+                .unwrap(),
+        );
+        if pubkey.is_err() {
+            return Response::new(
+                ResponseStatus::NOK(format!(
+                    "Invalid public key. Use bitcoin public key format."
+                )),
+                None,
+            );
+        }
+
+        let result = self
+            .client
+            .get_depositor_status(&pubkey.clone().unwrap())
+            .await;
+        if result.is_some() {
+            return Response::new(ResponseStatus::OK, Some(result.unwrap()));
+        } else {
+            return Response::new(ResponseStatus::NOK(format!("Depositor not found.")), None);
+        }
+    }
+
+    pub fn withdrawer_command() -> Command {
+        Command::new("withdrawer")
+            .about("fetch peg-out graphs related to the specified withdrawer")
+            .arg(arg!(<WITHDRAWER_CHAIN_ADDRESS> "WITHDRAWER L2 Chain address").required(true))
+    }
+
+    pub async fn handle_withdrawer_command(
+        &self,
+        sub_matches: &ArgMatches,
+        destination_network: DestinationNetwork,
+    ) -> Response {
+        let chain_address = Address::from_str(
+            sub_matches
+                .get_one::<String>("WITHDRAWER_CHAIN_ADDRESS")
+                .unwrap(),
+        );
+        if chain_address.is_err() {
+            return Response::new(
+                ResponseStatus::NOK(format!(
+                    "Invalid chain address. Use {} address format.",
+                    destination_network
+                )),
+                None,
+            );
+        }
+
+        let result = self
+            .client
+            .get_withdrawer_status(&chain_address.unwrap().to_string().as_str())
+            .await;
+        if result.is_some() {
+            return Response::new(ResponseStatus::OK, Some(result.unwrap()));
+        } else {
+            return Response::new(ResponseStatus::NOK(format!("Withdrawer not found.")), None);
+        }
+    }
+}

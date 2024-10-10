@@ -1,6 +1,6 @@
-use clap::command;
-use bitvm::bridge::client::cli::key_command::KeysCommand;  
 use bitvm::bridge::client::cli::client_command::ClientCommand;
+use bitvm::bridge::client::cli::key_command::KeysCommand;
+use clap::command;
 use std::error::Error;
 
 #[tokio::main]

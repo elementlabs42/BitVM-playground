@@ -1,5 +1,6 @@
 use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::{
     collections::HashMap,
     fs::{self},
@@ -23,10 +24,14 @@ use super::{
             peg_out::{generate_id as peg_out_generate_id, PegOutGraph},
         },
         serialization::{serialize, try_deserialize},
-        transactions::base::{Input, InputWithScript},
+        transactions::{
+            base::{Input, InputWithScript},
+            pre_signed::PreSignedTransaction,
+        },
     },
     chain::chain::Chain,
     data_store::data_store::DataStore,
+    sdk::query::GraphQuery,
 };
 
 const ESPLORA_URL: &str = "https://mutinynet.com/api";
@@ -1253,4 +1258,52 @@ impl BitVMClient {
     //         }
     //     }
     // }
+}
+
+impl GraphQuery for BitVMClient {
+    async fn get_depositor_status(&self, depositor_public_key: &PublicKey) -> Option<Value> {
+        for peg_in_graph in self.data.peg_in_graphs.iter() {
+            if peg_in_graph.depositor_public_key.eq(depositor_public_key) {
+                let status = peg_in_graph.depositor_status(&self.esplora).await;
+
+                let data = json!({
+                    "peg_in_graph": peg_in_graph.id(),
+                    "status": status.to_string(),
+                    "peg_in_deposit": peg_in_graph.peg_in_deposit_transaction.tx().compute_txid(),
+                    "peg_in_refund": peg_in_graph.peg_in_refund_transaction.tx().compute_txid(),
+                    "peg_in_confirm": peg_in_graph.peg_in_confirm_transaction.tx().compute_txid(),
+                });
+
+                return Some(data);
+            }
+        }
+        None
+    }
+
+    async fn get_withdrawer_status(&self, withdrawer_chain_address: &str) -> Option<Value> {
+        for peg_out_graph in self.data.peg_out_graphs.iter() {
+            if peg_out_graph.peg_out_chain_event.is_some() {
+                if peg_out_graph
+                    .peg_out_chain_event
+                    .as_ref()
+                    .unwrap()
+                    .withdrawer_chain_address
+                    .eq(withdrawer_chain_address)
+                {
+                    let status = peg_out_graph.withdrawer_status(&self.esplora).await;
+                    let data = json!({
+                        "peg_out_graph": peg_out_graph.id(),
+                        "status": status.to_string(),
+                        "peg_out": match &peg_out_graph.peg_out_transaction {
+                            Some(tx) => tx.tx().compute_txid().to_string(),
+                            None => "".to_string(),
+                        },
+                    });
+
+                    return Some(data);
+                }
+            }
+        }
+        None
+    }
 }

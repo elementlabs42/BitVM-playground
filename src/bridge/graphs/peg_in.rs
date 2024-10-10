@@ -105,8 +105,8 @@ pub struct PegInGraph {
     id: String,
 
     pub peg_in_deposit_transaction: PegInDepositTransaction,
-    peg_in_refund_transaction: PegInRefundTransaction,
-    peg_in_confirm_transaction: PegInConfirmTransaction,
+    pub peg_in_refund_transaction: PegInRefundTransaction,
+    pub peg_in_confirm_transaction: PegInConfirmTransaction,
 
     n_of_n_presigned: bool,
     n_of_n_public_key: PublicKey,
