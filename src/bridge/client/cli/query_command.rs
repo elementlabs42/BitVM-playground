@@ -29,7 +29,7 @@ impl QueryCommand {
         n_of_n_public_keys.push(verifier_0_public_key);
         n_of_n_public_keys.push(verifier_1_public_key);
 
-        let bitvm_client = BitVMClient::new(
+        let mut bitvm_client = BitVMClient::new(
             source_network,
             destination_network,
             &n_of_n_public_keys,
@@ -39,6 +39,9 @@ impl QueryCommand {
             Some(FAKE_SECRET),
         )
         .await;
+
+        bitvm_client.sync().await;
+        bitvm_client.sync_l2().await;
 
         Self {
             client: bitvm_client,
@@ -66,6 +69,7 @@ impl QueryCommand {
             );
         }
 
+        // synced in constructor
         let result = self
             .client
             .get_depositor_status(&pubkey.clone().unwrap())
@@ -103,6 +107,7 @@ impl QueryCommand {
             );
         }
 
+        // synced in constructor
         let result = self
             .client
             .get_withdrawer_status(&chain_address.unwrap().to_string().as_str())
