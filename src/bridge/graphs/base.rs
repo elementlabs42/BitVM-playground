@@ -5,6 +5,9 @@ pub const GRAPH_VERSION: &str = "0.1";
 
 pub const INITIAL_AMOUNT: u64 = 2 << 16; // 131072
 pub const FEE_AMOUNT: u64 = 10_000;
+// TODO: Either repalce this with a routine that calculates 'min relay fee' for
+// every tx, or define local constants with appropriate values in every tx file
+// (see MIN_RELAY_FEE_AMOUNT in kick_off_2.rs).
 pub const MESSAGE_COMMITMENT_FEE_AMOUNT: u64 = 27_182;
 pub const DUST_AMOUNT: u64 = 10_000;
 pub const ONE_HUNDRED: u64 = 2 << 26; // 134217728

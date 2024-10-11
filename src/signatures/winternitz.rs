@@ -103,6 +103,17 @@ pub fn checksum(digits: [u8; N0 as usize]) -> u32 {
     D * N0 - sum
 }
 
+/// Convert a byte-encoded message to its digits
+pub fn bytes_to_digits(message_bytes: &[u8]) -> Vec<u8> {
+    let mut message_digits = Vec::new();
+    for byte in message_bytes {
+        message_digits.push(byte & 0b00001111);
+        message_digits.push(byte >> 4);
+    }
+
+    message_digits
+}
+
 /// Convert a number to digits
 pub fn to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
     let mut digits: [u8; DIGIT_COUNT] = [0; DIGIT_COUNT];

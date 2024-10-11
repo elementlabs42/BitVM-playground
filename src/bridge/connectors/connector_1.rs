@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use bitcoin::{
     key::Secp256k1,
+    p2p::message,
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
@@ -10,13 +11,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bridge::{
-        superblock::SuperblockMessage,
+        superblock::{SuperblockMessage, SUPERBLOCK_MESSAGE_DIGITS_LENGTH},
         transactions::signing_winternitz::{
             convert_winternitz_public_key, generate_winternitz_secret,
             winternitz_public_key_from_secret, WinternitzPublicKey, WinternitzSecret,
         },
     },
-    signatures::winternitz_hash::{check_hash_sig, sign_hash},
+    signatures::{
+        winternitz::bytes_to_digits,
+        winternitz_hash::{check_hash_sig, sign_hash},
+    },
 };
 
 use super::{
@@ -88,7 +92,7 @@ impl Connector1 {
             convert_winternitz_public_key(&self.winternitz_public_keys[&leaf_index]);
 
         script! {
-            { check_hash_sig(&winternitz_public_key, size_of::<SuperblockMessage>()) }
+            { check_hash_sig(&winternitz_public_key, SUPERBLOCK_MESSAGE_DIGITS_LENGTH) }
             { self.num_blocks_timelock_leaf_0 }
             OP_CSV
             OP_DROP
@@ -104,14 +108,15 @@ impl Connector1 {
         message: &[u8],
     ) -> Vec<Vec<u8>> {
         let mut unlock_data: Vec<Vec<u8>> = Vec::new();
+        let message_digits = bytes_to_digits(message);
 
-        // Push the message in reverse order
-        for byte in message.iter().rev() {
+        // Push message digits in reverse order
+        for byte in message_digits.iter().rev() {
             unlock_data.push(vec![*byte]);
         }
 
         // Push the signatures
-        let winternitz_signatures = sign_hash(&winternitz_secret, message);
+        let winternitz_signatures = sign_hash(&winternitz_secret, &message_digits);
         for winternitz_signature in winternitz_signatures {
             unlock_data.push(winternitz_signature.hash_bytes);
             unlock_data.push(vec![winternitz_signature.message_digit]);

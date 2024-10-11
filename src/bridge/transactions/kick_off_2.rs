@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::bridge::{
     connectors::base::{CommitmentConnector, P2wshConnector, TaprootConnector},
-    graphs::base::MESSAGE_COMMITMENT_FEE_AMOUNT,
     transactions::signing_winternitz::WinternitzSecret,
 };
 
@@ -20,6 +19,8 @@ use super::{
     pre_signed::*,
     signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
 };
+
+const MIN_RELAY_FEE_AMOUNT: u64 = 52_953;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct KickOff2Transaction {
@@ -64,7 +65,7 @@ impl KickOff2Transaction {
         let input_0_leaf = 0;
         let _input_0 = connector_1.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(MESSAGE_COMMITMENT_FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_AMOUNT);
 
         let _output_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
