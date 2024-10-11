@@ -239,18 +239,6 @@ mod test {
     // The secret key
     const MY_SECKEY: &str = "b138982ce17ac813d505b5b40b665d404e9528e7";
 
-    fn signatures_to_script(signatures: Vec<Vec<u8>>) -> Script {
-        script! {
-          for signature in signatures {
-            if signature.len() == 1 {
-              { signature[0] }
-            } else {
-              { signature }
-            }
-          }
-        }
-    }
-
     #[test]
     fn test_winternitz() {
         // The message to sign

@@ -45,18 +45,6 @@ mod test {
 
     use super::*;
 
-    fn signatures_to_script(signatures: Vec<Vec<u8>>) -> Script {
-        script! {
-          for signature in signatures {
-            if signature.len() == 1 {
-              { signature[0] }
-            } else {
-              { signature }
-            }
-          }
-        }
-    }
-
     #[test]
     fn test_check_hash_sig() {
         // My secret key

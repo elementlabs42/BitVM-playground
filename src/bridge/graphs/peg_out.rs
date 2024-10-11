@@ -253,13 +253,13 @@ impl PegOutGraph {
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
         );
-        let (connector_6, connector_6_winternitz_secret) =
+        let (connector_6, connector_6_winternitz_secrets) =
             Connector6::new(context.network, &context.operator_taproot_public_key);
 
         let winternitz_secrets = HashMap::from([
             (connector_1.id(), connector_1_winternitz_secrets),
             (connector_2.id(), connector_2_winternitz_secrets),
-            (connector_6.id(), connector_6_winternitz_secret),
+            (connector_6.id(), connector_6_winternitz_secrets),
         ]);
 
         let peg_out_confirm_transaction =

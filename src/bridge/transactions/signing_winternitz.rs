@@ -81,11 +81,6 @@ mod tests {
 
         assert_eq!(converted_public_key.len(), N as usize);
         for i in 0..N {
-            println!("public_key[{}]:           {:?}", i, public_key[i as usize]);
-            println!(
-                "converted_public_key[{}]: {:?}",
-                i, converted_public_key[i as usize]
-            );
             assert_eq!(public_key[i as usize], converted_public_key[i as usize]);
         }
     }

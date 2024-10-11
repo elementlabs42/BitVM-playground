@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use bitcoin::{
     key::Secp256k1,
-    p2p::message,
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
@@ -11,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bridge::{
-        superblock::{SuperblockMessage, SUPERBLOCK_MESSAGE_DIGITS_LENGTH},
+        superblock::SUPERBLOCK_MESSAGE_DIGITS_LENGTH,
         transactions::signing_winternitz::{
             convert_winternitz_public_key, generate_winternitz_secret,
             winternitz_public_key_from_secret, WinternitzPublicKey, WinternitzSecret,
