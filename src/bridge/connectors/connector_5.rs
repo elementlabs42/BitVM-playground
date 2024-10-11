@@ -71,3 +71,7 @@ impl TaprootConnector for Connector5 {
         )
     }
 }
+
+impl BaseConnector for Connector5 {
+    fn id(&self) -> ConnectorId { ConnectorId::Connector5 }
+}

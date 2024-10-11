@@ -112,3 +112,7 @@ fn generate_assert_leaves() -> (Vec<ScriptBuf>, Vec<UnlockWitnessData>) {
     }
     (locks, unlocks)
 }
+
+impl BaseConnector for ConnectorC {
+    fn id(&self) -> ConnectorId { ConnectorId::ConnectorC }
+}

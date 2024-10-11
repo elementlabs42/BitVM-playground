@@ -16,6 +16,7 @@ use super::{
     base::*,
     pre_signed::*,
     signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
+    signing_winternitz::WinternitzSecret,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -25,7 +26,6 @@ pub struct KickOff1Transaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
-    connector_6: Connector6,
 }
 
 impl PreSignedTransaction for KickOff1Transaction {
@@ -39,12 +39,20 @@ impl PreSignedTransaction for KickOff1Transaction {
 }
 
 impl KickOff1Transaction {
-    pub fn new(context: &OperatorContext, connector_1: &Connector1, input_0: Input) -> Self {
-        let mut this = Self::new_for_validation(
+    pub fn new(
+        context: &OperatorContext,
+        connector_1: &Connector1,
+        connector_2: &Connector2,
+        connector_6: &Connector6,
+        input_0: Input,
+    ) -> Self {
+        let this = Self::new_for_validation(
             context.network,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             connector_1,
+            connector_2,
+            connector_6,
             input_0,
         );
 
@@ -56,14 +64,10 @@ impl KickOff1Transaction {
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         connector_1: &Connector1,
+        connector_2: &Connector2,
+        connector_6: &Connector6,
         input_0: Input,
     ) -> Self {
-        let connector_2 = Connector2::new(
-            network,
-            operator_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
-        let connector_6 = Connector6::new(network, operator_taproot_public_key);
         let connector_a = ConnectorA::new(
             network,
             operator_taproot_public_key,
@@ -103,20 +107,21 @@ impl KickOff1Transaction {
                 script_pubkey: connector_6.generate_taproot_address().script_pubkey(), // TODO: Add address of Commit y
             }],
             prev_scripts: vec![connector_6.generate_taproot_leaf_script(input_0_leaf)],
-            connector_6,
         }
     }
 
     fn sign_input_0(
         &mut self,
         context: &OperatorContext,
-        source_network_txid: &str,
-        destination_network_txid: &str,
+        connector_6: &Connector6,
+        source_network_txid: &[u8],
+        destination_network_txid: &[u8],
+        winternitz_secret: &WinternitzSecret,
     ) {
         let input_index = 0;
         let script = &self.prev_scripts()[input_index].clone();
         let prev_outs = &self.prev_outs().clone();
-        let taproot_spend_info = self.connector_6.generate_taproot_spend_info();
+        let taproot_spend_info = connector_6.generate_taproot_spend_info();
         let mut unlock_data: Vec<Vec<u8>> = Vec::new();
 
         // get schnorr signature
@@ -132,17 +137,15 @@ impl KickOff1Transaction {
         unlock_data.push(schnorr_signature.to_vec());
 
         // get winternitz signature for source network txid
-        let winternitz_signatures_source_network = self
-            .connector_6
-            .generate_taproot_leaf_0_unlock(source_network_txid);
+        let winternitz_signatures_source_network =
+            connector_6.generate_commitment_witness(0, winternitz_secret, source_network_txid);
         for winternitz_signature in winternitz_signatures_source_network {
             unlock_data.push(winternitz_signature);
         }
 
         // get winternitz signature for destination network txid
-        let winternitz_signatures_destination_network = self
-            .connector_6
-            .generate_taproot_leaf_0_unlock(destination_network_txid);
+        let winternitz_signatures_destination_network =
+            connector_6.generate_commitment_witness(0, winternitz_secret, destination_network_txid);
         for winternitz_signature in winternitz_signatures_destination_network {
             unlock_data.push(winternitz_signature);
         }
@@ -159,10 +162,18 @@ impl KickOff1Transaction {
     pub fn sign(
         &mut self,
         context: &OperatorContext,
-        source_network_txid: &str,
-        destination_network_txid: &str,
+        connector_6: &Connector6,
+        source_network_txid: &[u8],
+        destination_network_txid: &[u8],
+        winternitz_secret: &WinternitzSecret,
     ) {
-        self.sign_input_0(context, source_network_txid, destination_network_txid);
+        self.sign_input_0(
+            context,
+            connector_6,
+            source_network_txid,
+            destination_network_txid,
+            winternitz_secret,
+        );
     }
 }
 

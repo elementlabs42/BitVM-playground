@@ -44,3 +44,7 @@ impl P2wshConnector for Connector3 {
         generate_timelock_tx_in(input, self.num_blocks_timelock)
     }
 }
+
+impl BaseConnector for Connector3 {
+    fn id(&self) -> ConnectorId { ConnectorId::Connector3 }
+}
