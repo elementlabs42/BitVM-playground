@@ -51,6 +51,7 @@ impl ClientCommand {
             config.keys.operator.as_deref(),
             config.keys.verifier.as_deref(),
             config.keys.withdrawer.as_deref(),
+            None,
         )
         .await;
 

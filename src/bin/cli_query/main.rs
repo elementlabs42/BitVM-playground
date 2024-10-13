@@ -15,7 +15,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .subcommand(QueryCommand::depositor_command())
         .subcommand(QueryCommand::withdrawer_command())
         .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin and L2 network environment (mainnet, testnet)").required(false)
-        .default_value("mainnet"));
+        .default_value("mainnet"))
+        .arg(arg!(-p --prefix <PREFIX> "Prefix for local file cache path").required(false));
 
     let matches = command.clone().get_matches();
     let (source_network, destination_network) =
@@ -27,8 +28,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 std::process::exit(1);
             }
         };
+    let prefix = matches.get_one::<String>("prefix").map(|s| s.as_str());
 
-    let query_command = QueryCommand::new(source_network, destination_network).await;
+    let query_command = QueryCommand::new(source_network, destination_network, prefix).await;
     let mut resp = Response::default();
     if let Some(sub_matches) = matches.subcommand_matches("depositor") {
         resp = query_command.handle_depositor_command(sub_matches).await;

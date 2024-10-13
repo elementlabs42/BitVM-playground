@@ -19,7 +19,11 @@ pub struct QueryCommand {
 pub const FAKE_SECRET: &str = "1000000000000000000000000000000000000000000000000000000000000000";
 
 impl QueryCommand {
-    pub async fn new(source_network: Network, destination_network: DestinationNetwork) -> Self {
+    pub async fn new(
+        source_network: Network,
+        destination_network: DestinationNetwork,
+        path_prefix: Option<&str>,
+    ) -> Self {
         let (_, _, verifier_0_public_key) =
             generate_keys_from_secret(Network::Bitcoin, VERIFIER_0_SECRET);
         let (_, _, verifier_1_public_key) =
@@ -37,6 +41,7 @@ impl QueryCommand {
             Some(FAKE_SECRET),
             Some(FAKE_SECRET),
             Some(FAKE_SECRET),
+            path_prefix,
         )
         .await;
 

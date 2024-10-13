@@ -65,6 +65,7 @@ pub struct BitVMClient {
     data: BitVMClientPublicData,
     pub fetched_file_name: Option<String>,
     pub file_path: String,
+    pub file_path_prefix: String,
 
     private_data: BitVMClientPrivateData,
 
@@ -80,6 +81,7 @@ impl BitVMClient {
         operator_secret: Option<&str>,
         verifier_secret: Option<&str>,
         withdrawer_secret: Option<&str>,
+        file_path_prefix: Option<&str>,
     ) -> Self {
         let mut depositor_context = None;
         if depositor_secret.is_some() {
@@ -120,9 +122,11 @@ impl BitVMClient {
         // TODO scope data and private data by n of n public keys
         // Prepend files with prefix
         let (n_of_n_public_key, _) = generate_n_of_n_public_key(n_of_n_public_keys);
+        let file_path_prefix = file_path_prefix.unwrap_or("").to_string();
         let file_path =
             format! {"bridge_data/{source_network}/{destination_network}/{n_of_n_public_key}"};
-        Self::create_directories_if_non_existent(&file_path);
+        let full_path = format! {"{file_path_prefix}{file_path}"};
+        Self::create_directories_if_non_existent(&full_path);
 
         let data = BitVMClientPublicData {
             version: 1,
@@ -150,6 +154,7 @@ impl BitVMClient {
             data,
             fetched_file_name: None,
             file_path,
+            file_path_prefix,
 
             private_data,
 
