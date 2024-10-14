@@ -1273,7 +1273,7 @@ impl GraphQuery for BitVMClient {
 
                 let data = json!({
                     "peg_in_graph": peg_in_graph.id(),
-                    "status": status.to_string(),
+                    "depositor_status": status.to_string(),
                     "peg_in_deposit": peg_in_graph.peg_in_deposit_transaction.tx().compute_txid(),
                     "peg_in_refund": peg_in_graph.peg_in_refund_transaction.tx().compute_txid(),
                     "peg_in_confirm": peg_in_graph.peg_in_confirm_transaction.tx().compute_txid(),
@@ -1298,7 +1298,7 @@ impl GraphQuery for BitVMClient {
                     let status = peg_out_graph.withdrawer_status(&self.esplora).await;
                     let data = json!({
                         "peg_out_graph": peg_out_graph.id(),
-                        "status": status.to_string(),
+                        "withdrawer_status": status.to_string(),
                         "peg_out": match &peg_out_graph.peg_out_transaction {
                             Some(tx) => tx.tx().compute_txid().to_string(),
                             None => "".to_string(),
