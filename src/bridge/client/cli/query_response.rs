@@ -1,5 +1,8 @@
+use strum::Display;
+
 use serde_json::{json, Value};
 
+#[derive(Display, PartialEq, Eq)]
 pub enum ResponseStatus {
     OK,
     NOK(String),

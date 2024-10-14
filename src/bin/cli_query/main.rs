@@ -14,6 +14,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .arg_required_else_help(true)
         .subcommand(QueryCommand::depositor_command())
         .subcommand(QueryCommand::withdrawer_command())
+        .subcommand(QueryCommand::history_command())
         .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin and L2 network environment (mainnet, testnet)").required(false)
         .default_value("mainnet"))
         .arg(arg!(-p --prefix <PREFIX> "Prefix for local file cache path").required(false));
@@ -37,6 +38,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     } else if let Some(sub_matches) = matches.subcommand_matches("withdrawer") {
         resp = query_command
             .handle_withdrawer_command(sub_matches, destination_network)
+            .await;
+    } else if let Some(sub_matches) = matches.subcommand_matches("history") {
+        resp = query_command
+            .handle_history_command(sub_matches, destination_network)
             .await;
     }
 

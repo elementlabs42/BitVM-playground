@@ -79,8 +79,9 @@ impl QueryCommand {
             .client
             .get_depositor_status(&pubkey.clone().unwrap())
             .await;
-        if result.is_some() {
-            return Response::new(ResponseStatus::OK, Some(result.unwrap()));
+        if result.len() > 0 {
+            let data = Some(serde_json::to_value(result).expect("Failed to merge value vector"));
+            return Response::new(ResponseStatus::OK, data);
         } else {
             return Response::new(ResponseStatus::NOK(format!("Depositor not found.")), None);
         }
@@ -117,8 +118,77 @@ impl QueryCommand {
             .client
             .get_withdrawer_status(&chain_address.unwrap().to_string().as_str())
             .await;
-        if result.is_some() {
-            return Response::new(ResponseStatus::OK, Some(result.unwrap()));
+        if result.len() > 0 {
+            let data = Some(serde_json::to_value(result).expect("Failed to merge value vector"));
+            return Response::new(ResponseStatus::OK, data);
+        } else {
+            return Response::new(ResponseStatus::NOK(format!("Withdrawer not found.")), None);
+        }
+    }
+
+    pub fn history_command() -> Command {
+        Command::new("history")
+            .about("fetch peg-in / peg-out graphs with bitcoin public key and ethereum address at the same time")
+            .arg(arg!(<DEPOSITOR_PUBLIC_KEY> "Depositor public key").required(true))
+            .arg(arg!(<WITHDRAWER_CHAIN_ADDRESS> "WITHDRAWER L2 Chain address").required(true))
+    }
+
+    pub async fn handle_history_command(
+        &self,
+        sub_matches: &ArgMatches,
+        destination_network: DestinationNetwork,
+    ) -> Response {
+        let pubkey = PublicKey::from_str(
+            sub_matches
+                .get_one::<String>("DEPOSITOR_PUBLIC_KEY")
+                .unwrap(),
+        );
+        if pubkey.is_err() {
+            return Response::new(
+                ResponseStatus::NOK(format!(
+                    "Invalid public key. Use bitcoin public key format."
+                )),
+                None,
+            );
+        }
+        let chain_address = Address::from_str(
+            sub_matches
+                .get_one::<String>("WITHDRAWER_CHAIN_ADDRESS")
+                .unwrap(),
+        );
+        if chain_address.is_err() {
+            return Response::new(
+                ResponseStatus::NOK(format!(
+                    "Invalid chain address. Use {} address format.",
+                    destination_network
+                )),
+                None,
+            );
+        }
+
+        // synced in constructor
+        let mut result_depositor = self
+            .client
+            .get_depositor_status(&pubkey.clone().unwrap())
+            .await;
+        let mut result_withdrawer = self
+            .client
+            .get_withdrawer_status(&chain_address.unwrap().to_string().as_str())
+            .await;
+
+        let result = match (result_depositor.len(), result_withdrawer.len()) {
+            (0, 0) => vec![],
+            (0, _) => result_withdrawer,
+            (_, 0) => result_depositor,
+            _ => {
+                result_depositor.append(&mut result_withdrawer);
+                result_depositor
+            }
+        };
+
+        if result.len() > 0 {
+            let data = Some(serde_json::to_value(result).expect("Failed to merge value vector"));
+            return Response::new(ResponseStatus::OK, data);
         } else {
             return Response::new(ResponseStatus::NOK(format!("Withdrawer not found.")), None);
         }

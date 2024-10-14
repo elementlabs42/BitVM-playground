@@ -7,9 +7,9 @@ pub trait GraphQuery {
     fn get_depositor_status(
         &self,
         depositor_public_key: &PublicKey,
-    ) -> impl Future<Output = Option<Value>>;
+    ) -> impl Future<Output = Vec<Value>>;
     fn get_withdrawer_status(
         &self,
         withdrawer_chain_address: &str,
-    ) -> impl Future<Output = Option<Value>>;
+    ) -> impl Future<Output = Vec<Value>>;
 }

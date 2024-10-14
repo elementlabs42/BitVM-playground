@@ -1,3 +1,4 @@
+use futures::future::join_all;
 use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -1266,49 +1267,52 @@ impl BitVMClient {
 }
 
 impl GraphQuery for BitVMClient {
-    async fn get_depositor_status(&self, depositor_public_key: &PublicKey) -> Option<Value> {
-        for peg_in_graph in self.data.peg_in_graphs.iter() {
-            if peg_in_graph.depositor_public_key.eq(depositor_public_key) {
-                let status = peg_in_graph.depositor_status(&self.esplora).await;
-
-                let data = json!({
-                    "peg_in_graph": peg_in_graph.id(),
-                    "depositor_status": status.to_string(),
-                    "peg_in_deposit": peg_in_graph.peg_in_deposit_transaction.tx().compute_txid(),
-                    "peg_in_refund": peg_in_graph.peg_in_refund_transaction.tx().compute_txid(),
-                    "peg_in_confirm": peg_in_graph.peg_in_confirm_transaction.tx().compute_txid(),
-                });
-
-                return Some(data);
-            }
-        }
-        None
+    async fn get_depositor_status(&self, depositor_public_key: &PublicKey) -> Vec<Value> {
+        join_all(
+            self.data
+                .peg_in_graphs
+                .iter()
+                .filter(|&graph| graph.depositor_public_key.eq(depositor_public_key))
+                .map(|graph| async {
+                    let status = graph.depositor_status(&self.esplora).await;
+                    json!({
+                        "peg_in_graph": graph.id(),
+                        "depositor_status": status.to_string(),
+                        "peg_in_deposit": graph.peg_in_deposit_transaction.tx().compute_txid(),
+                        "peg_in_refund": graph.peg_in_refund_transaction.tx().compute_txid(),
+                        "peg_in_confirm": graph.peg_in_confirm_transaction.tx().compute_txid(),
+                    })
+                }),
+        )
+        .await
     }
 
-    async fn get_withdrawer_status(&self, withdrawer_chain_address: &str) -> Option<Value> {
-        for peg_out_graph in self.data.peg_out_graphs.iter() {
-            if peg_out_graph.peg_out_chain_event.is_some() {
-                if peg_out_graph
-                    .peg_out_chain_event
-                    .as_ref()
-                    .unwrap()
-                    .withdrawer_chain_address
-                    .eq(withdrawer_chain_address)
-                {
-                    let status = peg_out_graph.withdrawer_status(&self.esplora).await;
-                    let data = json!({
-                        "peg_out_graph": peg_out_graph.id(),
+    async fn get_withdrawer_status(&self, withdrawer_chain_address: &str) -> Vec<Value> {
+        join_all(
+            self.data
+                .peg_out_graphs
+                .iter()
+                .filter(|&graph| graph.peg_out_chain_event.is_some())
+                .filter(|&graph| {
+                    graph
+                        .peg_out_chain_event
+                        .as_ref()
+                        .unwrap()
+                        .withdrawer_chain_address
+                        .eq(withdrawer_chain_address)
+                })
+                .map(|graph| async {
+                    let status = graph.withdrawer_status(&self.esplora).await;
+                    json!({
+                        "peg_out_graph": graph.id(),
                         "withdrawer_status": status.to_string(),
-                        "peg_out": match &peg_out_graph.peg_out_transaction {
+                        "peg_out": match &graph.peg_out_transaction {
                             Some(tx) => tx.tx().compute_txid().to_string(),
                             None => "".to_string(),
                         },
-                    });
-
-                    return Some(data);
-                }
-            }
-        }
-        None
+                    })
+                }),
+        )
+        .await
     }
 }
