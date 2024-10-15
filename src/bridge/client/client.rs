@@ -9,9 +9,12 @@ use std::{
 };
 
 use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid};
-use esplora_client::{AsyncClient, Builder, Utxo};
+use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
 
-use crate::bridge::{constants::DestinationNetwork, contexts::base::generate_n_of_n_public_key};
+use crate::bridge::{
+    constants::DestinationNetwork, contexts::base::generate_n_of_n_public_key,
+    graphs::base::get_tx_statuses,
+};
 
 use super::{
     super::{
@@ -1274,13 +1277,57 @@ impl GraphQuery for BitVMClient {
                 .iter()
                 .filter(|&graph| graph.depositor_public_key.eq(depositor_public_key))
                 .map(|graph| async {
-                    let status = graph.depositor_status(&self.esplora).await;
+                    let tx_ids = vec![
+                        graph.peg_in_deposit_transaction.tx().compute_txid(),
+                        graph.peg_in_confirm_transaction.tx().compute_txid(),
+                        graph.peg_in_refund_transaction.tx().compute_txid(),
+                    ];
+                    let tx_statuses_results = get_tx_statuses(&self.esplora, &tx_ids).await;
+                    let blockchain_height = self.esplora.get_height().await.unwrap();
+                    let status = graph.interpret_operator_status(
+                        &tx_statuses_results[0],
+                        &tx_statuses_results[1],
+                        &tx_statuses_results[2],
+                        blockchain_height,
+                    );
+
+                    let tx_statuses = tx_statuses_results
+                        .iter()
+                        .map(|tx_status| {
+                            tx_status.as_ref().unwrap_or(&TxStatus {
+                                confirmed: false,
+                                block_height: None,
+                                block_hash: None,
+                                block_time: None,
+                            })
+                        })
+                        .collect::<Vec<_>>();
+                    let tx_json_values = tx_statuses
+                        .iter()
+                        .enumerate()
+                        .map(|(i, tx_status)| {
+                            json!({
+                            "type": match i {
+                                0 => "peg_in_deposit",
+                                1 => "peg_in_confirm",
+                                2 => "peg_in_refund",
+                                _ => unreachable!(),
+                            },
+                            "txid": tx_ids[i],
+                            "status": {
+                                "confirmed": tx_status.confirmed,
+                                "block_height": tx_status.block_height.unwrap_or(0),
+                                "block_hash": tx_status.block_hash.or_else(|| None),
+                                "block_time": tx_status.block_time.unwrap_or(0),
+                            }})
+                        })
+                        .collect::<Vec<_>>();
+
                     json!({
                         "peg_in_graph": graph.id(),
                         "depositor_status": status.to_string(),
-                        "peg_in_deposit": graph.peg_in_deposit_transaction.tx().compute_txid(),
-                        "peg_in_refund": graph.peg_in_refund_transaction.tx().compute_txid(),
-                        "peg_in_confirm": graph.peg_in_confirm_transaction.tx().compute_txid(),
+                        "amount": graph.peg_in_deposit_transaction.prev_outs()[0].value.to_sat(),
+                        "transactions" : tx_json_values,
                     })
                 }),
         )
@@ -1292,24 +1339,55 @@ impl GraphQuery for BitVMClient {
             self.data
                 .peg_out_graphs
                 .iter()
-                .filter(|&graph| graph.peg_out_chain_event.is_some())
                 .filter(|&graph| {
-                    graph
-                        .peg_out_chain_event
-                        .as_ref()
-                        .unwrap()
-                        .withdrawer_chain_address
-                        .eq(withdrawer_chain_address)
+                    if graph.peg_out_chain_event.is_some() {
+                        return graph
+                            .peg_out_chain_event
+                            .as_ref()
+                            .unwrap()
+                            .withdrawer_chain_address
+                            .eq(withdrawer_chain_address);
+                    }
+                    false
                 })
                 .map(|graph| async {
-                    let status = graph.withdrawer_status(&self.esplora).await;
+                    let (tx_json_value, tx_status_result, peg_out_amount) =
+                        match &graph.peg_out_transaction {
+                            Some(tx) => {
+                                let txid = tx.tx().compute_txid();
+                                let tx_status_result = self.esplora.get_tx_status(&txid).await;
+                                let tx_status = tx_status_result.as_ref().unwrap_or(&TxStatus {
+                                    confirmed: false,
+                                    block_height: None,
+                                    block_hash: None,
+                                    block_time: None,
+                                });
+                                let tx_json_value = json!({
+                                    "type": "peg_out",
+                                    "txid": txid,
+                                    "status": {
+                                        "confirmed": tx_status.confirmed,
+                                        "block_height": tx_status.block_height.unwrap_or(0),
+                                        "block_hash": tx_status.block_hash.or_else(|| None),
+                                        "block_time": tx_status.block_time.unwrap_or(0),
+                                    }
+                                });
+
+                                (
+                                    Some(tx_json_value),
+                                    Some(tx_status_result),
+                                    tx.tx().output[0].value.to_sat(),
+                                )
+                            }
+                            None => (Some(json!([])), None, 0),
+                        };
+
+                    let status = graph.interpret_operator_status(tx_status_result.as_ref());
                     json!({
                         "peg_out_graph": graph.id(),
                         "withdrawer_status": status.to_string(),
-                        "peg_out": match &graph.peg_out_transaction {
-                            Some(tx) => tx.tx().compute_txid().to_string(),
-                            None => "".to_string(),
-                        },
+                        "amount": peg_out_amount,
+                        "transactions": tx_json_value,
                     })
                 }),
         )

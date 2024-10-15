@@ -195,7 +195,8 @@ impl ClientCommand {
         .required(false).default_value("mainnet"))
     }
 
-    pub async fn handle_status_command(&self) -> io::Result<()> {
+    pub async fn handle_status_command(&mut self) -> io::Result<()> {
+        self.client.sync().await;
         self.client.status().await;
         Ok(())
     }

@@ -979,17 +979,16 @@ impl PegOutGraph {
         return PegOutOperatorStatus::PegOutWait;
     }
 
-    pub async fn withdrawer_status(&self, client: &AsyncClient) -> PegOutWithdrawerStatus {
-        if self.peg_out_transaction.is_some() {
-            let peg_out_txid = self
-                .peg_out_transaction
-                .as_ref()
+    pub fn interpret_operator_status(
+        &self,
+        peg_out_status: Option<&Result<TxStatus, Error>>,
+    ) -> PegOutWithdrawerStatus {
+        if peg_out_status.is_some() {
+            if peg_out_status
                 .unwrap()
-                .tx()
-                .compute_txid();
-            let peg_out_status = client.get_tx_status(&peg_out_txid).await;
-
-            if peg_out_status.is_ok_and(|status| status.confirmed) {
+                .as_ref()
+                .is_ok_and(|status| status.confirmed)
+            {
                 return PegOutWithdrawerStatus::PegOutComplete;
             } else {
                 return PegOutWithdrawerStatus::PegOutWait;
@@ -997,6 +996,23 @@ impl PegOutGraph {
         } else {
             return PegOutWithdrawerStatus::PegOutNotStarted;
         }
+    }
+
+    pub async fn withdrawer_status(&self, client: &AsyncClient) -> PegOutWithdrawerStatus {
+        let peg_out_status = match self.peg_out_transaction {
+            Some(_) => {
+                let peg_out_txid = self
+                    .peg_out_transaction
+                    .as_ref()
+                    .unwrap()
+                    .tx()
+                    .compute_txid();
+                let peg_out_status = client.get_tx_status(&peg_out_txid).await;
+                Some(peg_out_status)
+            }
+            None => None,
+        };
+        self.interpret_operator_status(peg_out_status.as_ref())
     }
 
     pub async fn peg_out(&mut self, client: &AsyncClient, context: &OperatorContext, input: Input) {
