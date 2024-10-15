@@ -82,7 +82,7 @@ impl Connector6 {
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 
-    pub fn generate_taproot_leaf_0_unlock(
+    pub fn generate_taproot_leaf_0_witness(
         &self,
         winternitz_secret: &WinternitzSecret,
         message: &[u8],
@@ -148,7 +148,7 @@ impl CommitmentConnector for Connector6 {
         message: &[u8],
     ) -> Vec<Vec<u8>> {
         match leaf_index {
-            0 => self.generate_taproot_leaf_0_unlock(winternitz_secret, message),
+            0 => self.generate_taproot_leaf_0_witness(winternitz_secret, message),
             _ => panic!("Invalid leaf index."),
         }
     }

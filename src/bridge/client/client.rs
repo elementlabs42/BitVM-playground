@@ -36,7 +36,7 @@ use super::{
 const ESPLORA_URL: &str = "https://mutinynet.com/api";
 const TEN_MINUTES: u64 = 10 * 60;
 
-const PRIVATE_DATA_FILE_NAME: &str = "data.json";
+const PRIVATE_DATA_FILE_NAME: &str = "secret_data.json";
 
 pub type UtxoSet = HashMap<OutPoint, Height>;
 

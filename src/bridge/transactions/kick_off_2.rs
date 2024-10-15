@@ -116,18 +116,9 @@ impl KickOff2Transaction {
         );
         unlock_data.push(schnorr_signature.to_vec());
 
-        // // context.paul.unlock.y()
-        // self.tx.input[input_index]
-        //     .witness
-        //     .push(prevout_leaf.0.to_bytes());
-
-        // // context.paul.unlock.sb()
-        // self.tx.input[input_index]
-        //     .witness
-        //     .push(prevout_leaf.0.to_bytes());
-
+        let leaf_index = 0;
         let winternitz_signatures =
-            connector_1.generate_commitment_witness(0, winternitz_secret, message);
+            connector_1.generate_commitment_witness(leaf_index, winternitz_secret, message);
         for winternitz_signature in winternitz_signatures {
             unlock_data.push(winternitz_signature);
         }

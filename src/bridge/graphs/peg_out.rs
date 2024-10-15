@@ -1337,21 +1337,21 @@ impl PegOutGraph {
 
     pub async fn kick_off_2(
         &mut self,
-        network_client: &AsyncClient,
+        client: &AsyncClient,
         context: &OperatorContext,
         connector_1_winternitz_secrets: &HashMap<u8, WinternitzSecret>,
         sb_message: &SuperblockMessage,
     ) {
         verify_if_not_mined(
-            network_client,
+            client,
             self.kick_off_2_transaction.tx().compute_txid(),
         )
         .await;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
-        let kick_off_1_status = network_client.get_tx_status(&kick_off_1_txid).await;
+        let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
 
-        let blockchain_height = get_block_height(network_client).await;
+        let blockchain_height = get_block_height(client).await;
 
         if kick_off_1_status
             .as_ref()
@@ -1376,7 +1376,7 @@ impl PegOutGraph {
                 let kick_off_2_tx = self.kick_off_2_transaction.finalize();
 
                 // broadcast kick-off 2 tx
-                let kick_off_2_result = network_client.broadcast(&kick_off_2_tx).await;
+                let kick_off_2_result = client.broadcast(&kick_off_2_tx).await;
 
                 // verify kick-off 2 tx result
                 verify_tx_result(&kick_off_2_result);
