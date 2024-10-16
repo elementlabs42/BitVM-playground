@@ -1324,10 +1324,11 @@ impl GraphQuery for BitVMClient {
                         .collect::<Vec<_>>();
 
                     json!({
-                        "peg_in_graph": graph.id(),
-                        "depositor_status": status.to_string(),
+                        "type": "peg_in",
+                        "graph_id": graph.id(),
+                        "status": status.to_string(),
                         "amount": graph.peg_in_deposit_transaction.prev_outs()[0].value.to_sat(),
-                        "transactions" : tx_json_values,
+                        "txs" : tx_json_values,
                     })
                 }),
         )
@@ -1384,10 +1385,11 @@ impl GraphQuery for BitVMClient {
 
                     let status = graph.interpret_operator_status(tx_status_result.as_ref());
                     json!({
-                        "peg_out_graph": graph.id(),
-                        "withdrawer_status": status.to_string(),
+                        "type": "peg_out",
+                        "graph_id": graph.id(),
+                        "status": status.to_string(),
                         "amount": peg_out_amount,
-                        "transactions": tx_json_value,
+                        "txs": tx_json_value,
                     })
                 }),
         )
