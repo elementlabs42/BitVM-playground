@@ -5,12 +5,13 @@ use crate::bridge::contexts::base::generate_keys_from_secret;
 use crate::bridge::graphs::base::{BaseGraph, VERIFIER_0_SECRET, VERIFIER_1_SECRET};
 use crate::bridge::graphs::peg_in::PegInDepositorStatus;
 use crate::bridge::graphs::peg_out::PegOutOperatorStatus;
+use crate::bridge::superblock::{find_superblock, get_superblock_message};
 use bitcoin::Network;
 use bitcoin::PublicKey;
 use clap::{arg, ArgMatches, Command};
 use colored::Colorize;
 use std::io::{self, Write};
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, BufReader};
 
 pub struct ClientCommand {
     client: BitVMClient,
@@ -106,11 +107,22 @@ impl ClientCommand {
                     PegOutOperatorStatus::PegOutStartTimeAvailable => {
                         self.client.broadcast_start_time(peg_out_graph.id()).await
                     }
+                    PegOutOperatorStatus::PegOutPegOutConfirmAvailable => {
+                        self.client
+                            .broadcast_peg_out_confirm(peg_out_graph.id())
+                            .await
+                    }
                     PegOutOperatorStatus::PegOutKickOff1Available => {
                         self.client.broadcast_kick_off_1(peg_out_graph.id()).await
                     }
                     PegOutOperatorStatus::PegOutKickOff2Available => {
-                        self.client.broadcast_kick_off_2(peg_out_graph.id()).await
+                        let (sb, sb_hash) = find_superblock();
+                        self.client
+                            .broadcast_kick_off_2(
+                                peg_out_graph.id(),
+                                &get_superblock_message(&sb, &sb_hash),
+                            )
+                            .await
                     }
                     PegOutOperatorStatus::PegOutAssertAvailable => {
                         self.client.broadcast_assert(peg_out_graph.id()).await
@@ -155,6 +167,7 @@ impl ClientCommand {
                 Command::new("tx")
                     .about("Broadcast transactions")
                     .arg(arg!(-g --graph_id <GRAPH_ID> "Peg-out graph ID").required(true))
+                    .subcommand(Command::new("peg_out_confirm").about("Broadcast peg-out confirm"))
                     .subcommand(Command::new("kick_off_1").about("Broadcast kick off 1"))
                     .subcommand(Command::new("kick_off_2").about("Broadcast kick off 2"))
                     .subcommand(Command::new("start_time").about("Broadcast start time"))
@@ -174,8 +187,14 @@ impl ClientCommand {
             Some(("deposit", _)) => self.client.broadcast_peg_in_deposit(graph_id).await,
             Some(("refund", _)) => self.client.broadcast_peg_in_refund(graph_id).await,
             Some(("confirm", _)) => self.client.broadcast_peg_in_confirm(graph_id).await,
+            Some(("peg_out_confirm", _)) => self.client.broadcast_peg_out_confirm(graph_id).await,
             Some(("kick_off_1", _)) => self.client.broadcast_kick_off_1(graph_id).await,
-            Some(("kick_off_2", _)) => self.client.broadcast_kick_off_2(graph_id).await,
+            Some(("kick_off_2", _)) => {
+                let (sb, sb_hash) = find_superblock();
+                self.client
+                    .broadcast_kick_off_2(graph_id, &get_superblock_message(&sb, &sb_hash))
+                    .await
+            }
             Some(("start_time", _)) => self.client.broadcast_start_time(graph_id).await,
             Some(("assert", _)) => self.client.broadcast_assert(graph_id).await,
             Some(("take_1", _)) => self.client.broadcast_take_1(graph_id).await,
