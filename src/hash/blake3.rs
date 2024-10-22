@@ -1,6 +1,8 @@
 #![allow(non_snake_case)]
 use std::collections::HashMap;
 
+use bitcoin::script;
+
 use crate::pseudo::push_to_stack;
 use crate::treepp::{script, Script};
 use crate::u32::u32_std::{u32_equalverify, u32_roll};
@@ -444,7 +446,7 @@ pub fn blake3_160_var_length(num_bytes: usize) -> Script {
     script!{
         { blake3_var_length( num_bytes ) }
         // Reduce the digest's length to 20 bytes
-        for _ in 0..12 {
+        for i in 0..12 {
             OP_DROP
         }
     }
