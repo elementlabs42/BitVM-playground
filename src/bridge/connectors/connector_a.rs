@@ -23,6 +23,18 @@ impl ConnectorA {
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
     ) -> Self {
+        Self::new_for_validation(
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
+        )
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        operator_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+    ) -> Self {
         ConnectorA {
             network,
             operator_taproot_public_key: operator_taproot_public_key.clone(),

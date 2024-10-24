@@ -30,6 +30,20 @@ impl ConnectorZ {
         depositor_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
     ) -> Self {
+        Self::new_for_validation(
+            network,
+            evm_address,
+            depositor_taproot_public_key,
+            n_of_n_taproot_public_key,
+        )
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        evm_address: &str,
+        depositor_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+    ) -> Self {
         ConnectorZ {
             network,
             depositor_taproot_public_key: depositor_taproot_public_key.clone(),

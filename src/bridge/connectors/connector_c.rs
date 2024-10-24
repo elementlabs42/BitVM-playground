@@ -30,6 +30,13 @@ pub struct ConnectorC {
 
 impl ConnectorC {
     pub fn new(network: Network, operator_taproot_public_key: &XOnlyPublicKey) -> Self {
+        Self::new_for_validation(network, operator_taproot_public_key)
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        operator_taproot_public_key: &XOnlyPublicKey,
+    ) -> Self {
         let leaves = generate_assert_leaves();
 
         ConnectorC {

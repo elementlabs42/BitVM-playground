@@ -19,6 +19,10 @@ pub struct Connector4 {
 
 impl Connector4 {
     pub fn new(network: Network, operator_public_key: &PublicKey) -> Self {
+        Self::new_for_validation(network, operator_public_key)
+    }
+
+    pub fn new_for_validation(network: Network, operator_public_key: &PublicKey) -> Self {
         Connector4 {
             network,
             operator_public_key: operator_public_key.clone(),

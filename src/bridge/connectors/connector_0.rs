@@ -18,6 +18,13 @@ pub struct Connector0 {
 
 impl Connector0 {
     pub fn new(network: Network, n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
+        Self::new_for_validation(network, n_of_n_taproot_public_key)
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+    ) -> Self {
         Connector0 {
             network,
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),

@@ -50,10 +50,13 @@ async fn test_take_2_success() {
     // assert
     let (assert_tx, assert_txid) = create_and_mine_assert_tx(
         &config.client_0,
-        &config.operator_context,
         &config.verifier_0_context,
         &config.verifier_1_context,
         &assert_funding_address,
+        &config.connector_4,
+        &config.connector_5,
+        &config.connector_b,
+        &config.connector_c,
         assert_input_amount,
     )
     .await;
@@ -94,6 +97,10 @@ async fn test_take_2_success() {
 
     let mut take_2 = Take2Transaction::new(
         &config.operator_context,
+        &config.connector_0,
+        &config.connector_4,
+        &config.connector_5,
+        &config.connector_c,
         take_2_input_0,
         take_2_input_1,
         take_2_input_2,
@@ -103,8 +110,18 @@ async fn test_take_2_success() {
     let secret_nonces_0 = take_2.push_nonces(&config.verifier_0_context);
     let secret_nonces_1 = take_2.push_nonces(&config.verifier_1_context);
 
-    take_2.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-    take_2.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+    take_2.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_0,
+        &config.connector_5,
+        &secret_nonces_0,
+    );
+    take_2.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_0,
+        &config.connector_5,
+        &secret_nonces_1,
+    );
 
     let take_2_tx = take_2.finalize();
     let take_2_txid = take_2_tx.compute_txid();
