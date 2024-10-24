@@ -41,7 +41,8 @@ async fn test_take_2_success() {
         &config.depositor_context,
         &config.verifier_0_context,
         &config.verifier_1_context,
-        &config.depositor_evm_address,
+        &config.connector_0,
+        &config.connector_z,
         &peg_in_confirm_funding_address,
         deposit_input_amount,
     )
