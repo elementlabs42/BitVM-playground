@@ -171,65 +171,39 @@ impl PegInGraph {
         }
     }
 
+    pub fn new_for_query(
+        network: Network,
+        depositor_public_key: &PublicKey,
+        depositor_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_public_key: &PublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        depositor_evm_address: &str,
+        deposit_input: Input,
+    ) -> Self {
+        create_graph_without_signing(
+            network,
+            depositor_public_key,
+            depositor_taproot_public_key,
+            n_of_n_public_key,
+            n_of_n_taproot_public_key,
+            depositor_evm_address,
+            deposit_input,
+        )
+    }
+
     pub fn new_for_validation(&self) -> Self {
-        let peg_in_deposit_transaction = PegInDepositTransaction::new_for_validation(
+        create_graph_without_signing(
             self.network,
             &self.depositor_public_key,
             &self.depositor_taproot_public_key,
+            &self.n_of_n_public_key,
             &self.n_of_n_taproot_public_key,
             &self.depositor_evm_address,
             Input {
                 outpoint: self.peg_in_deposit_transaction.tx().input[0].previous_output, // Self-referencing
                 amount: self.peg_in_deposit_transaction.prev_outs()[0].value, // Self-referencing
             },
-        );
-        let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();
-
-        let peg_in_refund_vout_0: usize = 0;
-        let peg_in_refund_transaction = PegInRefundTransaction::new_for_validation(
-            self.network,
-            &self.depositor_public_key,
-            &self.depositor_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
-            &self.depositor_evm_address,
-            Input {
-                outpoint: OutPoint {
-                    txid: peg_in_deposit_txid,
-                    vout: peg_in_refund_vout_0.to_u32().unwrap(),
-                },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout_0].value,
-            },
-        );
-
-        let peg_in_confirm_vout_0: usize = 0;
-        let peg_in_confirm_transaction = PegInConfirmTransaction::new_for_validation(
-            self.network,
-            &self.depositor_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
-            &self.depositor_evm_address,
-            Input {
-                outpoint: OutPoint {
-                    txid: peg_in_deposit_txid,
-                    vout: peg_in_confirm_vout_0.to_u32().unwrap(),
-                },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout_0].value,
-            },
-        );
-
-        PegInGraph {
-            version: GRAPH_VERSION.to_string(),
-            network: self.network,
-            id: generate_id(&peg_in_deposit_transaction),
-            peg_in_deposit_transaction,
-            peg_in_refund_transaction,
-            peg_in_confirm_transaction,
-            n_of_n_presigned: false,
-            n_of_n_public_key: self.n_of_n_public_key,
-            n_of_n_taproot_public_key: self.n_of_n_taproot_public_key,
-            depositor_public_key: self.depositor_public_key,
-            depositor_taproot_public_key: self.depositor_taproot_public_key,
-            depositor_evm_address: self.depositor_evm_address.clone(),
-        }
+        )
     }
 
     pub fn push_nonces(
@@ -506,4 +480,70 @@ pub fn generate_id(peg_in_deposit_transaction: &PegInDepositTransaction) -> Stri
     hasher.update(peg_in_deposit_transaction.tx().compute_txid().to_string());
 
     hasher.finalize().to_hex_string(Upper)
+}
+
+fn create_graph_without_signing(
+    network: Network,
+    depositor_public_key: &PublicKey,
+    depositor_taproot_public_key: &XOnlyPublicKey,
+    n_of_n_public_key: &PublicKey,
+    n_of_n_taproot_public_key: &XOnlyPublicKey,
+    depositor_evm_address: &str,
+    deposit_input: Input,
+) -> PegInGraph {
+    let peg_in_deposit_transaction = PegInDepositTransaction::new_for_validation(
+        network,
+        &depositor_public_key,
+        &depositor_taproot_public_key,
+        &n_of_n_taproot_public_key,
+        &depositor_evm_address,
+        deposit_input,
+    );
+    let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();
+
+    let peg_in_refund_vout_0: usize = 0;
+    let peg_in_refund_transaction = PegInRefundTransaction::new_for_validation(
+        network,
+        &depositor_public_key,
+        &depositor_taproot_public_key,
+        &n_of_n_taproot_public_key,
+        &depositor_evm_address,
+        Input {
+            outpoint: OutPoint {
+                txid: peg_in_deposit_txid,
+                vout: peg_in_refund_vout_0.to_u32().unwrap(),
+            },
+            amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout_0].value,
+        },
+    );
+
+    let peg_in_confirm_vout_0: usize = 0;
+    let peg_in_confirm_transaction = PegInConfirmTransaction::new_for_validation(
+        network,
+        &depositor_taproot_public_key,
+        &n_of_n_taproot_public_key,
+        &depositor_evm_address,
+        Input {
+            outpoint: OutPoint {
+                txid: peg_in_deposit_txid,
+                vout: peg_in_confirm_vout_0.to_u32().unwrap(),
+            },
+            amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout_0].value,
+        },
+    );
+
+    PegInGraph {
+        version: GRAPH_VERSION.to_string(),
+        network,
+        id: generate_id(&peg_in_deposit_transaction),
+        peg_in_deposit_transaction,
+        peg_in_refund_transaction,
+        peg_in_confirm_transaction,
+        n_of_n_presigned: false,
+        n_of_n_public_key: *n_of_n_public_key,
+        n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
+        depositor_public_key: *depositor_public_key,
+        depositor_taproot_public_key: *depositor_taproot_public_key,
+        depositor_evm_address: depositor_evm_address.to_string(),
+    }
 }

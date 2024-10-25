@@ -8,7 +8,10 @@ use std::{
     path::Path,
 };
 
-use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid};
+use bitcoin::{
+    absolute::Height, consensus::encode::serialize_hex, Address, Amount, Network, OutPoint,
+    PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
+};
 use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
 
 use crate::bridge::{
@@ -1458,5 +1461,40 @@ impl GraphQuery for BitVMClient {
                 }),
         )
         .await
+    }
+
+    async fn get_depositor_transactions(
+        &self,
+        depositor_public_key: &PublicKey,
+        depositor_taproot_public_key: &XOnlyPublicKey,
+        deposit_input: Input,
+        depositor_evm_address: &str,
+    ) -> Value {
+        if self.depositor_context.is_none() {
+            // depositor context should contain pub key of n_of_n
+            panic!("Depositor context must be initialized");
+        }
+
+        let n_of_n_public_key = &self.depositor_context.as_ref().unwrap().n_of_n_public_key;
+        let n_of_n_taproot_public_key = &self
+            .depositor_context
+            .as_ref()
+            .unwrap()
+            .n_of_n_taproot_public_key;
+        let peg_in_graph = PegInGraph::new_for_query(
+            self.depositor_context.as_ref().unwrap().network,
+            depositor_public_key,
+            depositor_taproot_public_key,
+            n_of_n_public_key,
+            n_of_n_taproot_public_key,
+            depositor_evm_address,
+            deposit_input,
+        );
+
+        json!({
+            "deposit": serialize_hex(peg_in_graph.peg_in_deposit_transaction.tx()),
+            "confirm": serialize_hex(peg_in_graph.peg_in_confirm_transaction.tx()),
+            "refund": serialize_hex(peg_in_graph.peg_in_refund_transaction.tx()),
+        })
     }
 }

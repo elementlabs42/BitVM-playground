@@ -15,6 +15,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .subcommand(QueryCommand::depositor_command())
         .subcommand(QueryCommand::withdrawer_command())
         .subcommand(QueryCommand::history_command())
+        .subcommand(QueryCommand::transactions_command())
         .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin and L2 network environment (mainnet, testnet)").required(false)
         .default_value("mainnet"))
         .arg(arg!(-p --prefix <PREFIX> "Prefix for local file cache path").required(false));
@@ -31,7 +32,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
     let prefix = matches.get_one::<String>("prefix").map(|s| s.as_str());
 
-    let query_command = QueryCommand::new(source_network, destination_network, prefix).await;
+    let mut query_command = QueryCommand::new(source_network, destination_network, prefix).await;
     let mut resp = Response::default();
     if let Some(sub_matches) = matches.subcommand_matches("depositor") {
         resp = query_command.handle_depositor_command(sub_matches).await;
@@ -42,6 +43,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     } else if let Some(sub_matches) = matches.subcommand_matches("history") {
         resp = query_command
             .handle_history_command(sub_matches, destination_network)
+            .await;
+    } else if let Some(sub_matches) = matches.subcommand_matches("transactions") {
+        resp = query_command
+            .handle_transactions_command(sub_matches, destination_network)
             .await;
     }
 
