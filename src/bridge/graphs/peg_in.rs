@@ -1,6 +1,6 @@
 use bitcoin::{
     hex::{Case::Upper, DisplayHex},
-    Network, OutPoint, PublicKey, Txid, XOnlyPublicKey,
+    Network, OutPoint, PublicKey, Transaction, Txid, XOnlyPublicKey,
 };
 use esplora_client::{AsyncClient, Error, TxStatus};
 use musig2::SecNonce;
@@ -11,6 +11,8 @@ use std::{
     collections::HashMap,
     fmt::{Display, Formatter, Result as FmtResult},
 };
+
+use crate::bridge::client::sdk::query_contexts::depositor_signatures::DepositorSignatures;
 
 use super::{
     super::{
@@ -127,32 +129,19 @@ impl PegInGraph {
     pub fn new(context: &DepositorContext, deposit_input: Input, evm_address: &str) -> Self {
         let peg_in_deposit_transaction =
             PegInDepositTransaction::new(context, evm_address, deposit_input);
-        let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();
 
         let peg_in_refund_vout_0: usize = 0;
         let peg_in_refund_transaction = PegInRefundTransaction::new(
             context,
             evm_address,
-            Input {
-                outpoint: OutPoint {
-                    txid: peg_in_deposit_txid,
-                    vout: peg_in_refund_vout_0.to_u32().unwrap(),
-                },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout_0].value,
-            },
+            generate_input(&peg_in_deposit_transaction.tx(), peg_in_refund_vout_0),
         );
 
         let peg_in_confirm_vout_0: usize = 0;
         let peg_in_confirm_transaction = PegInConfirmTransaction::new(
             context,
             evm_address,
-            Input {
-                outpoint: OutPoint {
-                    txid: peg_in_deposit_txid,
-                    vout: peg_in_confirm_vout_0.to_u32().unwrap(),
-                },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout_0].value,
-            },
+            generate_input(&peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
         );
 
         PegInGraph {
@@ -189,6 +178,63 @@ impl PegInGraph {
             depositor_evm_address,
             deposit_input,
         )
+    }
+
+    pub fn new_with_depositor_signatures(
+        network: Network,
+        depositor_public_key: &PublicKey,
+        depositor_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_public_key: &PublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        depositor_evm_address: &str,
+        deposit_input: Input,
+        signatures: &DepositorSignatures,
+    ) -> Self {
+        let peg_in_deposit_transaction = PegInDepositTransaction::new_with_signature(
+            network,
+            depositor_public_key,
+            depositor_taproot_public_key,
+            n_of_n_taproot_public_key,
+            depositor_evm_address,
+            deposit_input,
+            signatures.deposit,
+        );
+
+        let peg_in_refund_vout_0: usize = 0;
+        let peg_in_refund_transaction = PegInRefundTransaction::new_with_signature(
+            network,
+            depositor_public_key,
+            depositor_taproot_public_key,
+            n_of_n_taproot_public_key,
+            depositor_evm_address,
+            generate_input(&peg_in_deposit_transaction.tx(), peg_in_refund_vout_0),
+            signatures.refund,
+        );
+
+        let peg_in_confirm_vout_0: usize = 0;
+        let peg_in_confirm_transaction = PegInConfirmTransaction::new_with_depositor_signature(
+            network,
+            depositor_taproot_public_key,
+            n_of_n_taproot_public_key,
+            depositor_evm_address,
+            generate_input(&peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
+            signatures.confirm,
+        );
+
+        PegInGraph {
+            version: GRAPH_VERSION.to_string(),
+            network,
+            id: generate_id(&peg_in_deposit_transaction),
+            peg_in_deposit_transaction,
+            peg_in_refund_transaction,
+            peg_in_confirm_transaction,
+            n_of_n_presigned: false,
+            n_of_n_public_key: *n_of_n_public_key,
+            n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
+            depositor_public_key: *depositor_public_key,
+            depositor_taproot_public_key: *depositor_taproot_public_key,
+            depositor_evm_address: depositor_evm_address.to_string(),
+        }
     }
 
     pub fn new_for_validation(&self) -> Self {
@@ -493,43 +539,30 @@ fn create_graph_without_signing(
 ) -> PegInGraph {
     let peg_in_deposit_transaction = PegInDepositTransaction::new_for_validation(
         network,
-        &depositor_public_key,
-        &depositor_taproot_public_key,
-        &n_of_n_taproot_public_key,
-        &depositor_evm_address,
+        depositor_public_key,
+        depositor_taproot_public_key,
+        n_of_n_taproot_public_key,
+        depositor_evm_address,
         deposit_input,
     );
-    let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();
 
     let peg_in_refund_vout_0: usize = 0;
     let peg_in_refund_transaction = PegInRefundTransaction::new_for_validation(
         network,
-        &depositor_public_key,
-        &depositor_taproot_public_key,
-        &n_of_n_taproot_public_key,
-        &depositor_evm_address,
-        Input {
-            outpoint: OutPoint {
-                txid: peg_in_deposit_txid,
-                vout: peg_in_refund_vout_0.to_u32().unwrap(),
-            },
-            amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout_0].value,
-        },
+        depositor_public_key,
+        depositor_taproot_public_key,
+        n_of_n_taproot_public_key,
+        depositor_evm_address,
+        generate_input(&peg_in_deposit_transaction.tx(), peg_in_refund_vout_0),
     );
 
     let peg_in_confirm_vout_0: usize = 0;
     let peg_in_confirm_transaction = PegInConfirmTransaction::new_for_validation(
         network,
-        &depositor_taproot_public_key,
-        &n_of_n_taproot_public_key,
-        &depositor_evm_address,
-        Input {
-            outpoint: OutPoint {
-                txid: peg_in_deposit_txid,
-                vout: peg_in_confirm_vout_0.to_u32().unwrap(),
-            },
-            amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout_0].value,
-        },
+        depositor_taproot_public_key,
+        n_of_n_taproot_public_key,
+        depositor_evm_address,
+        generate_input(&peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
     );
 
     PegInGraph {
@@ -545,5 +578,15 @@ fn create_graph_without_signing(
         depositor_public_key: *depositor_public_key,
         depositor_taproot_public_key: *depositor_taproot_public_key,
         depositor_evm_address: depositor_evm_address.to_string(),
+    }
+}
+
+fn generate_input(tx: &Transaction, vout: usize) -> Input {
+    Input {
+        outpoint: OutPoint {
+            txid: tx.compute_txid(),
+            vout: vout.to_u32().unwrap(),
+        },
+        amount: tx.output[vout].value,
     }
 }

@@ -1,11 +1,17 @@
 use alloy::primitives::Address;
-use bitcoin::{Amount, Denomination, Network, OutPoint, PublicKey, XOnlyPublicKey};
+use bitcoin::{Network, PublicKey, XOnlyPublicKey};
 use clap::{arg, ArgMatches, Command};
 use core::str::FromStr;
 
-use super::query_response::{Response, ResponseStatus};
+use super::{
+    query_response::{Response, ResponseStatus},
+    validation::{validate, ArgType},
+};
 use crate::bridge::{
-    client::{client::BitVMClient, sdk::query::GraphQuery},
+    client::{
+        client::BitVMClient,
+        sdk::{query::GraphQuery, query_contexts::depositor_signatures::DepositorSignatures},
+    },
     constants::DestinationNetwork,
     contexts::base::generate_keys_from_secret,
     graphs::base::{VERIFIER_0_SECRET, VERIFIER_1_SECRET},
@@ -137,45 +143,32 @@ impl QueryCommand {
 
     pub async fn handle_history_command(
         &mut self,
-        sub_matches: &ArgMatches,
+        matches: &ArgMatches,
         destination_network: DestinationNetwork,
     ) -> Response {
-        let pubkey = PublicKey::from_str(
-            sub_matches
-                .get_one::<String>("DEPOSITOR_PUBLIC_KEY")
-                .unwrap(),
-        );
-        if pubkey.is_err() {
-            return Response::new(
-                ResponseStatus::NOK(format!(
-                    "Invalid public key. Use bitcoin public key format."
-                )),
-                None,
-            );
-        }
-        let chain_address = Address::from_str(
-            sub_matches
-                .get_one::<String>("WITHDRAWER_CHAIN_ADDRESS")
-                .unwrap(),
-        );
-        if chain_address.is_err() {
-            return Response::new(
-                ResponseStatus::NOK(format!(
-                    "Invalid chain address. Use {} address format.",
-                    destination_network
-                )),
-                None,
-            );
-        }
+        let args = vec![
+            "DEPOSITOR_PUBLIC_KEY".to_string(),
+            "WITHDRAWER_CHAIN_ADDRESS".into(),
+        ];
+        let validate_result = match validate(matches, args, destination_network) {
+            Ok(result) => result,
+            Err(err) => return err,
+        };
+        let (pubkey, chain_address) = match &validate_result[..] {
+            [arg1, arg2, ..] => match (arg1, arg2) {
+                (ArgType::DepositorPublicKey(pubkey), ArgType::ChainAddress(chain_address)) => {
+                    (pubkey, chain_address)
+                }
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        };
 
         self.sync().await;
-        let mut result_depositor = self
-            .client
-            .get_depositor_status(&pubkey.clone().unwrap())
-            .await;
+        let mut result_depositor = self.client.get_depositor_status(&pubkey).await;
         let mut result_withdrawer = self
             .client
-            .get_withdrawer_status(&chain_address.unwrap().to_string().as_str())
+            .get_withdrawer_status(&chain_address.to_string().as_str())
             .await;
 
         let result = match (result_depositor.len(), result_withdrawer.len()) {
@@ -192,7 +185,10 @@ impl QueryCommand {
             let data = Some(serde_json::to_value(result).expect("Failed to merge value vector"));
             return Response::new(ResponseStatus::OK, data);
         } else {
-            return Response::new(ResponseStatus::NOK(format!("Withdrawer not found.")), None);
+            return Response::new(
+                ResponseStatus::NOK(format!("Depositor /Withdrawer not found.")),
+                None,
+            );
         }
     }
 
@@ -200,75 +196,140 @@ impl QueryCommand {
         Command::new("transactions")
             .about("create transactions of peg-in graph for depositor to sign")
             .arg(arg!(<DEPOSITOR_PUBLIC_KEY> "Depositor public key").required(true))
-            .arg(arg!(<WITHDRAWER_CHAIN_ADDRESS> "WITHDRAWER L2 Chain address").required(true))
+            .arg(arg!(<DESTINATION_CHAIN_ADDRESS> "Depositor's desination address on L2 Chain").required(true))
             .arg(arg!(<OUTPOINT> "Previous output for peg-in deposit transaction input, format: <txid>:<vout>").required(true))
             .arg(arg!(<SATS> "Amount of satoshis to deposit, should be also the value of previous output").required(true))
     }
 
     pub async fn handle_transactions_command(
         &self,
-        sub_matches: &ArgMatches,
+        matches: &ArgMatches,
         destination_network: DestinationNetwork,
     ) -> Response {
-        let pubkey = PublicKey::from_str(
-            sub_matches
-                .get_one::<String>("DEPOSITOR_PUBLIC_KEY")
-                .unwrap(),
-        );
-        if pubkey.is_err() {
-            return Response::new(
-                ResponseStatus::NOK(format!(
-                    "Invalid public key. Use bitcoin public key format."
-                )),
-                None,
-            );
-        }
-        let x_only_pubkey = XOnlyPublicKey::from(pubkey.clone().unwrap());
-        let chain_address = Address::from_str(
-            sub_matches
-                .get_one::<String>("WITHDRAWER_CHAIN_ADDRESS")
-                .unwrap(),
-        );
-        if chain_address.is_err() {
-            return Response::new(
-                ResponseStatus::NOK(format!(
-                    "Invalid chain address. Use {} address format.",
-                    destination_network
-                )),
-                None,
-            );
-        }
-        let outpoint = OutPoint::from_str(sub_matches.get_one::<String>("OUTPOINT").unwrap());
-        if outpoint.is_err() {
-            return Response::new(
-                ResponseStatus::NOK("Invalid OutPoint. Use <txid>:<vout> format.".to_string()),
-                None,
-            );
-        }
-        let satoshis = Amount::from_str_in(
-            sub_matches.get_one::<String>("SATS").unwrap(),
-            Denomination::Satoshi,
-        );
-        if satoshis.is_err() {
-            return Response::new(
-                ResponseStatus::NOK("Invalid amount of satoshis. Use u64.".to_string()),
-                None,
-            );
-        }
+        let args = vec![
+            "DEPOSITOR_PUBLIC_KEY".to_string(),
+            "DESTINATION_CHAIN_ADDRESS".into(),
+            "OUTPOINT".into(),
+            "SATS".into(),
+        ];
+        let validate_result = match validate(matches, args, destination_network) {
+            Ok(result) => result,
+            Err(err) => return err,
+        };
+        let (pubkey, chain_address, outpoint, satoshis) = match &validate_result[..] {
+            [arg1, arg2, arg3, arg4, ..] => match (arg1, arg2, arg3, arg4) {
+                (
+                    ArgType::DepositorPublicKey(pubkey),
+                    ArgType::ChainAddress(chain_address),
+                    ArgType::OutPoint(outpoint),
+                    ArgType::Satoshis(satoshis),
+                ) => (pubkey, chain_address, outpoint, satoshis),
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        };
+        let x_only_pubkey = XOnlyPublicKey::from(pubkey.clone());
 
         // do not need to sync
         let result = self
             .client
             .get_depositor_transactions(
-                &pubkey.clone().unwrap(),
+                &pubkey.clone(),
                 &x_only_pubkey,
                 Input {
-                    outpoint: outpoint.unwrap(),
-                    amount: satoshis.unwrap(),
+                    outpoint: *outpoint,
+                    amount: *satoshis,
                 },
-                &chain_address.unwrap().to_string().as_str(),
+                &chain_address.to_string().as_str(),
             )
             .await;
-        Response::new(ResponseStatus::OK, Some(result))
+
+        match result {
+            Ok(result) => Response::new(ResponseStatus::OK, Some(result)),
+            Err(err) => Response::new(ResponseStatus::NOK(err.to_string()), None),
+        }
+    }
+
+    pub fn signatures_command() -> Command {
+        Command::new("signatures")
+            .about("create peg-in graph and broadcast peg-in deposit with depositor signatures")
+            .arg(arg!(<DEPOSITOR_PUBLIC_KEY> "Depositor public key").required(true))
+            .arg(arg!(<DESTINATION_CHAIN_ADDRESS> "Depositor's desination address on L2 Chain").required(true))
+            .arg(arg!(<OUTPOINT> "Previous output for peg-in deposit transaction input, format: <txid>:<vout>").required(true))
+            .arg(arg!(<SATS> "Amount of satoshis to deposit, should be also the value of previous output").required(true))
+            .arg(arg!(<DEPOSIT> "Sinature hex for peg-in deposit").required(true))
+            .arg(arg!(<CONFIRM> "Sinature hex for peg-in confirm").required(true))
+            .arg(arg!(<REFUND> "Sinature hex for peg-in refund").required(true))
+    }
+
+    pub async fn handle_signatures_command(
+        &mut self,
+        matches: &ArgMatches,
+        destination_network: DestinationNetwork,
+    ) -> Response {
+        let args = vec![
+            "DEPOSITOR_PUBLIC_KEY".to_string(),
+            "DESTINATION_CHAIN_ADDRESS".into(),
+            "OUTPOINT".into(),
+            "SATS".into(),
+            "DEPOSIT".into(),
+            "CONFIRM".into(),
+            "REFUND".into(),
+        ];
+        let validate_result = match validate(matches, args, destination_network) {
+            Ok(result) => result,
+            Err(err) => return err,
+        };
+        let (pubkey, chain_address, outpoint, satoshis, deposit, confirm, refund) =
+            match &validate_result[..] {
+                [arg1, arg2, arg3, arg4, arg5, arg6, arg7, ..] => {
+                    match (arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+                        (
+                            ArgType::DepositorPublicKey(pubkey),
+                            ArgType::ChainAddress(chain_address),
+                            ArgType::OutPoint(outpoint),
+                            ArgType::Satoshis(satoshis),
+                            ArgType::EcdsaSignature(deposit),
+                            ArgType::TaprootSignature(confirm),
+                            ArgType::TaprootSignature(refund),
+                        ) => (
+                            pubkey,
+                            chain_address,
+                            outpoint,
+                            satoshis,
+                            deposit,
+                            confirm,
+                            refund,
+                        ),
+                        _ => unreachable!(),
+                    }
+                }
+                _ => unreachable!(),
+            };
+        let x_only_pubkey = XOnlyPublicKey::from(pubkey.clone());
+
+        self.sync().await;
+        let result = self
+            .client
+            .create_peg_in_graph_with_depositor_signatures(
+                &pubkey,
+                &x_only_pubkey,
+                Input {
+                    outpoint: *outpoint,
+                    amount: *satoshis,
+                },
+                &chain_address.to_string().as_str(),
+                &DepositorSignatures {
+                    deposit: *deposit,
+                    refund: *refund,
+                    confirm: *confirm,
+                },
+            )
+            .await;
+
+        match result {
+            Ok(result) => Response::new(ResponseStatus::OK, Some(result)),
+            Err(err) => Response::new(ResponseStatus::NOK(err.to_string()), None),
+        }
     }
 }

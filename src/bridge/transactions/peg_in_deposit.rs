@@ -13,6 +13,7 @@ use super::{
     },
     base::*,
     pre_signed::*,
+    signing::populate_p2wsh_witness_with_signatures,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -46,6 +47,29 @@ impl PegInDepositTransaction {
         );
 
         this.sign_input_0(context);
+
+        this
+    }
+
+    pub fn new_with_signature(
+        network: Network,
+        depositor_public_key: &PublicKey,
+        depositor_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        evm_address: &str,
+        input_0: Input,
+        signature: bitcoin::ecdsa::Signature,
+    ) -> Self {
+        let mut this = Self::new_for_validation(
+            network,
+            &depositor_public_key,
+            &depositor_taproot_public_key,
+            &n_of_n_taproot_public_key,
+            evm_address,
+            input_0,
+        );
+
+        this.sign_input_0_with_signature(signature);
 
         this
     }
@@ -98,6 +122,17 @@ impl PegInDepositTransaction {
             input_index,
             EcdsaSighashType::All,
             &vec![&context.depositor_keypair],
+        );
+    }
+
+    fn sign_input_0_with_signature(&mut self, signature: bitcoin::ecdsa::Signature) {
+        let input_index = 0;
+        let script = &self.prev_scripts()[input_index].clone();
+        populate_p2wsh_witness_with_signatures(
+            self.tx_mut(),
+            input_index,
+            script,
+            &vec![signature],
         );
     }
 }
