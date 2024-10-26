@@ -25,9 +25,7 @@ use bitcoin::{
 
 use serde::{Deserialize, Serialize};
 
-use super::base::{
-    generate_default_tx_in, BaseConnector, CommitmentConnector, ConnectorId, TaprootConnector,
-};
+use super::base::{generate_default_tx_in, CommitmentConnector, TaprootConnector};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Connector6 {
@@ -40,24 +38,20 @@ impl Connector6 {
     pub fn new(
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
-        commitment_message_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
     ) -> Self {
-        Self::new_for_validation(
-            network,
-            operator_taproot_public_key,
-            commitment_message_public_keys,
-        )
+        Self::new_for_validation(network, operator_taproot_public_key, commitment_public_keys)
     }
 
     pub fn new_for_validation(
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
-        commitment_message_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
     ) -> Self {
         Connector6 {
             network,
             operator_taproot_public_key: operator_taproot_public_key.clone(),
-            commitment_public_keys: commitment_message_public_keys.clone(),
+            commitment_public_keys: commitment_public_keys.clone(),
         }
     }
 
@@ -93,18 +87,14 @@ impl Connector6 {
         }
 
         // Push the signature
-        let witnernitz_signatures = sign_hash(commitment_secret.into(), &message_digits);
-        for winternitz_signature in witnernitz_signatures.into_iter() {
+        let winternitz_signatures = sign_hash(commitment_secret.into(), &message_digits);
+        for winternitz_signature in winternitz_signatures.into_iter() {
             unlock_data.push(winternitz_signature.hash_bytes);
             unlock_data.push(vec![winternitz_signature.message_digit]);
         }
 
         unlock_data
     }
-}
-
-impl BaseConnector for Connector6 {
-    fn id(&self) -> ConnectorId { ConnectorId::Connector6 }
 }
 
 impl TaprootConnector for Connector6 {

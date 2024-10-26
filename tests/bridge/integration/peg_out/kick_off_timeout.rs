@@ -67,7 +67,7 @@ async fn test_kick_off_timeout_success() {
         config.verifier_0_context.network,
         &config.operator_context.operator_taproot_public_key, // Verifiers get this via remote storage.
         &config.verifier_0_context.n_of_n_taproot_public_key,
-        &config.connector_1.winternitz_public_keys, // Verifiers get this via remote storage.
+        &config.connector_1.commitment_public_keys, // Verifiers get this via remote storage.
     );
     kick_off_timeout.pre_sign(
         &config.verifier_0_context,
@@ -78,7 +78,7 @@ async fn test_kick_off_timeout_success() {
         config.verifier_0_context.network,
         &config.operator_context.operator_taproot_public_key,
         &config.verifier_0_context.n_of_n_taproot_public_key,
-        &config.connector_1.winternitz_public_keys,
+        &config.connector_1.commitment_public_keys,
     );
     kick_off_timeout.pre_sign(
         &config.verifier_1_context,

@@ -1,5 +1,4 @@
 use bitcoin::{taproot::TaprootSpendInfo, Address, ScriptBuf, Sequence, TxIn, Witness};
-use serde::{Deserialize, Serialize};
 
 use crate::bridge::transactions::signing_winternitz::WinternitzSecret;
 
@@ -37,25 +36,6 @@ pub fn generate_check_lock_time_tx_in(input: &Input, num_blocks: u32) -> TxIn {
     let mut tx_in = generate_default_tx_in(input);
     tx_in.sequence = Sequence(num_blocks & 0xFFFFFFFF);
     tx_in
-}
-
-#[derive(Serialize, Deserialize, Eq, PartialEq, Hash)]
-pub enum ConnectorId {
-    Connector0,
-    Connector1,
-    Connector2,
-    Connector3,
-    Connector4,
-    Connector5,
-    Connector6,
-    ConnectorA,
-    ConnectorB,
-    ConnectorC,
-    ConnectorZ,
-}
-
-pub trait BaseConnector {
-    fn id(&self) -> ConnectorId;
 }
 
 pub trait P2wshConnector {

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bridge::{
+        graphs::peg_out::CommitmentMessageId,
         superblock::SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS,
         transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
     },
@@ -34,7 +35,7 @@ pub struct Connector1 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
-    pub winternitz_public_keys: HashMap<u8, WinternitzPublicKey>, // Leaf index -> WinternitzPublicKey
+    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKey>,
     pub num_blocks_timelock_leaf_0: u32,
     pub num_blocks_timelock_leaf_1: u32,
     pub num_blocks_timelock_leaf_2: u32,
@@ -45,34 +46,27 @@ impl Connector1 {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-    ) -> (Self, HashMap<u8, WinternitzSecret>) {
-        let leaf_index = 0;
-        let winternitz_secrets = HashMap::from([(leaf_index, WinternitzSecret::new())]);
-        let winternitz_public_keys = winternitz_secrets
-            .iter()
-            .map(|(k, v)| (*k, WinternitzPublicKey::from(v)))
-            .collect();
-        let this = Self::new_for_validation(
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+    ) -> Self {
+        Self::new_for_validation(
             network,
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
-            &winternitz_public_keys,
-        );
-
-        (this, winternitz_secrets)
+            commitment_public_keys,
+        )
     }
 
     pub fn new_for_validation(
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        winternitz_public_keys: &HashMap<u8, WinternitzPublicKey>,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
     ) -> Self {
         Connector1 {
             network,
             operator_taproot_public_key: operator_taproot_public_key.clone(),
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
-            winternitz_public_keys: winternitz_public_keys.clone(),
+            commitment_public_keys: commitment_public_keys.clone(),
             num_blocks_timelock_leaf_0: num_blocks_per_network(network, NUM_BLOCKS_PER_2_WEEKS),
             num_blocks_timelock_leaf_1: num_blocks_per_network(
                 network,
@@ -83,11 +77,11 @@ impl Connector1 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let leaf_index = 0;
-        let winternitz_public_key = PublicKey::from(&self.winternitz_public_keys[&leaf_index]);
+        let superblock_public_key =
+            PublicKey::from(&self.commitment_public_keys[&CommitmentMessageId::Superblock]);
 
         script! {
-            { check_hash_sig(&winternitz_public_key, SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS) }
+            { check_hash_sig(&superblock_public_key, SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS) }
             { self.num_blocks_timelock_leaf_0 }
             OP_CSV
             OP_DROP
@@ -99,7 +93,7 @@ impl Connector1 {
 
     fn generate_taproot_leaf_0_witness(
         &self,
-        winternitz_secret: &WinternitzSecret,
+        commitment_secret: &WinternitzSecret,
         message: &[u8],
     ) -> Vec<Vec<u8>> {
         let mut unlock_data: Vec<Vec<u8>> = Vec::new();
@@ -111,7 +105,7 @@ impl Connector1 {
         }
 
         // Push the signatures
-        let winternitz_signatures = sign_hash(winternitz_secret.into(), &message_digits);
+        let winternitz_signatures = sign_hash(commitment_secret.into(), &message_digits);
         for winternitz_signature in winternitz_signatures {
             unlock_data.push(winternitz_signature.hash_bytes);
             unlock_data.push(vec![winternitz_signature.message_digit]);
@@ -145,10 +139,6 @@ impl Connector1 {
     fn generate_taproot_leaf_2_tx_in(&self, input: &Input) -> TxIn {
         generate_timelock_tx_in(input, self.num_blocks_timelock_leaf_2)
     }
-}
-
-impl BaseConnector for Connector1 {
-    fn id(&self) -> ConnectorId { ConnectorId::Connector1 }
 }
 
 impl TaprootConnector for Connector1 {
@@ -194,11 +184,11 @@ impl CommitmentConnector for Connector1 {
     fn generate_commitment_witness(
         &self,
         leaf_index: u32,
-        winternitz_secret: &WinternitzSecret,
+        commitment_secret: &WinternitzSecret,
         message: &[u8],
     ) -> Vec<Vec<u8>> {
         match leaf_index {
-            0 => self.generate_taproot_leaf_0_witness(winternitz_secret, message),
+            0 => self.generate_taproot_leaf_0_witness(commitment_secret, message),
             _ => panic!("Invalid leaf index."),
         }
     }

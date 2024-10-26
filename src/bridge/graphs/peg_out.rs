@@ -17,12 +17,7 @@ use std::{
 use super::{
     super::{
         client::chain::chain::PegOutEvent,
-        connectors::{
-            base::{BaseConnector, ConnectorId},
-            connector_1::Connector1,
-            connector_2::Connector2,
-            connector_6::Connector6,
-        },
+        connectors::{connector_1::Connector1, connector_2::Connector2, connector_6::Connector6},
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         superblock::SuperblockMessage,
         transactions::{
@@ -271,15 +266,23 @@ impl PegOutGraph {
 
         let commitment_secrets = CommitmentMessageId::generate_commitment_secrets();
 
-        let (connector_1, _) = Connector1::new(
+        let connector_1 = Connector1::new(
             context.network,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
+            &HashMap::from([(
+                CommitmentMessageId::Superblock,
+                WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
+            )]),
         );
-        let (connector_2, _) = Connector2::new(
+        let connector_2 = Connector2::new(
             context.network,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
+            &HashMap::from([(
+                CommitmentMessageId::StartTime,
+                WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::StartTime]),
+            )]),
         );
         let connector_6 = Connector6::new(
             context.network,
@@ -556,13 +559,13 @@ impl PegOutGraph {
             self.network,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
-            &self.connector_1.winternitz_public_keys,
+            &self.connector_1.commitment_public_keys,
         );
         let connector_2 = Connector2::new_for_validation(
             self.network,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
-            &self.connector_2.winternitz_public_keys,
+            &self.connector_2.commitment_public_keys,
         );
         let connector_6 = Connector6::new_for_validation(
             self.network,
@@ -840,10 +843,6 @@ impl PegOutGraph {
             peg_out_transaction: None,
         }
     }
-
-    pub fn connector_1_id(&self) -> ConnectorId { self.connector_1.id() }
-    pub fn connector_2_id(&self) -> ConnectorId { self.connector_2.id() }
-    pub fn connector_6_id(&self) -> ConnectorId { self.connector_6.id() }
 
     pub fn push_nonces(
         &mut self,
