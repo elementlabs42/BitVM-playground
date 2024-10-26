@@ -555,19 +555,19 @@ impl PegOutGraph {
     pub fn new_for_validation(&self) -> Self {
         let peg_in_confirm_txid = self.take_1_transaction.tx().input[0].previous_output.txid; // Self-referencing
 
-        let connector_1 = Connector1::new_for_validation(
+        let connector_1 = Connector1::new(
             self.network,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             &self.connector_1.commitment_public_keys,
         );
-        let connector_2 = Connector2::new_for_validation(
+        let connector_2 = Connector2::new(
             self.network,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             &self.connector_2.commitment_public_keys,
         );
-        let connector_6 = Connector6::new_for_validation(
+        let connector_6 = Connector6::new(
             self.network,
             &self.operator_taproot_public_key,
             &self.connector_6.commitment_public_keys,
