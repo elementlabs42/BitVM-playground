@@ -10,14 +10,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bridge::{
-        superblock::SUPERBLOCK_MESSAGE_DIGITS_LENGTH,
-        transactions::signing_winternitz::{
-            convert_winternitz_public_key, generate_winternitz_secret,
-            winternitz_public_key_from_secret, WinternitzPublicKey, WinternitzSecret,
-        },
+        superblock::SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS,
+        transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
     },
     signatures::{
-        winternitz::bytes_to_digits,
+        winternitz::{bytes_to_digits, PublicKey},
         winternitz_hash::{check_hash_sig, sign_hash},
     },
 };
@@ -50,10 +47,10 @@ impl Connector1 {
         n_of_n_taproot_public_key: &XOnlyPublicKey,
     ) -> (Self, HashMap<u8, WinternitzSecret>) {
         let leaf_index = 0;
-        let winternitz_secrets = HashMap::from([(leaf_index, generate_winternitz_secret())]);
+        let winternitz_secrets = HashMap::from([(leaf_index, WinternitzSecret::new())]);
         let winternitz_public_keys = winternitz_secrets
             .iter()
-            .map(|(k, v)| (*k, winternitz_public_key_from_secret(&v)))
+            .map(|(k, v)| (*k, WinternitzPublicKey::from(v)))
             .collect();
         let this = Self::new_for_validation(
             network,
@@ -87,11 +84,10 @@ impl Connector1 {
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
         let leaf_index = 0;
-        let winternitz_public_key =
-            convert_winternitz_public_key(&self.winternitz_public_keys[&leaf_index]);
+        let winternitz_public_key = PublicKey::from(&self.winternitz_public_keys[&leaf_index]);
 
         script! {
-            { check_hash_sig(&winternitz_public_key, SUPERBLOCK_MESSAGE_DIGITS_LENGTH) }
+            { check_hash_sig(&winternitz_public_key, SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS) }
             { self.num_blocks_timelock_leaf_0 }
             OP_CSV
             OP_DROP
@@ -115,7 +111,7 @@ impl Connector1 {
         }
 
         // Push the signatures
-        let winternitz_signatures = sign_hash(&winternitz_secret, &message_digits);
+        let winternitz_signatures = sign_hash(winternitz_secret.into(), &message_digits);
         for winternitz_signature in winternitz_signatures {
             unlock_data.push(winternitz_signature.hash_bytes);
             unlock_data.push(vec![winternitz_signature.message_digit]);

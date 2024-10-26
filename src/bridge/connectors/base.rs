@@ -80,7 +80,7 @@ pub trait CommitmentConnector {
     fn generate_commitment_witness(
         &self,
         leaf_index: u32,
-        winternitz_secret: &WinternitzSecret,
+        commitment_secret: &WinternitzSecret,
         message: &[u8],
     ) -> Vec<Vec<u8>>;
 }
@@ -89,7 +89,7 @@ pub trait CompactCommitmentConnector {
     fn generate_compact_commitment_witness(
         &self,
         leaf_index: u32,
-        winternitz_secret: &WinternitzSecret,
+        commitment_secret: &WinternitzSecret,
         number: u32,
     ) -> Vec<Vec<u8>>;
 }

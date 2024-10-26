@@ -3,10 +3,7 @@ use std::collections::HashMap;
 use crate::{
     bridge::{
         constants::N_SEQUENCE_FOR_LOCK_TIME,
-        transactions::signing_winternitz::{
-            generate_winternitz_secret, winternitz_public_key_from_secret, WinternitzPublicKey,
-            WinternitzSecret,
-        },
+        transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
     },
     signatures::winternitz_compact::sign,
     treepp::script,
@@ -44,10 +41,10 @@ impl Connector2 {
         n_of_n_taproot_public_key: &XOnlyPublicKey,
     ) -> (Self, HashMap<u8, WinternitzSecret>) {
         let leaf_index = 0;
-        let winternitz_secrets = HashMap::from([(leaf_index, generate_winternitz_secret())]);
+        let winternitz_secrets = HashMap::from([(leaf_index, WinternitzSecret::new())]);
         let winternitz_public_keys = winternitz_secrets
             .iter()
-            .map(|(k, v)| (*k, winternitz_public_key_from_secret(&v)))
+            .map(|(k, v)| (*k, WinternitzPublicKey::from(v)))
             .collect();
         let this = Self::new_for_validation(
             network,
@@ -96,7 +93,7 @@ impl Connector2 {
         start_time_block: u32,
     ) -> Vec<Vec<u8>> {
         sign::<N0_32, N1_32>(
-            &winternitz_secret,
+            winternitz_secret.into(),
             message_to_digits::<N0_32>(start_time_block),
         )
     }
