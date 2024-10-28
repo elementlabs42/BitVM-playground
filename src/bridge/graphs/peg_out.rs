@@ -193,7 +193,6 @@ impl Display for PegOutOperatorStatus {
     }
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 struct PegOutConnectors {
     connector_0: Connector0,
     connector_1: Connector1,
@@ -222,7 +221,16 @@ pub struct PegOutGraph {
     pub peg_in_graph_id: String,
     peg_in_confirm_txid: Txid,
 
-    connectors: PegOutConnectors,
+    connector_0: Connector0,
+    connector_1: Connector1,
+    connector_2: Connector2,
+    connector_3: Connector3,
+    connector_4: Connector4,
+    connector_5: Connector5,
+    connector_6: Connector6,
+    connector_a: ConnectorA,
+    connector_b: ConnectorB,
+    connector_c: ConnectorC,
 
     peg_out_confirm_transaction: PegOutConfirmTransaction,
     assert_transaction: AssertTransaction,
@@ -259,7 +267,12 @@ impl PegOutGraph {
         let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
 
-        let (connectors, winternitz_secrets) = Self::create_new_connectors(context);
+        let (connectors, winternitz_secrets) = Self::create_new_connectors(
+            context.network,
+            &context.n_of_n_taproot_public_key,
+            &context.operator_taproot_public_key,
+            &context.operator_public_key,
+        );
 
         let peg_out_confirm_transaction =
             PegOutConfirmTransaction::new(context, &connectors.connector_6, peg_out_confirm_input);
@@ -501,7 +514,16 @@ impl PegOutGraph {
                 n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
                 peg_in_graph_id: peg_in_graph.id().clone(),
                 peg_in_confirm_txid,
-                connectors,
+                connector_0: connectors.connector_0,
+                connector_1: connectors.connector_1,
+                connector_2: connectors.connector_2,
+                connector_3: connectors.connector_3,
+                connector_4: connectors.connector_4,
+                connector_5: connectors.connector_5,
+                connector_6: connectors.connector_6,
+                connector_a: connectors.connector_a,
+                connector_b: connectors.connector_b,
+                connector_c: connectors.connector_c,
                 peg_out_confirm_transaction,
                 assert_transaction,
                 challenge_transaction,
@@ -526,7 +548,12 @@ impl PegOutGraph {
     pub fn new_for_validation(&self) -> Self {
         let peg_in_confirm_txid = self.take_1_transaction.tx().input[0].previous_output.txid; // Self-referencing
 
-        let connectors = self.create_new_for_validation_connectors();
+        let (connectors, _) = Self::create_new_connectors(
+            self.network,
+            &self.n_of_n_taproot_public_key,
+            &self.operator_taproot_public_key,
+            &self.operator_public_key,
+        );
 
         let peg_out_confirm_vout_0 = 0;
         let peg_out_confirm_transaction = PegOutConfirmTransaction::new_for_validation(
@@ -625,7 +652,7 @@ impl PegOutGraph {
         let challenge_transaction = ChallengeTransaction::new_for_validation(
             self.network,
             &self.operator_public_key,
-            &self.connectors.connector_a,
+            &self.connector_a,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -739,8 +766,8 @@ impl PegOutGraph {
         let disprove_vout_1 = 2;
         let disprove_transaction = DisproveTransaction::new_for_validation(
             self.network,
-            &self.connectors.connector_5,
-            &self.connectors.connector_c,
+            &self.connector_5,
+            &self.connector_c,
             Input {
                 outpoint: OutPoint {
                     txid: assert_txid,
@@ -761,7 +788,7 @@ impl PegOutGraph {
         let disprove_chain_vout_0 = 1;
         let disprove_chain_transaction = DisproveChainTransaction::new_for_validation(
             self.network,
-            &self.connectors.connector_b,
+            &self.connector_b,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_2_txid,
@@ -780,7 +807,16 @@ impl PegOutGraph {
             n_of_n_taproot_public_key: self.n_of_n_taproot_public_key,
             peg_in_graph_id: self.peg_in_graph_id.clone(),
             peg_in_confirm_txid,
-            connectors,
+            connector_0: connectors.connector_0,
+            connector_1: connectors.connector_1,
+            connector_2: connectors.connector_2,
+            connector_3: connectors.connector_3,
+            connector_4: connectors.connector_4,
+            connector_5: connectors.connector_5,
+            connector_6: connectors.connector_6,
+            connector_a: connectors.connector_a,
+            connector_b: connectors.connector_b,
+            connector_c: connectors.connector_c,
             peg_out_confirm_transaction,
             assert_transaction,
             challenge_transaction,
@@ -800,16 +836,16 @@ impl PegOutGraph {
         }
     }
 
-    pub fn connector_0_id(&self) -> ConnectorId { self.connectors.connector_0.id() }
-    pub fn connector_1_id(&self) -> ConnectorId { self.connectors.connector_1.id() }
-    pub fn connector_2_id(&self) -> ConnectorId { self.connectors.connector_2.id() }
-    pub fn connector_3_id(&self) -> ConnectorId { self.connectors.connector_3.id() }
-    pub fn connector_4_id(&self) -> ConnectorId { self.connectors.connector_4.id() }
-    pub fn connector_5_id(&self) -> ConnectorId { self.connectors.connector_5.id() }
-    pub fn connector_6_id(&self) -> ConnectorId { self.connectors.connector_6.id() }
-    pub fn connector_a_id(&self) -> ConnectorId { self.connectors.connector_a.id() }
-    pub fn connector_b_id(&self) -> ConnectorId { self.connectors.connector_b.id() }
-    pub fn connector_c_id(&self) -> ConnectorId { self.connectors.connector_c.id() }
+    pub fn connector_0_id(&self) -> ConnectorId { self.connector_0.id() }
+    pub fn connector_1_id(&self) -> ConnectorId { self.connector_1.id() }
+    pub fn connector_2_id(&self) -> ConnectorId { self.connector_2.id() }
+    pub fn connector_3_id(&self) -> ConnectorId { self.connector_3.id() }
+    pub fn connector_4_id(&self) -> ConnectorId { self.connector_4.id() }
+    pub fn connector_5_id(&self) -> ConnectorId { self.connector_5.id() }
+    pub fn connector_6_id(&self) -> ConnectorId { self.connector_6.id() }
+    pub fn connector_a_id(&self) -> ConnectorId { self.connector_a.id() }
+    pub fn connector_b_id(&self) -> ConnectorId { self.connector_b.id() }
+    pub fn connector_c_id(&self) -> ConnectorId { self.connector_c.id() }
 
     pub fn push_nonces(
         &mut self,
@@ -856,40 +892,40 @@ impl PegOutGraph {
     ) {
         self.assert_transaction.pre_sign(
             context,
-            &self.connectors.connector_b,
+            &self.connector_b,
             &secret_nonces[&self.assert_transaction.tx().compute_txid()],
         );
         self.disprove_chain_transaction.pre_sign(
             context,
-            &self.connectors.connector_b,
+            &self.connector_b,
             &secret_nonces[&self.disprove_chain_transaction.tx().compute_txid()],
         );
         self.disprove_transaction.pre_sign(
             context,
-            &self.connectors.connector_5,
+            &self.connector_5,
             &secret_nonces[&self.disprove_transaction.tx().compute_txid()],
         );
         self.kick_off_timeout_transaction.pre_sign(
             context,
-            &self.connectors.connector_1,
+            &self.connector_1,
             &secret_nonces[&self.kick_off_timeout_transaction.tx().compute_txid()],
         );
         self.start_time_timeout_transaction.pre_sign(
             context,
-            &self.connectors.connector_1,
-            &self.connectors.connector_2,
+            &self.connector_1,
+            &self.connector_2,
             &secret_nonces[&self.start_time_timeout_transaction.tx().compute_txid()],
         );
         self.take_1_transaction.pre_sign(
             context,
-            &self.connectors.connector_0,
-            &self.connectors.connector_b,
+            &self.connector_0,
+            &self.connector_b,
             &secret_nonces[&self.take_1_transaction.tx().compute_txid()],
         );
         self.take_2_transaction.pre_sign(
             context,
-            &self.connectors.connector_0,
-            &self.connectors.connector_5,
+            &self.connector_0,
+            &self.connector_5,
             &secret_nonces[&self.take_2_transaction.tx().compute_txid()],
         );
 
@@ -957,7 +993,7 @@ impl PegOutGraph {
                         .unwrap()
                         .block_height
                         .is_some_and(|block_height| {
-                            block_height + self.connectors.connector_1.num_blocks_timelock_leaf_2
+                            block_height + self.connector_1.num_blocks_timelock_leaf_2
                                 > blockchain_height
                         })
                     {
@@ -970,7 +1006,7 @@ impl PegOutGraph {
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
-                        block_height + self.connectors.connector_1.num_blocks_timelock_leaf_1
+                        block_height + self.connector_1.num_blocks_timelock_leaf_1
                             > blockchain_height
                     })
                 {
@@ -1031,7 +1067,7 @@ impl PegOutGraph {
                         if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
                             if assert_status.as_ref().unwrap().block_height.is_some_and(
                                 |block_height| {
-                                    block_height + self.connectors.connector_4.num_blocks_timelock
+                                    block_height + self.connector_4.num_blocks_timelock
                                         <= blockchain_height
                                 },
                             ) {
@@ -1045,7 +1081,7 @@ impl PegOutGraph {
                                 .unwrap()
                                 .block_height
                                 .is_some_and(|block_height| {
-                                    block_height + self.connectors.connector_b.num_blocks_timelock_1
+                                    block_height + self.connector_b.num_blocks_timelock_1
                                         <= blockchain_height
                                 })
                             {
@@ -1060,7 +1096,7 @@ impl PegOutGraph {
                             .unwrap()
                             .block_height
                             .is_some_and(|block_height| {
-                                block_height + self.connectors.connector_3.num_blocks_timelock
+                                block_height + self.connector_3.num_blocks_timelock
                                     <= blockchain_height
                             })
                         {
@@ -1090,8 +1126,7 @@ impl PegOutGraph {
                             .unwrap()
                             .block_height
                             .is_some_and(|block_height| {
-                                block_height
-                                    + self.connectors.connector_1.num_blocks_timelock_leaf_0
+                                block_height + self.connector_1.num_blocks_timelock_leaf_0
                                     <= blockchain_height
                             })
                         {
@@ -1232,7 +1267,7 @@ impl PegOutGraph {
             let connector_6_leaf_index = 0;
             self.kick_off_1_transaction.sign(
                 context,
-                &self.connectors.connector_6,
+                &self.connector_6,
                 source_network_txid.as_byte_array(),
                 destination_network_txid.as_slice(),
                 &connector_6_winternitz_secrets[&connector_6_leaf_index],
@@ -1299,7 +1334,7 @@ impl PegOutGraph {
             let start_time_block = get_start_time_block();
             self.start_time_transaction.sign(
                 context,
-                &self.connectors.connector_2,
+                &self.connector_2,
                 &connector_2_winternitz_secrets[&connector_2_leaf_index],
                 start_time_block,
             );
@@ -1342,8 +1377,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.connectors.connector_1.num_blocks_timelock_leaf_2
-                        <= blockchain_height
+                    block_height + self.connector_1.num_blocks_timelock_leaf_2 <= blockchain_height
                 })
             {
                 // complete start time timeout tx
@@ -1387,15 +1421,14 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.connectors.connector_1.num_blocks_timelock_leaf_0
-                        <= blockchain_height
+                    block_height + self.connector_1.num_blocks_timelock_leaf_0 <= blockchain_height
                 })
             {
                 // complete kick-off 2 tx
                 let connector_1_leaf_index = 0;
                 self.kick_off_2_transaction.sign_input_0(
                     context,
-                    &self.connectors.connector_1,
+                    &self.connector_1,
                     &connector_1_winternitz_secrets[&connector_1_leaf_index],
                     sb_message,
                 );
@@ -1439,8 +1472,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.connectors.connector_1.num_blocks_timelock_leaf_1
-                        <= blockchain_height
+                    block_height + self.connector_1.num_blocks_timelock_leaf_1 <= blockchain_height
                 })
             {
                 // complete kick-off timeout tx
@@ -1478,8 +1510,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.connectors.connector_b.num_blocks_timelock_1
-                        <= blockchain_height
+                    block_height + self.connector_b.num_blocks_timelock_1 <= blockchain_height
                 })
             {
                 // complete assert tx
@@ -1512,7 +1543,7 @@ impl PegOutGraph {
         if assert_status.is_ok_and(|status| status.confirmed) {
             // complete disprove tx
             self.disprove_transaction.add_input_output(
-                &self.connectors.connector_c,
+                &self.connector_c,
                 input_script_index,
                 output_script_pubkey,
             );
@@ -1578,8 +1609,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.connectors.connector_3.num_blocks_timelock
-                        <= blockchain_height
+                    block_height + self.connector_3.num_blocks_timelock <= blockchain_height
                 })
             {
                 // complete take 1 tx
@@ -1617,8 +1647,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.connectors.connector_4.num_blocks_timelock
-                        <= blockchain_height
+                    block_height + self.connector_4.num_blocks_timelock <= blockchain_height
                 })
             {
                 // complete take 2 tx
@@ -1900,31 +1929,34 @@ impl PegOutGraph {
     }
 
     fn create_new_connectors(
-        context: &OperatorContext,
+        network: Network,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        operator_taproot_public_key: &XOnlyPublicKey,
+        operator_public_key: &PublicKey,
     ) -> (PegOutConnectors, HashMap<ConnectorId, HashMap<u8, String>>) {
-        let connector_0 = Connector0::new(context.network, &context.n_of_n_taproot_public_key);
+        let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let (connector_1, connector_1_winternitz_secrets) = Connector1::new(
-            context.network,
-            &context.operator_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
         );
         let (connector_2, connector_2_winternitz_secrets) = Connector2::new(
-            context.network,
-            &context.operator_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
         );
-        let connector_3 = Connector3::new(context.network, &context.operator_public_key);
-        let connector_4 = Connector4::new(context.network, &context.operator_public_key);
-        let connector_5 = Connector5::new(context.network, &context.n_of_n_taproot_public_key);
+        let connector_3 = Connector3::new(network, operator_public_key);
+        let connector_4 = Connector4::new(network, operator_public_key);
+        let connector_5 = Connector5::new(network, n_of_n_taproot_public_key);
         let (connector_6, connector_6_winternitz_secrets) =
-            Connector6::new(context.network, &context.operator_taproot_public_key);
+            Connector6::new(network, operator_taproot_public_key);
         let connector_a = ConnectorA::new(
-            context.network,
-            &context.operator_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
         );
-        let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key);
-        let connector_c = ConnectorC::new(context.network, &context.operator_taproot_public_key);
+        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
+        let connector_c = ConnectorC::new(network, operator_taproot_public_key);
 
         let winternitz_secrets = HashMap::from([
             (connector_1.id(), connector_1_winternitz_secrets),
@@ -1947,54 +1979,6 @@ impl PegOutGraph {
             },
             winternitz_secrets,
         )
-    }
-
-    fn create_new_for_validation_connectors(&self) -> PegOutConnectors {
-        let connector_0 =
-            Connector0::new_for_validation(self.network, &self.n_of_n_taproot_public_key);
-        let connector_1 = Connector1::new_for_validation(
-            self.network,
-            &self.operator_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
-            &self.connectors.connector_1.winternitz_public_keys,
-        );
-        let connector_2 = Connector2::new_for_validation(
-            self.network,
-            &self.operator_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
-            &self.connectors.connector_2.winternitz_public_keys,
-        );
-        let connector_3 = Connector3::new_for_validation(self.network, &self.operator_public_key);
-        let connector_4 = Connector4::new_for_validation(self.network, &self.operator_public_key);
-        let connector_5 =
-            Connector5::new_for_validation(self.network, &self.n_of_n_taproot_public_key);
-        let connector_6 = Connector6::new_for_validation(
-            self.network,
-            &self.operator_taproot_public_key,
-            &self.connectors.connector_6.winternitz_public_keys,
-        );
-        let connector_a = ConnectorA::new_for_validation(
-            self.network,
-            &self.operator_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
-        );
-        let connector_b =
-            ConnectorB::new_for_validation(self.network, &self.n_of_n_taproot_public_key);
-        let connector_c =
-            ConnectorC::new_for_validation(self.network, &self.operator_taproot_public_key);
-
-        PegOutConnectors {
-            connector_0,
-            connector_1,
-            connector_2,
-            connector_3,
-            connector_4,
-            connector_5,
-            connector_6,
-            connector_a,
-            connector_b,
-            connector_c,
-        }
     }
 }
 

@@ -99,7 +99,6 @@ impl Display for PegInOperatorStatus {
     }
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 struct PegInConnectors {
     connector_0: Connector0,
     connector_z: ConnectorZ,
@@ -123,7 +122,8 @@ pub struct PegInGraph {
     depositor_taproot_public_key: XOnlyPublicKey,
     depositor_evm_address: String,
 
-    connectors: PegInConnectors,
+    connector_0: Connector0,
+    connector_z: ConnectorZ,
 }
 
 impl BaseGraph for PegInGraph {
@@ -134,7 +134,12 @@ impl BaseGraph for PegInGraph {
 
 impl PegInGraph {
     pub fn new(context: &DepositorContext, deposit_input: Input, evm_address: &str) -> Self {
-        let connectors = Self::create_new_connectors(context, evm_address);
+        let connectors = Self::create_new_connectors(
+            context.network,
+            &context.n_of_n_taproot_public_key,
+            &context.depositor_taproot_public_key,
+            evm_address,
+        );
 
         let peg_in_deposit_transaction =
             PegInDepositTransaction::new(context, &connectors.connector_z, deposit_input);
@@ -180,13 +185,18 @@ impl PegInGraph {
             depositor_public_key: context.depositor_public_key,
             depositor_taproot_public_key: context.depositor_taproot_public_key,
             depositor_evm_address: evm_address.to_string(),
-            connectors,
+            connector_0: connectors.connector_0,
+            connector_z: connectors.connector_z,
         }
     }
 
     pub fn new_for_validation(&self) -> Self {
-        let connectors = self.create_new_for_validation_connectors();
-
+        let connectors = Self::create_new_connectors(
+            self.network,
+            &self.n_of_n_taproot_public_key,
+            &self.depositor_taproot_public_key,
+            &self.depositor_evm_address,
+        );
         let peg_in_deposit_transaction = PegInDepositTransaction::new_for_validation(
             self.network,
             &self.depositor_public_key,
@@ -238,7 +248,8 @@ impl PegInGraph {
             depositor_public_key: self.depositor_public_key,
             depositor_taproot_public_key: self.depositor_taproot_public_key,
             depositor_evm_address: self.depositor_evm_address.clone(),
-            connectors,
+            connector_0: connectors.connector_0,
+            connector_z: connectors.connector_z,
         }
     }
 
@@ -263,7 +274,7 @@ impl PegInGraph {
     ) {
         self.peg_in_confirm_transaction.pre_sign(
             context,
-            &self.connectors.connector_z,
+            &self.connector_z,
             &secret_nonces[&self.peg_in_confirm_transaction.tx().compute_txid()],
         );
 
@@ -343,8 +354,7 @@ impl PegInGraph {
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
-                        block_height + self.connectors.connector_z.num_blocks_timelock_0
-                            <= blockchain_height
+                        block_height + self.connector_z.num_blocks_timelock_0 <= blockchain_height
                     })
                 {
                     if peg_in_refund_status
@@ -510,29 +520,18 @@ impl PegInGraph {
             .merge(&source_peg_in_graph.peg_in_confirm_transaction);
     }
 
-    fn create_new_connectors(context: &DepositorContext, evm_address: &str) -> PegInConnectors {
-        let connector_0 = Connector0::new(context.network, &context.n_of_n_taproot_public_key);
+    fn create_new_connectors(
+        network: Network,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        depositor_taproot_public_key: &XOnlyPublicKey,
+        evm_address: &str,
+    ) -> PegInConnectors {
+        let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_z = ConnectorZ::new(
-            context.network,
+            network,
             evm_address,
-            &context.depositor_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
-        );
-
-        PegInConnectors {
-            connector_0,
-            connector_z,
-        }
-    }
-
-    fn create_new_for_validation_connectors(&self) -> PegInConnectors {
-        let connector_0 =
-            Connector0::new_for_validation(self.network, &self.n_of_n_taproot_public_key);
-        let connector_z = ConnectorZ::new_for_validation(
-            self.network,
-            &self.depositor_evm_address,
-            &self.depositor_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
+            depositor_taproot_public_key,
+            n_of_n_taproot_public_key,
         );
 
         PegInConnectors {
