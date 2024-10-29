@@ -251,8 +251,6 @@ pub struct PegOutGraph {
     connector_b: ConnectorB,
     connector_c: ConnectorC,
 
-    commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKey>,
-
     peg_out_confirm_transaction: PegOutConfirmTransaction,
     assert_transaction: AssertTransaction,
     challenge_transaction: ChallengeTransaction,
@@ -289,7 +287,15 @@ impl PegOutGraph {
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
 
         let commitment_secrets = CommitmentMessageId::generate_commitment_secrets();
-        let commitment_public_keys = HashMap::from([
+        let connector_1_commitment_public_keys = HashMap::from([(
+            CommitmentMessageId::Superblock,
+            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
+        )]);
+        let connector_2_commitment_public_keys = HashMap::from([(
+            CommitmentMessageId::StartTime,
+            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::StartTime]),
+        )]);
+        let connector_6_commitment_public_keys = HashMap::from([
             (
                 CommitmentMessageId::PegOutTxIdSourceNetwork,
                 WinternitzPublicKey::from(
@@ -302,14 +308,6 @@ impl PegOutGraph {
                     &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
                 ),
             ),
-            (
-                CommitmentMessageId::StartTime,
-                WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::StartTime]),
-            ),
-            (
-                CommitmentMessageId::Superblock,
-                WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
-            ),
         ]);
 
         let connectors = Self::create_new_connectors(
@@ -317,7 +315,9 @@ impl PegOutGraph {
             &context.n_of_n_taproot_public_key,
             &context.operator_taproot_public_key,
             &context.operator_public_key,
-            &commitment_public_keys,
+            &connector_1_commitment_public_keys,
+            &connector_2_commitment_public_keys,
+            &connector_6_commitment_public_keys,
         );
 
         let peg_out_confirm_transaction =
@@ -570,7 +570,6 @@ impl PegOutGraph {
                 connector_a: connectors.connector_a,
                 connector_b: connectors.connector_b,
                 connector_c: connectors.connector_c,
-                commitment_public_keys,
                 peg_out_confirm_transaction,
                 assert_transaction,
                 challenge_transaction,
@@ -600,7 +599,9 @@ impl PegOutGraph {
             &self.n_of_n_taproot_public_key,
             &self.operator_taproot_public_key,
             &self.operator_public_key,
-            &self.commitment_public_keys,
+            &self.connector_1.commitment_public_keys,
+            &self.connector_2.commitment_public_keys,
+            &self.connector_6.commitment_public_keys,
         );
 
         let peg_out_confirm_vout_0 = 0;
@@ -865,7 +866,6 @@ impl PegOutGraph {
             connector_a: connectors.connector_a,
             connector_b: connectors.connector_b,
             connector_c: connectors.connector_c,
-            commitment_public_keys: self.commitment_public_keys.clone(),
             peg_out_confirm_transaction,
             assert_transaction,
             challenge_transaction,
@@ -1968,26 +1968,22 @@ impl PegOutGraph {
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
         operator_public_key: &PublicKey,
-        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        connector_1_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        connector_2_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        connector_6_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
     ) -> PegOutConnectors {
         let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_1 = Connector1::new(
             network,
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
-            &HashMap::from([(
-                CommitmentMessageId::Superblock,
-                commitment_public_keys[&CommitmentMessageId::Superblock].clone(),
-            )]),
+            connector_1_commitment_public_keys,
         );
         let connector_2 = Connector2::new(
             network,
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
-            &HashMap::from([(
-                CommitmentMessageId::StartTime,
-                commitment_public_keys[&CommitmentMessageId::StartTime].clone(),
-            )]),
+            connector_2_commitment_public_keys,
         );
         let connector_3 = Connector3::new(network, operator_public_key);
         let connector_4 = Connector4::new(network, operator_public_key);
@@ -1995,17 +1991,7 @@ impl PegOutGraph {
         let connector_6 = Connector6::new(
             network,
             operator_taproot_public_key,
-            &HashMap::from([
-                (
-                    CommitmentMessageId::PegOutTxIdSourceNetwork,
-                    commitment_public_keys[&CommitmentMessageId::PegOutTxIdSourceNetwork].clone(),
-                ),
-                (
-                    CommitmentMessageId::PegOutTxIdDestinationNetwork,
-                    commitment_public_keys[&CommitmentMessageId::PegOutTxIdDestinationNetwork]
-                        .clone(),
-                ),
-            ]),
+            connector_6_commitment_public_keys,
         );
         let connector_a = ConnectorA::new(
             network,
