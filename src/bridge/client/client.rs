@@ -1,3 +1,4 @@
+use bitcoin_scriptexec::json;
 use futures::future::join_all;
 use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
@@ -15,9 +16,12 @@ use bitcoin::{
 use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
 
 use crate::bridge::{
-    connectors::base::ConnectorId, constants::DestinationNetwork,
-    contexts::base::generate_n_of_n_public_key, graphs::base::get_tx_statuses,
-    superblock::SuperblockMessage, transactions::signing_winternitz::WinternitzSecret,
+    connectors::base::ConnectorId,
+    constants::DestinationNetwork,
+    contexts::base::generate_n_of_n_public_key,
+    graphs::{base::get_tx_statuses, peg_in::PegInDepositorStatus},
+    superblock::SuperblockMessage,
+    transactions::signing_winternitz::WinternitzSecret,
 };
 
 use super::{
@@ -1337,6 +1341,27 @@ impl BitVMClient {
 }
 
 impl GraphQuery for BitVMClient {
+    async fn get_unused_peg_in_graphs(&self) -> Vec<Value> {
+        join_all(self.data.peg_in_graphs.iter().filter_map(|peg_in| {
+            Some(async move {
+                match self.data.peg_out_graphs.iter().any(|peg_out| peg_out.peg_in_graph_id == *peg_in.id()) {
+                    true => None,
+                    false => match peg_in.depositor_status(&self.esplora).await {
+                        PegInDepositorStatus::PegInConfirmComplete => Some(json!({
+                            "graph_id": peg_in.id(),
+                            "amount": peg_in.peg_in_deposit_transaction.prev_outs()[0].value.to_sat(),
+                        })),
+                        _ => None,
+                    },
+                }
+            })
+        }))
+        .await
+        .iter()
+        .map(|v| v.clone().unwrap())
+        .collect()
+    }
+
     async fn get_depositor_status(&self, depositor_public_key: &PublicKey) -> Vec<Value> {
         join_all(
             self.data

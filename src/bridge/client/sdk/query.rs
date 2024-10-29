@@ -8,6 +8,7 @@ use crate::bridge::transactions::base::Input;
 use super::query_contexts::depositor_signatures::DepositorSignatures;
 
 pub trait GraphQuery {
+    fn get_unused_peg_in_graphs(&self) -> impl Future<Output = Vec<Value>>;
     fn get_depositor_status(
         &self,
         depositor_public_key: &PublicKey,

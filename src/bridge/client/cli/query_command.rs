@@ -67,12 +67,9 @@ impl QueryCommand {
             .arg(arg!(<DEPOSITOR_PUBLIC_KEY> "Depositor public key").required(true))
     }
 
-    pub async fn handle_depositor_command(&mut self, sub_matches: &ArgMatches) -> Response {
-        let pubkey = PublicKey::from_str(
-            sub_matches
-                .get_one::<String>("DEPOSITOR_PUBLIC_KEY")
-                .unwrap(),
-        );
+    pub async fn handle_depositor(&mut self, matches: &ArgMatches) -> Response {
+        let pubkey =
+            PublicKey::from_str(matches.get_one::<String>("DEPOSITOR_PUBLIC_KEY").unwrap());
         if pubkey.is_err() {
             return Response::new(
                 ResponseStatus::NOK(format!(
@@ -87,11 +84,14 @@ impl QueryCommand {
             .client
             .get_depositor_status(&pubkey.clone().unwrap())
             .await;
-        if result.len() > 0 {
-            let data = Some(serde_json::to_value(result).expect("Failed to merge value vector"));
-            return Response::new(ResponseStatus::OK, data);
-        } else {
-            return Response::new(ResponseStatus::NOK(format!("Depositor not found.")), None);
+
+        match result.len() {
+            len if len > 0 => {
+                let data =
+                    Some(serde_json::to_value(result).expect("Failed to merge value vector"));
+                return Response::new(ResponseStatus::OK, data);
+            }
+            _ => Response::new(ResponseStatus::NOK(format!("Depositor not found.")), None),
         }
     }
 
@@ -101,13 +101,13 @@ impl QueryCommand {
             .arg(arg!(<WITHDRAWER_CHAIN_ADDRESS> "WITHDRAWER L2 Chain address").required(true))
     }
 
-    pub async fn handle_withdrawer_command(
+    pub async fn handle_withdrawer(
         &mut self,
-        sub_matches: &ArgMatches,
+        matches: &ArgMatches,
         destination_network: DestinationNetwork,
     ) -> Response {
         let chain_address = Address::from_str(
-            sub_matches
+            matches
                 .get_one::<String>("WITHDRAWER_CHAIN_ADDRESS")
                 .unwrap(),
         );
@@ -126,11 +126,14 @@ impl QueryCommand {
             .client
             .get_withdrawer_status(&chain_address.unwrap().to_string().as_str())
             .await;
-        if result.len() > 0 {
-            let data = Some(serde_json::to_value(result).expect("Failed to merge value vector"));
-            return Response::new(ResponseStatus::OK, data);
-        } else {
-            return Response::new(ResponseStatus::NOK(format!("Withdrawer not found.")), None);
+
+        match result.len() {
+            len if len > 0 => {
+                let data =
+                    Some(serde_json::to_value(result).expect("Failed to merge value vector"));
+                return Response::new(ResponseStatus::OK, data);
+            }
+            _ => Response::new(ResponseStatus::NOK(format!("Withdrawer not found.")), None),
         }
     }
 
@@ -141,7 +144,7 @@ impl QueryCommand {
             .arg(arg!(<WITHDRAWER_CHAIN_ADDRESS> "WITHDRAWER L2 Chain address").required(true))
     }
 
-    pub async fn handle_history_command(
+    pub async fn handle_history(
         &mut self,
         matches: &ArgMatches,
         destination_network: DestinationNetwork,
@@ -181,14 +184,16 @@ impl QueryCommand {
             }
         };
 
-        if result.len() > 0 {
-            let data = Some(serde_json::to_value(result).expect("Failed to merge value vector"));
-            return Response::new(ResponseStatus::OK, data);
-        } else {
-            return Response::new(
-                ResponseStatus::NOK(format!("Depositor /Withdrawer not found.")),
+        match result.len() {
+            len if len > 0 => {
+                let data =
+                    Some(serde_json::to_value(result).expect("Failed to merge value vector"));
+                return Response::new(ResponseStatus::OK, data);
+            }
+            _ => Response::new(
+                ResponseStatus::NOK(format!("Depositor / Withdrawer not found.")),
                 None,
-            );
+            ),
         }
     }
 
@@ -201,7 +206,7 @@ impl QueryCommand {
             .arg(arg!(<SATS> "Amount of satoshis to deposit, should be also the value of previous output").required(true))
     }
 
-    pub async fn handle_transactions_command(
+    pub async fn handle_transactions(
         &self,
         matches: &ArgMatches,
         destination_network: DestinationNetwork,
@@ -262,7 +267,7 @@ impl QueryCommand {
             .arg(arg!(<REFUND> "Sinature hex for peg-in refund").required(true))
     }
 
-    pub async fn handle_signatures_command(
+    pub async fn handle_signatures(
         &mut self,
         matches: &ArgMatches,
         destination_network: DestinationNetwork,
@@ -330,6 +335,28 @@ impl QueryCommand {
         match result {
             Ok(result) => Response::new(ResponseStatus::OK, Some(result)),
             Err(err) => Response::new(ResponseStatus::NOK(err.to_string()), None),
+        }
+    }
+
+    pub fn peg_in_graphs_command() -> Command {
+        Command::new("pegins")
+            .about("fetch all yet available peg-in graphs for pegging out process")
+    }
+
+    pub async fn handle_peg_in_graphs(&mut self) -> Response {
+        self.sync().await;
+        let result = self.client.get_unused_peg_in_graphs().await;
+
+        match result.len() {
+            len if len > 0 => {
+                let data =
+                    Some(serde_json::to_value(result).expect("Failed to merge value vector"));
+                return Response::new(ResponseStatus::OK, data);
+            }
+            _ => Response::new(
+                ResponseStatus::NOK(format!("No available peg-in graphs found.")),
+                None,
+            ),
         }
     }
 }
