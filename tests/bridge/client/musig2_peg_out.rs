@@ -12,7 +12,7 @@ use bitvm::bridge::{
     },
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
-    superblock::{get_superblock_message_digits, Superblock, SuperblockHash},
+    superblock::{Superblock, SuperblockHash},
     transactions::{
         base::{Input, InputWithScript},
         pre_signed::PreSignedTransaction,
@@ -333,10 +333,7 @@ async fn create_peg_out_graph(
         };
         eprintln!("Broadcasting kick-off 2...");
         depositor_operator_verifier_0_client
-            .broadcast_kick_off_2(
-                &peg_out_graph_id,
-                &get_superblock_message_digits(&sb, &sb_hash),
-            )
+            .broadcast_kick_off_2(&peg_out_graph_id)
             .await;
 
         println!("Waiting for peg-out kick-off 2 tx...");
