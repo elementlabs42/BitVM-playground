@@ -14,7 +14,10 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
 };
 
-use crate::bridge::transactions::signing_winternitz::WinternitzSingingInputs;
+use crate::bridge::{
+    superblock::{find_superblock, get_superblock_message_digits},
+    transactions::signing_winternitz::WinternitzSingingInputs,
+};
 
 use super::{
     super::{
@@ -1456,7 +1459,7 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         context: &OperatorContext,
-        superblock_signing_inputs: &WinternitzSingingInputs<'_, '_>,
+        superblock_commitment_secret: &WinternitzSecret,
     ) {
         verify_if_not_mined(client, self.kick_off_2_transaction.tx().compute_txid()).await;
 
@@ -1478,10 +1481,14 @@ impl PegOutGraph {
                 })
             {
                 // complete kick-off 2 tx
+                let (sb, sb_hash) = find_superblock();
                 self.kick_off_2_transaction.sign(
                     context,
                     &self.connector_1,
-                    superblock_signing_inputs,
+                    &WinternitzSingingInputs {
+                        message_digits: &get_superblock_message_digits(&sb, &sb_hash),
+                        signing_key: superblock_commitment_secret,
+                    },
                 );
                 let kick_off_2_tx = self.kick_off_2_transaction.finalize();
 
