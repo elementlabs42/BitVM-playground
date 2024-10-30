@@ -241,6 +241,10 @@ pub struct PegOutGraph {
     pub peg_in_graph_id: String,
     peg_in_confirm_txid: Txid,
 
+    // Note that only the connectors that are used with message commitments are
+    // required to be here. They carry the Winternitz public keys, which need
+    // to be pushed to remote data store. The remaining connectors can be
+    // constructed dynamically.
     connector_0: Connector0,
     connector_1: Connector1,
     connector_2: Connector2,
