@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::signatures::winternitz::{public_key_for_digit, PublicKey, N};
+use crate::signatures::{
+    winternitz::{public_key_for_digit, PublicKey, N},
+    winternitz_hash::sign_hash,
+};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
 pub struct WinternitzSecret(String);
@@ -50,6 +53,32 @@ impl From<&WinternitzPublicKey> for PublicKey {
 
         public_key_array
     }
+}
+
+pub struct WinternitzSingingInputs<'a, 'b> {
+    pub message_digits: &'a [u8],
+    pub signing_key: &'b WinternitzSecret,
+}
+
+pub fn generate_winternitz_witness(signing_inputs: &WinternitzSingingInputs) -> Vec<Vec<u8>> {
+    let mut unlock_data: Vec<Vec<u8>> = Vec::new();
+
+    // Push the message
+    for byte in signing_inputs.message_digits.iter().rev() {
+        unlock_data.push(vec![*byte]);
+    }
+
+    // Push the signature
+    let winternitz_signatures = sign_hash(
+        signing_inputs.signing_key.into(),
+        &signing_inputs.message_digits,
+    );
+    for winternitz_signature in winternitz_signatures.into_iter() {
+        unlock_data.push(winternitz_signature.hash_bytes);
+        unlock_data.push(vec![winternitz_signature.message_digit]);
+    }
+
+    unlock_data
 }
 
 #[cfg(test)]

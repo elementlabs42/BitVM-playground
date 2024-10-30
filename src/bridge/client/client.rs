@@ -15,8 +15,7 @@ use crate::bridge::{
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
     graphs::{base::get_tx_statuses, peg_out::CommitmentMessageId},
-    superblock::SuperblockMessage,
-    transactions::signing_winternitz::WinternitzSecret,
+    transactions::signing_winternitz::{WinternitzSecret, WinternitzSingingInputs},
 };
 
 use super::{
@@ -838,7 +837,7 @@ impl BitVMClient {
     pub async fn broadcast_kick_off_2(
         &mut self,
         peg_out_graph_id: &str,
-        sb_message: &SuperblockMessage,
+        sb_message_digits: &Vec<u8>,
     ) {
         let peg_out_graph = self
             .data
@@ -854,10 +853,12 @@ impl BitVMClient {
             .kick_off_2(
                 &self.esplora,
                 &self.operator_context.as_ref().unwrap(),
-                &self.private_data.commitment_secrets
-                    [&self.operator_context.as_ref().unwrap().operator_public_key]
-                    [peg_out_graph_id],
-                sb_message,
+                &WinternitzSingingInputs {
+                    message_digits: sb_message_digits,
+                    signing_key: &self.private_data.commitment_secrets
+                        [&self.operator_context.as_ref().unwrap().operator_public_key]
+                        [peg_out_graph_id][&CommitmentMessageId::Superblock],
+                },
             )
             .await;
     }

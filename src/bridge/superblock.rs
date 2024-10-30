@@ -1,3 +1,5 @@
+use crate::signatures::winternitz::bytes_to_digits;
+
 use super::constants::SHA256_DIGEST_LENGTH_IN_BYTES;
 
 #[derive(Debug, PartialEq)]
@@ -33,16 +35,15 @@ pub type SuperblockHash = [u8; SHA256_DIGEST_LENGTH_IN_BYTES];
 
 pub const SUPERBLOCK_MESSAGE_LENGTH_IN_BYTES: usize =
     size_of::<Superblock>() + size_of::<SuperblockHash>();
-pub(crate) type SuperblockMessage = [u8; SUPERBLOCK_MESSAGE_LENGTH_IN_BYTES];
 pub(crate) const SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS: usize =
     SUPERBLOCK_MESSAGE_LENGTH_IN_BYTES * 2;
 
-pub fn get_superblock_message(sb: &Superblock, sb_hash: &SuperblockHash) -> SuperblockMessage {
-    let mut buffer = [0u8; size_of::<SuperblockMessage>()];
+pub fn get_superblock_message_digits(sb: &Superblock, sb_hash: &SuperblockHash) -> Vec<u8> {
+    let mut buffer = [0u8; SUPERBLOCK_MESSAGE_LENGTH_IN_BYTES];
     buffer[..size_of::<Superblock>()].copy_from_slice(&serialize_superblock(sb));
     buffer[size_of::<Superblock>()..].copy_from_slice(&sb_hash[..]);
 
-    buffer
+    bytes_to_digits(&buffer)
 }
 
 pub fn find_superblock() -> (Superblock, SuperblockHash) { todo!() }

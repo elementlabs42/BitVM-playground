@@ -5,7 +5,7 @@ use crate::bridge::contexts::base::generate_keys_from_secret;
 use crate::bridge::graphs::base::{BaseGraph, VERIFIER_0_SECRET, VERIFIER_1_SECRET};
 use crate::bridge::graphs::peg_in::PegInDepositorStatus;
 use crate::bridge::graphs::peg_out::PegOutOperatorStatus;
-use crate::bridge::superblock::{find_superblock, get_superblock_message};
+use crate::bridge::superblock::{find_superblock, get_superblock_message_digits};
 use bitcoin::Network;
 use bitcoin::PublicKey;
 use clap::{arg, ArgMatches, Command};
@@ -120,7 +120,7 @@ impl ClientCommand {
                         self.client
                             .broadcast_kick_off_2(
                                 peg_out_graph.id(),
-                                &get_superblock_message(&sb, &sb_hash),
+                                &get_superblock_message_digits(&sb, &sb_hash),
                             )
                             .await
                     }
@@ -192,7 +192,7 @@ impl ClientCommand {
             Some(("kick_off_2", _)) => {
                 let (sb, sb_hash) = find_superblock();
                 self.client
-                    .broadcast_kick_off_2(graph_id, &get_superblock_message(&sb, &sb_hash))
+                    .broadcast_kick_off_2(graph_id, &get_superblock_message_digits(&sb, &sb_hash))
                     .await
             }
             Some(("start_time", _)) => self.client.broadcast_start_time(graph_id).await,

@@ -4,10 +4,11 @@ use bitvm::bridge::{
     connectors::base::TaprootConnector,
     constants::SHA256_DIGEST_LENGTH_IN_BYTES,
     graphs::{base::ONE_HUNDRED, peg_out::CommitmentMessageId},
-    superblock::{get_superblock_message, Superblock, SuperblockHash},
+    superblock::{get_superblock_message_digits, Superblock, SuperblockHash},
     transactions::{
         base::{BaseTransaction, Input},
         kick_off_2::KickOff2Transaction,
+        signing_winternitz::WinternitzSingingInputs,
     },
 };
 
@@ -37,11 +38,13 @@ async fn test_kick_off_2_tx() {
         time: 45678,
         weight: 9012345,
     };
-    kick_off_2_tx.sign_input_0(
+    kick_off_2_tx.sign(
         &config.operator_context,
         &config.connector_1,
-        &config.commitment_secrets[&CommitmentMessageId::Superblock],
-        &get_superblock_message(&sb, &sb_hash),
+        &WinternitzSingingInputs {
+            message_digits: &get_superblock_message_digits(&sb, &sb_hash),
+            signing_key: &config.commitment_secrets[&CommitmentMessageId::Superblock],
+        },
     );
 
     let tx = kick_off_2_tx.finalize();

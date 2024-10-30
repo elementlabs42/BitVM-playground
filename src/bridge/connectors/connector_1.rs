@@ -10,14 +10,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bridge::{
-        graphs::peg_out::CommitmentMessageId,
-        superblock::SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS,
-        transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
+        graphs::peg_out::CommitmentMessageId, superblock::SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS,
+        transactions::signing_winternitz::WinternitzPublicKey,
     },
-    signatures::{
-        winternitz::{bytes_to_digits, PublicKey},
-        winternitz_hash::{check_hash_sig, sign_hash},
-    },
+    signatures::{winternitz::PublicKey, winternitz_hash::check_hash_sig},
 };
 
 use super::{
@@ -75,29 +71,6 @@ impl Connector1 {
             OP_CHECKSIG
         }
         .compile()
-    }
-
-    fn generate_taproot_leaf_0_witness(
-        &self,
-        commitment_secret: &WinternitzSecret,
-        message: &[u8],
-    ) -> Vec<Vec<u8>> {
-        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
-        let message_digits = bytes_to_digits(message);
-
-        // Push message digits in reverse order
-        for byte in message_digits.iter().rev() {
-            unlock_data.push(vec![*byte]);
-        }
-
-        // Push the signatures
-        let winternitz_signatures = sign_hash(commitment_secret.into(), &message_digits);
-        for winternitz_signature in winternitz_signatures {
-            unlock_data.push(winternitz_signature.hash_bytes);
-            unlock_data.push(vec![winternitz_signature.message_digit]);
-        }
-
-        unlock_data
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
@@ -163,19 +136,5 @@ impl TaprootConnector for Connector1 {
             self.generate_taproot_spend_info().output_key(),
             self.network,
         )
-    }
-}
-
-impl CommitmentConnector for Connector1 {
-    fn generate_commitment_witness(
-        &self,
-        leaf_index: u32,
-        commitment_secret: &WinternitzSecret,
-        message: &[u8],
-    ) -> Vec<Vec<u8>> {
-        match leaf_index {
-            0 => self.generate_taproot_leaf_0_witness(commitment_secret, message),
-            _ => panic!("Invalid leaf index."),
-        }
     }
 }
