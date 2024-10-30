@@ -1322,7 +1322,7 @@ impl PegOutGraph {
                     .unwrap()
                     .tx_hash
                     .as_slice(),
-                signing_key: &destination_network_txid_commitment_secret,
+                signing_key: destination_network_txid_commitment_secret,
             };
             self.kick_off_1_transaction.sign(
                 context,
