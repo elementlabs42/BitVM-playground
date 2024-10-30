@@ -47,7 +47,7 @@ impl Connector2 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let secret_key = "b138982ce17ac813d505b5b40b665d404e9528e7"; // TODO replace with secret key for specific variable, generate and store secrets in local client
+        let secret_key = "b138982ce17ac813d505b5b40b665d404e952802"; // FIXME: this is a secret key used in tests (see get_test_commitment_secrets())
 
         script! {
             // pre-image (pushed to stack from witness)
