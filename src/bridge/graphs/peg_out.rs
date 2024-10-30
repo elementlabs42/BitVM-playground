@@ -1382,12 +1382,11 @@ impl PegOutGraph {
 
         if kick_off_1_status.is_ok_and(|status| status.confirmed) {
             // sign start time tx
-            let start_time_block = get_start_time_block();
             self.start_time_transaction.sign(
                 context,
                 &self.connector_2,
+                get_start_time_block(),
                 &commitment_secrets[&CommitmentMessageId::StartTime],
-                start_time_block,
             );
 
             // complete start time tx

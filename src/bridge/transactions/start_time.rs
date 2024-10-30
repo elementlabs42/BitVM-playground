@@ -158,8 +158,8 @@ impl StartTimeTransaction {
         &mut self,
         context: &OperatorContext,
         connector_2: &Connector2,
-        commitment_secret: &WinternitzSecret,
         start_time_block: u32,
+        commitment_secret: &WinternitzSecret,
     ) {
         self.tx_mut().lock_time = absolute::LockTime::from_height(start_time_block)
             .expect("Failed to set lock time from block.");

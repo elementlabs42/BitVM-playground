@@ -30,12 +30,11 @@ async fn test_start_time_tx() {
         },
     );
 
-    let start_time_block = get_start_time_block();
     start_time_tx.sign(
         &config.operator_context,
         &config.connector_2,
+        get_start_time_block(),
         &config.commitment_secrets[&CommitmentMessageId::StartTime],
-        start_time_block,
     );
 
     let tx = start_time_tx.finalize();
