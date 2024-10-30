@@ -2,6 +2,13 @@ use crate::signatures::winternitz::bytes_to_digits;
 
 use super::constants::SHA256_DIGEST_LENGTH_IN_BYTES;
 
+/*
+  TODO: Implement selecting a block that marks the start of a superblock measurement period
+  that lasts for the period ∆C (e.g. 2000 blocks), during which the operator must observe
+  all blocks on the main chain and identify the heaviest superblock SB.
+*/
+pub fn get_start_time_block_number() -> u32 { return 860033; }
+
 #[derive(Debug, PartialEq)]
 pub struct Superblock {
     pub height: u32,

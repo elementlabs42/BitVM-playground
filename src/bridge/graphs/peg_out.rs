@@ -15,7 +15,7 @@ use std::{
 };
 
 use crate::bridge::{
-    superblock::{find_superblock, get_superblock_message_digits},
+    superblock::{find_superblock, get_start_time_block_number, get_superblock_message_digits},
     transactions::signing_winternitz::WinternitzSingingInputs,
 };
 
@@ -51,7 +51,6 @@ use super::{
             take_1::Take1Transaction,
             take_2::Take2Transaction,
         },
-        utils::get_start_time_block_number,
     },
     base::{get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
     peg_in::PegInGraph,

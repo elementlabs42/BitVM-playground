@@ -3,11 +3,11 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
     graphs::{base::DUST_AMOUNT, peg_out::CommitmentMessageId},
+    superblock::get_start_time_block_number,
     transactions::{
         base::{BaseTransaction, Input},
         start_time::StartTimeTransaction,
     },
-    utils::get_start_time_block_number,
 };
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
