@@ -2,11 +2,9 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::N_SEQUENCE_FOR_LOCK_TIME,
-        graphs::peg_out::CommitmentMessageId,
-        transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
+        constants::N_SEQUENCE_FOR_LOCK_TIME, graphs::peg_out::CommitmentMessageId,
+        transactions::signing_winternitz::WinternitzPublicKey,
     },
-    signatures::winternitz_compact::sign,
     treepp::script,
 };
 use bitcoin::{
@@ -18,9 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        super::signatures::winternitz_compact::{
-            checksig_verify, digits_to_number, message_to_digits, N0_32, N1_32,
-        },
+        super::signatures::winternitz_compact::{checksig_verify, digits_to_number, N0_32, N1_32},
         scripts::*,
         transactions::base::Input,
     },
@@ -67,17 +63,6 @@ impl Connector2 {
         .compile()
     }
 
-    fn generate_taproot_leaf_0_compact_witness(
-        &self,
-        commitment_secret: &WinternitzSecret,
-        start_time_block: u32,
-    ) -> Vec<Vec<u8>> {
-        sign::<N0_32, N1_32>(
-            commitment_secret.into(),
-            message_to_digits::<N0_32>(start_time_block),
-        )
-    }
-
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
         generate_timelock_tx_in(input, N_SEQUENCE_FOR_LOCK_TIME)
     }
@@ -121,19 +106,5 @@ impl TaprootConnector for Connector2 {
             self.generate_taproot_spend_info().output_key(),
             self.network,
         )
-    }
-}
-
-impl CompactCommitmentConnector for Connector2 {
-    fn generate_compact_commitment_witness(
-        &self,
-        leaf_index: u32,
-        commitment_secret: &WinternitzSecret,
-        number: u32,
-    ) -> Vec<Vec<u8>> {
-        match leaf_index {
-            0 => self.generate_taproot_leaf_0_compact_witness(commitment_secret, number),
-            _ => panic!("Invalid leaf index."),
-        }
     }
 }

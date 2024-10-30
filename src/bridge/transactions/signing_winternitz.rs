@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::signatures::{
     winternitz::{public_key_for_digit, PublicKey, N},
+    winternitz_compact::sign,
     winternitz_hash::sign_hash,
 };
 
@@ -79,6 +80,18 @@ pub fn generate_winternitz_witness(signing_inputs: &WinternitzSingingInputs) -> 
     }
 
     unlock_data
+}
+
+pub fn generate_compact_winternitz_witness<
+    const DIGIT_COUNT: usize,
+    const CHECKSUM_DIGIT_COUNT: usize,
+>(
+    signing_inputs: &WinternitzSingingInputs,
+) -> Vec<Vec<u8>> {
+    sign::<DIGIT_COUNT, CHECKSUM_DIGIT_COUNT>(
+        signing_inputs.signing_key.into(),
+        signing_inputs.message_digits.try_into().unwrap(),
+    )
 }
 
 #[cfg(test)]
