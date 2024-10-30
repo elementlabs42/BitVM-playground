@@ -158,17 +158,17 @@ impl StartTimeTransaction {
         &mut self,
         context: &OperatorContext,
         connector_2: &Connector2,
-        start_time_block: u32,
-        commitment_secret: &WinternitzSecret,
+        start_time_block_number: u32,
+        start_time_commitment_secret: &WinternitzSecret,
     ) {
-        self.tx_mut().lock_time = absolute::LockTime::from_height(start_time_block)
+        self.tx_mut().lock_time = absolute::LockTime::from_height(start_time_block_number)
             .expect("Failed to set lock time from block.");
         self.sign_input_0(
             context,
             connector_2,
             &WinternitzSingingInputs {
-                message_digits: &message_to_digits::<N0_32>(start_time_block),
-                signing_key: commitment_secret,
+                message_digits: &message_to_digits::<N0_32>(start_time_block_number),
+                signing_key: start_time_commitment_secret,
             },
         );
     }

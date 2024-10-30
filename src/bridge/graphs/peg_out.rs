@@ -48,7 +48,7 @@ use super::{
             take_1::Take1Transaction,
             take_2::Take2Transaction,
         },
-        utils::get_start_time_block,
+        utils::get_start_time_block_number,
     },
     base::{get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
     peg_in::PegInGraph,
@@ -1287,7 +1287,8 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         context: &OperatorContext,
-        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        source_network_txid_commitment_secret: &WinternitzSecret,
+        destination_network_txid_commitment_secret: &WinternitzSecret,
     ) {
         verify_if_not_mined(&client, self.kick_off_1_transaction.tx().compute_txid()).await;
 
@@ -1306,7 +1307,7 @@ impl PegOutGraph {
                 .to_owned();
             let source_network_txid_inputs = WinternitzSingingInputs {
                 message_digits: &pegout_txid,
-                signing_key: &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
+                signing_key: source_network_txid_commitment_secret,
             };
             let destination_network_txid_inputs = WinternitzSingingInputs {
                 message_digits: self
@@ -1315,8 +1316,7 @@ impl PegOutGraph {
                     .unwrap()
                     .tx_hash
                     .as_slice(),
-                signing_key: &commitment_secrets
-                    [&CommitmentMessageId::PegOutTxIdDestinationNetwork],
+                signing_key: &destination_network_txid_commitment_secret,
             };
             self.kick_off_1_transaction.sign(
                 context,
@@ -1373,7 +1373,7 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         context: &OperatorContext,
-        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        start_time_commitment_secret: &WinternitzSecret,
     ) {
         verify_if_not_mined(client, self.start_time_transaction.tx().compute_txid()).await;
 
@@ -1385,8 +1385,8 @@ impl PegOutGraph {
             self.start_time_transaction.sign(
                 context,
                 &self.connector_2,
-                get_start_time_block(),
-                &commitment_secrets[&CommitmentMessageId::StartTime],
+                get_start_time_block_number(),
+                start_time_commitment_secret,
             );
 
             // complete start time tx

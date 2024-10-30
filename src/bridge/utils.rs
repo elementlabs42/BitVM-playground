@@ -13,4 +13,4 @@ pub fn num_blocks_per_network(network: Network, mainnet_num_blocks: u32) -> u32 
   that lasts for the period ∆C (e.g. 2000 blocks), during which the operator must observe
   all blocks on the main chain and identify the heaviest superblock SB.
 */
-pub fn get_start_time_block() -> u32 { return 860033; }
+pub fn get_start_time_block_number() -> u32 { return 860033; }

@@ -784,7 +784,10 @@ impl BitVMClient {
                     self.operator_context.as_ref().unwrap(),
                     &self.private_data.commitment_secrets
                         [&self.operator_context.as_ref().unwrap().operator_public_key]
-                        [peg_out_graph_id],
+                        [peg_out_graph_id][&CommitmentMessageId::PegOutTxIdSourceNetwork],
+                    &self.private_data.commitment_secrets
+                        [&self.operator_context.as_ref().unwrap().operator_public_key]
+                        [peg_out_graph_id][&CommitmentMessageId::PegOutTxIdDestinationNetwork],
                 )
                 .await;
         }
@@ -808,7 +811,7 @@ impl BitVMClient {
                     &self.operator_context.as_ref().unwrap(),
                     &self.private_data.commitment_secrets
                         [&self.operator_context.as_ref().unwrap().operator_public_key]
-                        [peg_out_graph_id],
+                        [peg_out_graph_id][&CommitmentMessageId::StartTime],
                 )
                 .await;
         }
