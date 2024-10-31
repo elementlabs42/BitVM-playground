@@ -18,7 +18,7 @@ use super::{
     signing_winternitz::{generate_winternitz_witness, WinternitzSingingInputs},
 };
 
-const MIN_RELAY_FEE_AMOUNT: u64 = 52_953;
+const MIN_RELAY_FEE_AMOUNT: u64 = 105_771;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct KickOff2Transaction {
@@ -95,6 +95,7 @@ impl KickOff2Transaction {
         context: &OperatorContext,
         connector_1: &Connector1,
         superblock_signing_inputs: &WinternitzSingingInputs,
+        superblock_hash_signing_inputs: &WinternitzSingingInputs,
     ) {
         let input_index = 0;
         let prev_outs = &self.prev_outs().clone();
@@ -117,6 +118,10 @@ impl KickOff2Transaction {
             unlock_data.push(winternitz_signature);
         }
 
+        for winternitz_signature in generate_winternitz_witness(superblock_hash_signing_inputs) {
+            unlock_data.push(winternitz_signature);
+        }
+
         populate_taproot_input_witness(
             self.tx_mut(),
             input_index,
@@ -131,8 +136,14 @@ impl KickOff2Transaction {
         context: &OperatorContext,
         connector_1: &Connector1,
         superblock_signing_inputs: &WinternitzSingingInputs,
+        superblock_hash_signing_inputs: &WinternitzSingingInputs,
     ) {
-        self.sign_input_0(context, connector_1, superblock_signing_inputs);
+        self.sign_input_0(
+            context,
+            connector_1,
+            superblock_signing_inputs,
+            superblock_hash_signing_inputs,
+        );
     }
 }
 
