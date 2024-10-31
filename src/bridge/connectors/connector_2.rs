@@ -53,7 +53,7 @@ impl Connector2 {
             // pre-image (pushed to stack from witness)
             // BITVM1 opcodes
             // block peg out was mined in (left on stack)
-            { checksig_verify::<N0_32, N1_32>(secret_key) }
+            // { checksig_verify::<N0_32, N1_32>(secret_key) } // TODO: uncomment once code is adjusted to winternitz_compact
             { digits_to_number::<N0_32>() }
             OP_CLTV
             OP_DROP
