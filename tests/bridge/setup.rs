@@ -181,8 +181,7 @@ pub async fn setup_test() -> SetupConfig {
     };
 }
 
-// Use fixed secrets for testing to ensure repeatable tx output addresses.
-// The keys in the returned hash maps are the leaf indexes.
+// Use fixed secrets for testing to ensure repeatable spending addresses.
 fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecret> {
     HashMap::from([
         (
