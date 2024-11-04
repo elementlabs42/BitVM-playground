@@ -1345,6 +1345,10 @@ impl GraphQuery for BitVMClient {
                         PegInDepositorStatus::PegInConfirmComplete => Some(json!({
                             "graph_id": peg_in.id(),
                             "amount": peg_in.peg_in_deposit_transaction.prev_outs()[0].value.to_sat(),
+                            "source_outpoint": {
+                                "txid": peg_in.peg_in_deposit_transaction.tx().compute_txid(),
+                                "vout": 0
+                            },
                         })),
                         _ => None,
                     },
