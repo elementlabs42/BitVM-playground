@@ -89,7 +89,7 @@ impl QueryCommand {
             len if len > 0 => {
                 let data =
                     Some(serde_json::to_value(result).expect("Failed to merge value vector"));
-                return Response::new(ResponseStatus::OK, data);
+                Response::new(ResponseStatus::OK, data)
             }
             _ => Response::new(ResponseStatus::NOK(format!("Depositor not found.")), None),
         }
@@ -131,7 +131,7 @@ impl QueryCommand {
             len if len > 0 => {
                 let data =
                     Some(serde_json::to_value(result).expect("Failed to merge value vector"));
-                return Response::new(ResponseStatus::OK, data);
+                Response::new(ResponseStatus::OK, data)
             }
             _ => Response::new(ResponseStatus::NOK(format!("Withdrawer not found.")), None),
         }
@@ -188,7 +188,7 @@ impl QueryCommand {
             len if len > 0 => {
                 let data =
                     Some(serde_json::to_value(result).expect("Failed to merge value vector"));
-                return Response::new(ResponseStatus::OK, data);
+                Response::new(ResponseStatus::OK, data)
             }
             _ => Response::new(
                 ResponseStatus::NOK(format!("Depositor / Withdrawer not found.")),
@@ -351,7 +351,7 @@ impl QueryCommand {
             len if len > 0 => {
                 let data =
                     Some(serde_json::to_value(result).expect("Failed to merge value vector"));
-                return Response::new(ResponseStatus::OK, data);
+                Response::new(ResponseStatus::OK, data)
             }
             _ => Response::new(
                 ResponseStatus::NOK(format!("No available peg-in graphs found.")),
