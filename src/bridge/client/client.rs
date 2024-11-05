@@ -41,7 +41,10 @@ use super::{
     },
     chain::chain::Chain,
     data_store::data_store::DataStore,
-    sdk::{query::GraphQuery, query_contexts::depositor_signatures::DepositorSignatures},
+    sdk::{
+        query::{ClientCliQuery, GraphCliQuery},
+        query_contexts::depositor_signatures::DepositorSignatures,
+    },
 };
 
 const ESPLORA_URL: &str = "https://mutinynet.com/api";
@@ -1335,7 +1338,7 @@ impl BitVMClient {
     // }
 }
 
-impl GraphQuery for BitVMClient {
+impl ClientCliQuery for BitVMClient {
     async fn get_unused_peg_in_graphs(&self) -> Vec<Value> {
         join_all(self.data.peg_in_graphs.iter().filter_map(|peg_in| {
             Some(async move {
@@ -1375,7 +1378,7 @@ impl GraphQuery for BitVMClient {
                     ];
                     let tx_statuses_results = get_tx_statuses(&self.esplora, &tx_ids).await;
                     let blockchain_height = self.esplora.get_height().await.unwrap();
-                    let status = graph.interpret_operator_status(
+                    let status = graph.interpret_depositor_status(
                         &tx_statuses_results[0],
                         &tx_statuses_results[1],
                         &tx_statuses_results[2],
@@ -1493,10 +1496,10 @@ impl GraphQuery for BitVMClient {
         depositor_taproot_public_key: &XOnlyPublicKey,
         deposit_input: Input,
         depositor_evm_address: &str,
-    ) -> Result<Value, &str> {
+    ) -> Result<Value, String> {
         // depositor context should contain pub key of n_of_n
         if self.depositor_context.is_none() {
-            return Err("Depositor context must be initialized");
+            return Err("Depositor context must be initialized".into());
         }
 
         let n_of_n_public_key = &self.depositor_context.as_ref().unwrap().n_of_n_public_key;
@@ -1529,10 +1532,10 @@ impl GraphQuery for BitVMClient {
         deposit_input: Input,
         depositor_evm_address: &str,
         signatures: &DepositorSignatures,
-    ) -> Result<Value, &str> {
+    ) -> Result<Value, String> {
         // depositor context should contain pub key of n_of_n
         if self.depositor_context.is_none() {
-            return Err("Depositor context must be initialized");
+            return Err("Depositor context must be initialized".into());
         }
 
         let n_of_n_public_key = &self.depositor_context.as_ref().unwrap().n_of_n_public_key;
@@ -1560,13 +1563,30 @@ impl GraphQuery for BitVMClient {
             .iter()
             .find(|&peg_out_graph| peg_out_graph.id().eq(&peg_in_graph_id));
         if graph.is_some() {
-            return Err("Peg in graph already exists");
+            return Err("Peg in graph already exists".into());
         }
 
-        self.data.peg_in_graphs.push(peg_in_graph);
+        self.data.peg_in_graphs.push(peg_in_graph.clone());
 
-        Ok(json!({
-            "graph_id": peg_in_graph_id
-        }))
+        match peg_in_graph.broadcast_deposit(&self.esplora).await {
+            Ok(_) => Ok(json!({"graph_id": peg_in_graph_id})),
+            Err(e) => Err(e),
+        }
+    }
+
+    async fn retry_broadcast_peg_in_deposit(&self, peg_in_graph_id: &str) -> Result<Value, String> {
+        let Some(peg_in_graph) = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id))
+        else {
+            return Err("Peg in graph not found".into());
+        };
+
+        match peg_in_graph.broadcast_deposit(&self.esplora).await {
+            Ok(_) => Ok(json!({"graph_id": peg_in_graph_id})),
+            Err(e) => Err(e),
+        }
     }
 }

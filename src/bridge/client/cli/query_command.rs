@@ -10,7 +10,7 @@ use super::{
 use crate::bridge::{
     client::{
         client::BitVMClient,
-        sdk::{query::GraphQuery, query_contexts::depositor_signatures::DepositorSignatures},
+        sdk::{query::ClientCliQuery, query_contexts::depositor_signatures::DepositorSignatures},
     },
     constants::DestinationNetwork,
     contexts::base::generate_keys_from_secret,
@@ -251,7 +251,7 @@ impl QueryCommand {
 
         match result {
             Ok(result) => Response::new(ResponseStatus::OK, Some(result)),
-            Err(err) => Response::new(ResponseStatus::NOK(err.to_string()), None),
+            Err(err) => Response::new(ResponseStatus::NOK(err), None),
         }
     }
 
@@ -334,7 +334,33 @@ impl QueryCommand {
 
         match result {
             Ok(result) => Response::new(ResponseStatus::OK, Some(result)),
-            Err(err) => Response::new(ResponseStatus::NOK(err.to_string()), None),
+            Err(err) => Response::new(ResponseStatus::NOK(err), None),
+        }
+    }
+
+    pub fn broadcast_command() -> Command {
+        Command::new("broadcast")
+            .about("broadcast peg-in deposit transaction in a peg-in graph separately")
+            .args([arg!(<GRAPH_ID> "peg-in graph id").required(true)])
+    }
+
+    pub async fn handle_broadcast(&mut self, matches: &ArgMatches) -> Response {
+        self.sync().await;
+        let arg = "GRAPH_ID";
+        let Some(peg_in_graph_id) = matches.get_one::<String>(arg) else {
+            return Response::new(
+                ResponseStatus::NOK(format!("Missing argument: {}", arg)),
+                None,
+            );
+        };
+        let result = self
+            .client
+            .retry_broadcast_peg_in_deposit(peg_in_graph_id)
+            .await;
+
+        match result {
+            Ok(result) => Response::new(ResponseStatus::OK, Some(result)),
+            Err(err) => Response::new(ResponseStatus::NOK(err), None),
         }
     }
 

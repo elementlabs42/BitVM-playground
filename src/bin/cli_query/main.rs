@@ -14,6 +14,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .subcommand(QueryCommand::history_command())
         .subcommand(QueryCommand::transactions_command())
         .subcommand(QueryCommand::signatures_command())
+        .subcommand(QueryCommand::broadcast_command())
         .subcommand(QueryCommand::peg_in_graphs_command())
         .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin and L2 network environment (mainnet, testnet)").required(false)
         .default_value("mainnet"))
@@ -38,6 +39,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Some(("history", sub)) => query.handle_history(sub, destination_network).await,
         Some(("transactions", sub)) => query.handle_transactions(sub, destination_network).await,
         Some(("signatures", sub)) => query.handle_signatures(sub, destination_network).await,
+        Some(("broadcast", sub)) => query.handle_broadcast(sub).await,
         Some(("pegins", _)) => query.handle_peg_in_graphs().await,
         _ => unreachable!(),
     };

@@ -2,6 +2,7 @@ use bitcoin::{
     hex::{Case::Upper, DisplayHex},
     Network, OutPoint, PublicKey, Transaction, Txid, XOnlyPublicKey,
 };
+use clap::builder::Str;
 use esplora_client::{AsyncClient, Error, TxStatus};
 use musig2::SecNonce;
 use num_traits::ToPrimitive;
@@ -12,7 +13,9 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
 };
 
-use crate::bridge::client::sdk::query_contexts::depositor_signatures::DepositorSignatures;
+use crate::bridge::client::sdk::{
+    query::GraphCliQuery, query_contexts::depositor_signatures::DepositorSignatures,
+};
 
 use super::{
     super::{
@@ -352,7 +355,7 @@ impl PegInGraph {
         }
     }
 
-    pub fn interpret_operator_status(
+    pub fn interpret_depositor_status(
         &self,
         peg_in_deposit_status: &Result<TxStatus, Error>,
         peg_in_confirm_status: &Result<TxStatus, Error>,
@@ -417,7 +420,7 @@ impl PegInGraph {
             };
         let blockchain_height = get_block_height(client).await;
 
-        self.interpret_operator_status(
+        self.interpret_depositor_status(
             peg_in_deposit_status,
             peg_in_confirm_status,
             peg_in_refund_status,
@@ -539,6 +542,31 @@ impl PegInGraph {
     pub fn merge(&mut self, source_peg_in_graph: &PegInGraph) {
         self.peg_in_confirm_transaction
             .merge(&source_peg_in_graph.peg_in_confirm_transaction);
+    }
+}
+
+impl GraphCliQuery for PegInGraph {
+    async fn broadcast_deposit(&self, client: &AsyncClient) -> Result<(), String> {
+        let txid = self.peg_in_deposit_transaction.tx().compute_txid();
+        let tx_status = client.get_tx_status(&txid).await;
+        match tx_status {
+            Ok(status) => {
+                match status.confirmed {
+                    true => Err("Transaction already mined!".into()),
+                    false => {
+                        // complete deposit tx
+                        let deposit_tx = self.peg_in_deposit_transaction.finalize();
+                        // broadcast deposit tx
+                        let deposit_result = client.broadcast(&deposit_tx).await;
+                        match deposit_result {
+                            Ok(_) => Ok(()),
+                            Err(e) => Err(e.to_string()),
+                        }
+                    }
+                }
+            }
+            Err(e) => Err(e.to_string()),
+        }
     }
 }
 
