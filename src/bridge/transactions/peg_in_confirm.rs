@@ -85,7 +85,7 @@ impl PegInConfirmTransaction {
     ) -> Self {
         let mut this = Self::new_for_validation(connector_0, connector_z, input_0);
 
-        this.push_depositor_signature_input_0(depositor_signature);
+        this.push_depositor_signature_input(0, depositor_signature);
 
         this
     }
@@ -125,8 +125,6 @@ impl PegInConfirmTransaction {
 
     fn generate_and_push_depositor_signature_input_0(&mut self, context: &DepositorContext) {
         let input_index = 0;
-        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
-
         let schnorr_signature = generate_taproot_leaf_schnorr_signature(
             context,
             &mut self.tx,
@@ -136,13 +134,15 @@ impl PegInConfirmTransaction {
             &self.prev_scripts[input_index],
             &context.depositor_keypair,
         );
-        unlock_data.push(schnorr_signature.to_vec());
 
-        push_taproot_leaf_unlock_data_to_witness(&mut self.tx, input_index, unlock_data);
+        self.push_depositor_signature_input(input_index, schnorr_signature);
     }
 
-    fn push_depositor_signature_input_0(&mut self, signature: bitcoin::taproot::Signature) {
-        let input_index = 0;
+    fn push_depositor_signature_input(
+        &mut self,
+        input_index: usize,
+        signature: bitcoin::taproot::Signature,
+    ) {
         let mut unlock_data: Vec<Vec<u8>> = Vec::new();
 
         unlock_data.push(signature.to_vec());

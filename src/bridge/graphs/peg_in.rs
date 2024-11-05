@@ -2,7 +2,6 @@ use bitcoin::{
     hex::{Case::Upper, DisplayHex},
     Network, OutPoint, PublicKey, Transaction, Txid, XOnlyPublicKey,
 };
-use clap::builder::Str;
 use esplora_client::{AsyncClient, Error, TxStatus};
 use musig2::SecNonce;
 use num_traits::ToPrimitive;
