@@ -95,7 +95,7 @@ pub fn checksig_verify<const TOTAL_DIGIT_COUNT: usize, const DIGIT_COUNT: usize>
         //
 
         // Repeat this for every of the n many digits
-        for digit_index in 0..TOTAL_DIGIT_COUNT {
+        for digit_index in 0..(DIGIT_COUNT + CHECKSUM_DIGIT_COUNT) {
 
             { public_key[(DIGIT_COUNT + CHECKSUM_DIGIT_COUNT - 1 - digit_index) as usize].to_vec() }
 
