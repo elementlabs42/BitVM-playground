@@ -23,17 +23,22 @@ use crate::treepp::*;
 use bitcoin::hashes::{hash160, Hash};
 use hex::decode as hex_decode;
 
+use super::winternitz::{PublicKey, N};
+
 /// Bits per digit
 const LOG_D: u32 = 4;
 /// Digits are base d+1
 pub const D: u32 = (1 << LOG_D) - 1;
 
-/// For 320 bits
+/// For 320 bits - currently only used in tests
 /// Number of digits of the message
-pub const N0_320: usize = 80;
+#[cfg(test)]
+const N0_320: usize = 80;
 /// Number of digits of the checksum
-pub const N1_320: usize = 4;
+#[cfg(test)]
+const N1_320: usize = 4;
 /// Total number of digits to be signed
+#[cfg(test)]
 const N_320: usize = N0_320 + N1_320;
 
 /// For 32 bits
@@ -44,7 +49,35 @@ pub const N1_32: usize = 2;
 /// Total number of digits to be signed
 pub const N_32: usize = N0_32 + N1_32;
 
-pub type PublicKey<const DIGIT_COUNT: usize> = [[u8; 20]; DIGIT_COUNT];
+pub const HASH160_LENGTH_IN_BYTES: usize = hash160::Hash::LEN;
+
+/// Contains public keys for all the message and checksum digits.
+pub type PublicKeyCompact<const TOTAL_DIGIT_COUNT: usize> =
+    [[u8; HASH160_LENGTH_IN_BYTES]; TOTAL_DIGIT_COUNT];
+
+pub fn into_public_key<const TOTAL_DIGIT_COUNT: usize>(
+    public_key_compact: &PublicKeyCompact<TOTAL_DIGIT_COUNT>,
+) -> Result<PublicKey, String> {
+    if public_key_compact.len() != (N as usize) {
+        return Err(format!(
+            "Invalid public key length: expected {}, but got {}",
+            N,
+            public_key_compact.len()
+        ));
+    }
+
+    let mut public_key_array = [[0u8; HASH160_LENGTH_IN_BYTES]; N as usize];
+    for i in 0..N {
+        public_key_array[i as usize] = public_key_compact[i as usize].try_into().expect(
+            format!(
+                "A Winternitz public key for a digit must be {HASH160_LENGTH_IN_BYTES} bytes long"
+            )
+            .as_str(),
+        );
+    }
+
+    Ok(public_key_array)
+}
 
 /// Winternitz Signature verification
 ///
@@ -52,9 +85,10 @@ pub type PublicKey<const DIGIT_COUNT: usize> = [[u8; 20]; DIGIT_COUNT];
 ///
 /// Optimized by @SergioDemianLerner, @tomkosm
 pub fn checksig_verify<const TOTAL_DIGIT_COUNT: usize, const DIGIT_COUNT: usize>(
-    public_key: &PublicKey<TOTAL_DIGIT_COUNT>,
+    public_key: &PublicKeyCompact<TOTAL_DIGIT_COUNT>,
 ) -> Script {
-    let checksum_digit_count = TOTAL_DIGIT_COUNT - DIGIT_COUNT;
+    #[allow(non_snake_case)]
+    let CHECKSUM_DIGIT_COUNT: usize = TOTAL_DIGIT_COUNT - DIGIT_COUNT;
     script! {
         //
         // Verify the hash chain for each digit
@@ -63,7 +97,7 @@ pub fn checksig_verify<const TOTAL_DIGIT_COUNT: usize, const DIGIT_COUNT: usize>
         // Repeat this for every of the n many digits
         for digit_index in 0..TOTAL_DIGIT_COUNT {
 
-            { public_key[TOTAL_DIGIT_COUNT as usize - 1 - digit_index as usize].to_vec() }
+            { public_key[(DIGIT_COUNT + CHECKSUM_DIGIT_COUNT - 1 - digit_index) as usize].to_vec() }
 
             // Check if hash is equal with public key and add digit to altstack.
             // We dont check if a digit was found to save space, incase we have an invalid hash
@@ -169,38 +203,6 @@ pub fn sign<const DIGIT_COUNT: usize, const CHECKSUM_DIGIT_COUNT: usize>(
     signatures
 }
 
-//
-// Helper functions
-//
-
-/// Generate a public key for the i-th digit of the message
-fn public_key_for_digit(secret_key: &str, digit_index: u32) -> [u8; 20] {
-    // Convert secret_key from hex string to bytes
-    let mut secret_i = match hex_decode(secret_key) {
-        Ok(bytes) => bytes,
-        Err(_) => panic!("Invalid hex string"),
-    };
-
-    secret_i.push(digit_index as u8);
-
-    let mut hash = hash160::Hash::hash(&secret_i);
-
-    for _ in 0..D {
-        hash = hash160::Hash::hash(&hash[..]);
-    }
-
-    *hash.as_byte_array()
-}
-
-/// Generate a public key from a secret key
-pub fn generate_public_key<const DIGIT_COUNT: usize>(secret_key: &str) -> PublicKey<DIGIT_COUNT> {
-    let mut public_key_array = [[0u8; 20]; DIGIT_COUNT];
-    for i in 0..DIGIT_COUNT as u32 {
-        public_key_array[i as usize] = public_key_for_digit(secret_key, i);
-    }
-    public_key_array
-}
-
 /// Compute the signature for the i-th digit of the message
 fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) -> Vec<u8> {
     // Convert secret_key from hex string to bytes
@@ -294,6 +296,37 @@ mod test {
     // The secret key
     const MY_SECKEY: &str = "b138982ce17ac813d505b5b40b665d404e9528e7";
 
+    //
+    // Helper functions
+    //
+
+    fn public_key<const DIGIT_COUNT: usize>(secret_key: &str) -> PublicKeyCompact<DIGIT_COUNT> {
+        let mut public_key_array = [[0u8; HASH160_LENGTH_IN_BYTES]; DIGIT_COUNT];
+        for i in 0..DIGIT_COUNT {
+            public_key_array[i] = public_key_for_digit(secret_key, i as u32);
+        }
+        public_key_array
+    }
+
+    /// Generate the public key for the i-th digit of the message
+    fn public_key_for_digit(secret_key: &str, digit_index: u32) -> [u8; HASH160_LENGTH_IN_BYTES] {
+        // Convert secret_key from hex string to bytes
+        let mut secret_i = match hex_decode(secret_key) {
+            Ok(bytes) => bytes,
+            Err(_) => panic!("Invalid hex string"),
+        };
+
+        secret_i.push(digit_index as u8);
+
+        let mut hash = hash160::Hash::hash(&secret_i);
+
+        for _ in 0..D {
+            hash = hash160::Hash::hash(&hash[..]);
+        }
+
+        hash.to_byte_array()
+    }
+
     #[test]
     fn test_winternitz() {
         // The message to sign
@@ -308,7 +341,7 @@ mod test {
 
         let script = script! {
             { sign::<N0_320, N1_320>(MY_SECKEY, MESSAGE) }
-            { checksig_verify::<N_320, N0_320>(&public_key) }
+            { checksig_verify::<N_320, N0_320>(&public_key::<N_320>(MY_SECKEY)) }
         };
 
         println!(
@@ -320,7 +353,7 @@ mod test {
 
         run(script! {
             { sign::<N0_320, N1_320>(MY_SECKEY, MESSAGE) }
-            { checksig_verify::<N_320, N0_320>(&public_key) }
+            { checksig_verify::<N_320, N0_320>(&public_key::<N_320>(MY_SECKEY)) }
             { digits_to_bytes::<N0_320>() }
 
             0x21 OP_EQUALVERIFY
@@ -379,7 +412,7 @@ mod test {
         let public_key = generate_public_key::<N_32>(MY_SECKEY);
         let script = script! {
             { sign::<N0_32, N1_32>(MY_SECKEY, MESSAGE) }
-            { checksig_verify::<N_32, N0_32>(&public_key) }
+            { checksig_verify::<N_32, N0_32>(&public_key::<N_32>(MY_SECKEY)) }
         };
 
         println!(
@@ -391,7 +424,7 @@ mod test {
 
         let script = script! {
             { sign::<N0_32, N1_32>(MY_SECKEY, MESSAGE) }
-            { checksig_verify::<N_32, N0_32>(&public_key) }
+            { checksig_verify::<N_32, N0_32>(&public_key::<N_32>(MY_SECKEY)) }
             { digits_to_number::<N0_32>() }
             { block }
             OP_EQUAL
@@ -410,7 +443,7 @@ mod test {
         let message: [u8; N0_32] = message_to_digits::<N0_32>(block);
         let script = script! {
             { sign::<N0_32, N1_32>(MY_SECKEY, message) }
-            { checksig_verify::<N_32, N0_32>(&public_key) }
+            { checksig_verify::<N_32, N0_32>(&public_key::<N_32>(MY_SECKEY)) }
         };
 
         println!(
@@ -422,7 +455,7 @@ mod test {
 
         run(script! {
           { sign::<N0_32, N1_32>(MY_SECKEY, message) }
-          { checksig_verify::<N_32, N0_32>(&public_key) }
+          { checksig_verify::<N_32, N0_32>(&public_key::<N_32>(MY_SECKEY)) }
           { digits_to_bytes::<N0_32>() }
           0x00
           OP_EQUALVERIFY

@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use crate::{
     bridge::{
         constants::N_SEQUENCE_FOR_LOCK_TIME, graphs::peg_out::CommitmentMessageId,
-        transactions::signing_winternitz::WinternitzPublicKey,
+        transactions::signing_winternitz::WinternitzPublicKeyVariant,
     },
+    signatures::winternitz_compact::{PublicKeyCompact, N_32},
     treepp::script,
 };
 use bitcoin::{
@@ -16,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        super::signatures::winternitz_compact::{checksig_verify, digits_to_number, N0_32, N1_32},
+        super::signatures::winternitz_compact::{checksig_verify, digits_to_number, N0_32},
         scripts::*,
         transactions::base::Input,
     },
@@ -28,7 +29,7 @@ pub struct Connector2 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
-    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKey>,
+    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
 }
 
 impl Connector2 {
@@ -36,7 +37,7 @@ impl Connector2 {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
     ) -> Self {
         Connector2 {
             network,
@@ -47,13 +48,14 @@ impl Connector2 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let secret_key = "b138982ce17ac813d505b5b40b665d404e952802"; // FIXME: this is a secret key used in tests (see get_test_commitment_secrets())
+        let start_time_public_key = self.commitment_public_keys[&CommitmentMessageId::StartTime]
+            .get_compact_n32_variant_ref();
 
         script! {
             // pre-image (pushed to stack from witness)
             // BITVM1 opcodes
             // block peg out was mined in (left on stack)
-            // { checksig_verify::<N0_32, N1_32>(secret_key) } // TODO: uncomment once code is adjusted to winternitz_compact
+            { checksig_verify::<N_32, N0_32>(&PublicKeyCompact::from(start_time_public_key)) }
             { digits_to_number::<N0_32>() }
             OP_CLTV
             OP_DROP
