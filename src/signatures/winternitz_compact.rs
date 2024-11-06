@@ -149,7 +149,7 @@ pub fn checksig_verify<const TOTAL_DIGIT_COUNT: usize, const DIGIT_COUNT: usize>
 
         // 2. Sum up the signed checksum's digits
         OP_FROMALTSTACK
-        for _ in 0..checksum_digit_count - 1 {
+        for _ in 0..CHECKSUM_DIGIT_COUNT - 1 {
             for _ in 0..LOG_D {
                 OP_DUP OP_ADD
             }
@@ -337,7 +337,6 @@ mod test {
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
         ];
-        let public_key = generate_public_key::<N_320>(MY_SECKEY);
 
         let script = script! {
             { sign::<N0_320, N1_320>(MY_SECKEY, MESSAGE) }
@@ -409,7 +408,6 @@ mod test {
         let block: u32 = 860033;
         // // 0000 0000 0000 1101 0001 1111 1000 0001
         const MESSAGE: [u8; N0_32] = [0, 0, 0, 13, 1, 15, 8, 1];
-        let public_key = generate_public_key::<N_32>(MY_SECKEY);
         let script = script! {
             { sign::<N0_32, N1_32>(MY_SECKEY, MESSAGE) }
             { checksig_verify::<N_32, N0_32>(&public_key::<N_32>(MY_SECKEY)) }
@@ -438,7 +436,6 @@ mod test {
     fn test_winternitz_digits_to_bytes() {
         // 0000 0000 0000 1101 0001 1111 1000 0001
         // message = [0x0, 0x0, 0x0, 0xD, 0x1, 0xF, 0x8, 0x1]
-        let public_key = generate_public_key::<N_32>(MY_SECKEY);
         let block: u32 = 860033;
         let message: [u8; N0_32] = message_to_digits::<N0_32>(block);
         let script = script! {
