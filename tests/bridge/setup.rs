@@ -126,17 +126,13 @@ pub async fn setup_test() -> SetupConfig {
             (
                 CommitmentMessageId::Superblock,
                 WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
-                    WinternitzPublicKey::from(
-                        &commitment_secrets[&CommitmentMessageId::Superblock],
-                    ),
+                    &commitment_secrets[&CommitmentMessageId::Superblock],
                 )),
             ),
             (
                 CommitmentMessageId::SuperblockHash,
                 WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
-                    WinternitzPublicKey::from(
-                        &commitment_secrets[&CommitmentMessageId::SuperblockHash],
-                    ),
+                    &commitment_secrets[&CommitmentMessageId::SuperblockHash],
                 )),
             ),
         ]),
@@ -148,7 +144,7 @@ pub async fn setup_test() -> SetupConfig {
         &HashMap::from([(
             CommitmentMessageId::StartTime,
             WinternitzPublicKeyVariant::CompactN32(WinternitzPublicKey::from(
-                WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::StartTime]),
+                &commitment_secrets[&CommitmentMessageId::StartTime],
             )),
         )]),
     );
@@ -162,17 +158,13 @@ pub async fn setup_test() -> SetupConfig {
             (
                 CommitmentMessageId::PegOutTxIdSourceNetwork,
                 WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
-                    WinternitzPublicKey::from(
-                        &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
-                    ),
+                    &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
                 )),
             ),
             (
                 CommitmentMessageId::PegOutTxIdDestinationNetwork,
                 WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
-                    WinternitzPublicKey::from(
-                        &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
-                    ),
+                    &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
                 )),
             ),
         ]),

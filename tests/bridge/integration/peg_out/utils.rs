@@ -68,7 +68,7 @@ pub async fn create_and_mine_kick_off_2_tx(
         &HashMap::from([(
             CommitmentMessageId::Superblock,
             WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
-                WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
+                &commitment_secrets[&CommitmentMessageId::Superblock],
             )),
         )]),
     );
