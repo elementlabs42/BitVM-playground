@@ -120,10 +120,18 @@ pub async fn setup_test() -> SetupConfig {
         source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
-        &HashMap::from([(
-            CommitmentMessageId::Superblock,
-            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
-        )]),
+        &HashMap::from([
+            (
+                CommitmentMessageId::Superblock,
+                WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
+            ),
+            (
+                CommitmentMessageId::SuperblockHash,
+                WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::SuperblockHash],
+                ),
+            ),
+        ]),
     );
     let connector_2 = Connector2::new(
         source_network,
@@ -199,6 +207,10 @@ fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecre
         (
             CommitmentMessageId::Superblock,
             generate_test_winternitz_secret(3),
+        ),
+        (
+            CommitmentMessageId::SuperblockHash,
+            generate_test_winternitz_secret(4),
         ),
     ])
 }

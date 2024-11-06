@@ -855,6 +855,9 @@ impl BitVMClient {
                 &self.private_data.commitment_secrets
                     [&self.operator_context.as_ref().unwrap().operator_public_key]
                     [peg_out_graph_id][&CommitmentMessageId::Superblock],
+                &self.private_data.commitment_secrets
+                    [&self.operator_context.as_ref().unwrap().operator_public_key]
+                    [peg_out_graph_id][&CommitmentMessageId::SuperblockHash],
             )
             .await;
     }

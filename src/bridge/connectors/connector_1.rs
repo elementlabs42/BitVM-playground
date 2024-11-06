@@ -10,7 +10,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bridge::{
-        graphs::peg_out::CommitmentMessageId, superblock::SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS,
+        graphs::peg_out::CommitmentMessageId,
+        superblock::{
+            SUPERBLOCK_HASH_MESSAGE_LENGTH_IN_DIGITS, SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS,
+        },
         transactions::signing_winternitz::WinternitzPublicKey,
     },
     signatures::{winternitz::PublicKey, winternitz_hash::check_hash_sig},
@@ -61,8 +64,11 @@ impl Connector1 {
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
         let superblock_public_key =
             PublicKey::from(&self.commitment_public_keys[&CommitmentMessageId::Superblock]);
+        let superblock_hash_public_key =
+            PublicKey::from(&self.commitment_public_keys[&CommitmentMessageId::SuperblockHash]);
 
         script! {
+            { check_hash_sig(&superblock_hash_public_key, SUPERBLOCK_HASH_MESSAGE_LENGTH_IN_DIGITS) }
             { check_hash_sig(&superblock_public_key, SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS) }
             { self.num_blocks_timelock_leaf_0 }
             OP_CSV
