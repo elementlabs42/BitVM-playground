@@ -60,8 +60,8 @@ fn test_groth16_verifier() {
     let k = 6;
     let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
     let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
-        a: Some(<E as Pairing>::ScalarField::rand(&mut rng)), // 3
-        b: Some(<E as Pairing>::ScalarField::rand(&mut rng)), // 11
+        a: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
+        b: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
         num_variables: 10,
         num_constraints: 1 << k,
     };
