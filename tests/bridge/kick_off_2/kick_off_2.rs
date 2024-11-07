@@ -54,11 +54,16 @@ async fn test_kick_off_2_tx() {
             "0064b0d54f20412756ba7ce07b0594f3548b06f2dad5cfeaac2aca508634ed19",
         )
         .unwrap(),
-        time: 1729244761,
+        time: 1729251961,
         bits: CompactTarget::from_hex("0x17030ecd").unwrap(),
         nonce: 0x400e345c,
     };
     let block_hash = header.block_hash();
+
+    let expected_block_hash =
+        BlockHash::from_str("0000000000000000000018d4f45a945dbb36af7cdf01cec9acf3d93e805b09a0")
+            .unwrap();
+    assert_eq!(block_hash, expected_block_hash);
 
     kick_off_2_tx.sign_input_0(
         &config.operator_context,
