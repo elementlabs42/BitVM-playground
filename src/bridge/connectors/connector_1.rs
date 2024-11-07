@@ -14,7 +14,7 @@ use crate::{
         superblock::{
             SUPERBLOCK_HASH_MESSAGE_LENGTH_IN_DIGITS, SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS,
         },
-        transactions::signing_winternitz::WinternitzPublicKey,
+        transactions::signing_winternitz::WinternitzPublicKeyVariant,
     },
     signatures::{winternitz::PublicKey, winternitz_hash::check_hash_sig},
 };
@@ -34,7 +34,7 @@ pub struct Connector1 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
-    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKey>,
+    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
     pub num_blocks_timelock_leaf_0: u32,
     pub num_blocks_timelock_leaf_1: u32,
     pub num_blocks_timelock_leaf_2: u32,
@@ -45,7 +45,7 @@ impl Connector1 {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
     ) -> Self {
         Connector1 {
             network,
@@ -62,14 +62,15 @@ impl Connector1 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let superblock_public_key =
-            PublicKey::from(&self.commitment_public_keys[&CommitmentMessageId::Superblock]);
-        let superblock_hash_public_key =
-            PublicKey::from(&self.commitment_public_keys[&CommitmentMessageId::SuperblockHash]);
+        let superblock_public_key = self.commitment_public_keys[&CommitmentMessageId::Superblock]
+            .get_standard_variant_ref();
+        let superblock_hash_public_key = self.commitment_public_keys
+            [&CommitmentMessageId::SuperblockHash]
+            .get_standard_variant_ref();
 
         script! {
-            { check_hash_sig(&superblock_hash_public_key, SUPERBLOCK_HASH_MESSAGE_LENGTH_IN_DIGITS) }
-            { check_hash_sig(&superblock_public_key, SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS) }
+            { check_hash_sig(&PublicKey::from(superblock_hash_public_key), SUPERBLOCK_HASH_MESSAGE_LENGTH_IN_DIGITS) }
+            { check_hash_sig(&PublicKey::from(superblock_public_key), SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS) }
             { self.num_blocks_timelock_leaf_0 }
             OP_CSV
             OP_DROP

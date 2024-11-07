@@ -19,7 +19,7 @@ use crate::bridge::{
         find_superblock, get_start_time_block_number, get_superblock_hash_message_digits,
         get_superblock_message_digits,
     },
-    transactions::signing_winternitz::WinternitzSingingInputs,
+    transactions::signing_winternitz::{WinternitzPublicKeyVariant, WinternitzSingingInputs},
 };
 
 use super::{
@@ -302,31 +302,35 @@ impl PegOutGraph {
         let connector_1_commitment_public_keys = HashMap::from([
             (
                 CommitmentMessageId::Superblock,
-                WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::Superblock],
+                )),
             ),
             (
                 CommitmentMessageId::SuperblockHash,
-                WinternitzPublicKey::from(
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
                     &commitment_secrets[&CommitmentMessageId::SuperblockHash],
-                ),
+                )),
             ),
         ]);
         let connector_2_commitment_public_keys = HashMap::from([(
             CommitmentMessageId::StartTime,
-            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::StartTime]),
+            WinternitzPublicKeyVariant::CompactN32(WinternitzPublicKey::from(
+                &commitment_secrets[&CommitmentMessageId::StartTime],
+            )),
         )]);
         let connector_6_commitment_public_keys = HashMap::from([
             (
                 CommitmentMessageId::PegOutTxIdSourceNetwork,
-                WinternitzPublicKey::from(
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
                     &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
-                ),
+                )),
             ),
             (
                 CommitmentMessageId::PegOutTxIdDestinationNetwork,
-                WinternitzPublicKey::from(
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
                     &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
-                ),
+                )),
             ),
         ]);
 
@@ -2008,9 +2012,18 @@ impl PegOutGraph {
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
         operator_public_key: &PublicKey,
-        connector_1_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
-        connector_2_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
-        connector_6_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        connector_1_commitment_public_keys: &HashMap<
+            CommitmentMessageId,
+            WinternitzPublicKeyVariant,
+        >,
+        connector_2_commitment_public_keys: &HashMap<
+            CommitmentMessageId,
+            WinternitzPublicKeyVariant,
+        >,
+        connector_6_commitment_public_keys: &HashMap<
+            CommitmentMessageId,
+            WinternitzPublicKeyVariant,
+        >,
     ) -> PegOutConnectors {
         let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_1 = Connector1::new(

@@ -6,7 +6,7 @@ use crate::{
             DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS, SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS,
         },
         graphs::peg_out::CommitmentMessageId,
-        transactions::{base::Input, signing_winternitz::WinternitzPublicKey},
+        transactions::{base::Input, signing_winternitz::WinternitzPublicKeyVariant},
     },
     signatures::{winternitz::PublicKey, winternitz_hash::check_hash_sig},
     treepp::script,
@@ -25,14 +25,14 @@ use super::base::{generate_default_tx_in, TaprootConnector};
 pub struct Connector6 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
-    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKey>,
+    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
 }
 
 impl Connector6 {
     pub fn new(
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
-        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
     ) -> Self {
         Connector6 {
             network,
@@ -42,16 +42,16 @@ impl Connector6 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let destination_network_txid_public_key = PublicKey::from(
-            &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
-        );
-        let source_network_txid_public_key = PublicKey::from(
-            &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdSourceNetwork],
-        );
+        let destination_network_txid_public_key = self.commitment_public_keys
+            [&CommitmentMessageId::PegOutTxIdDestinationNetwork]
+            .get_standard_variant_ref();
+        let source_network_txid_public_key = self.commitment_public_keys
+            [&CommitmentMessageId::PegOutTxIdSourceNetwork]
+            .get_standard_variant_ref();
 
         script! {
-          { check_hash_sig(&destination_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS) }
-          { check_hash_sig(&source_network_txid_public_key, SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS) }
+          { check_hash_sig(&PublicKey::from(destination_network_txid_public_key), DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS) }
+          { check_hash_sig(&PublicKey::from(source_network_txid_public_key), SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS) }
           { self.operator_taproot_public_key }
           OP_CHECKSIG
         }
