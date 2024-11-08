@@ -3,7 +3,7 @@ use bitvm::bridge::client::data_store::{base::DataStoreDriver, ftp::ftp::Ftp};
 #[tokio::test]
 async fn test_ftp() {
     println!("Start FTP connection");
-    let ftp = Ftp::new().unwrap();
+    let ftp = Ftp::new().await.unwrap();
 
     let path = "bridge_data/testnet/ethereum_sepolia/028b839569cde368894237913fe4fbd25d75eaf1ed019a39d479e693dac35be19e";
 

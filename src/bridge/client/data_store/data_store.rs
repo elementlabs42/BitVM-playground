@@ -25,12 +25,12 @@ pub struct DataStore {
 }
 
 impl DataStore {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         Self {
-            aws_s3: AwsS3::new(),
-            ftp: None,  // Ftp::new(),
-            ftps: None, // Ftps::new(),
-            sftp: None, // Sftp::new(),
+            aws_s3: None, // AwsS3::new(),
+            ftp: None,    // Ftp::new().await,
+            ftps: None,   // Ftps::new().await,
+            sftp: Sftp::new().await,
         }
     }
 

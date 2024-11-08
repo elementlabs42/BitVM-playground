@@ -3,7 +3,7 @@ use bitvm::bridge::client::data_store::{base::DataStoreDriver, sftp::Sftp};
 #[tokio::test]
 async fn test_sftp() {
     println!("Start SFTP connection");
-    let sftp = Sftp::new().unwrap();
+    let sftp = Sftp::new().await.unwrap();
 
     let path = "bridge_data/testnet/ethereum_sepolia/028b839569cde368894237913fe4fbd25d75eaf1ed019a39d479e693dac35be19e";
 

@@ -7,7 +7,10 @@ use openssh_sftp_client::{
     openssh::{KnownHosts, Session as SshSession},
     Sftp as _Sftp,
 };
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    runtime::Handle,
+};
 
 // To use this data store, create a .env file in the base directory with the following values:
 // export BRIDGE_SFTP_HOST="..."
@@ -33,7 +36,7 @@ pub struct Sftp {
 
 // TODO: implement creating and reading from directories
 impl Sftp {
-    pub fn new() -> Option<Self> {
+    pub async fn new() -> Option<Self> {
         dotenv::dotenv().ok();
         let host = dotenv::var("BRIDGE_SFTP_HOST");
         let port = dotenv::var("BRIDGE_SFTP_PORT");
@@ -62,7 +65,7 @@ impl Sftp {
 
         println!("SFTP 55");
 
-        match test_connection(&credentials) {
+        match test_connection(&credentials).await {
             Ok(_) => Some(Self { credentials }),
             Err(err) => {
                 eprintln!("{err:?}");
@@ -203,12 +206,12 @@ impl DataStoreDriver for Sftp {
     }
 }
 
-fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
+async fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
     println!("SFTP 190");
-    match executor::block_on(connect(credentials)) {
+    match connect(credentials).await {
         Ok(sftp) => {
             println!("SFTP 192");
-            executor::block_on(disconnect(sftp));
+            disconnect(sftp).await;
             Ok(())
         }
         Err(err) => Err(format!("Failed to connect: {}", err.to_string())),
