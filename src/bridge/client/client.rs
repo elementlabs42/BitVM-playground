@@ -17,7 +17,11 @@ use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
 use crate::bridge::{
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
-    graphs::{base::get_tx_statuses, peg_in::{PegInDepositorStatus, PegInVerifierStatus}, peg_out::{CommitmentMessageId, PegOutOperatorStatus}},
+    graphs::{
+        base::get_tx_statuses,
+        peg_in::{PegInDepositorStatus, PegInVerifierStatus},
+        peg_out::{CommitmentMessageId, PegOutOperatorStatus},
+    },
     transactions::signing_winternitz::WinternitzSecret,
 };
 
@@ -617,20 +621,16 @@ impl BitVMClient {
         }
     }
 
-    pub async fn process_peg_in_as_depositor(&mut self,peg_in_graph: &PegInGraph) {
+    pub async fn process_peg_in_as_depositor(&mut self, peg_in_graph: &PegInGraph) {
         if let Some(_) = self.depositor_context {
             let status = peg_in_graph.depositor_status(&self.esplora).await;
 
             match status {
                 PegInDepositorStatus::PegInDepositWait => {
-                    self
-                        .broadcast_peg_in_deposit(peg_in_graph.id())
-                        .await
+                    self.broadcast_peg_in_deposit(peg_in_graph.id()).await
                 }
                 PegInDepositorStatus::PegInConfirmWait => {
-                    self
-                        .broadcast_peg_in_confirm(peg_in_graph.id())
-                        .await
+                    self.broadcast_peg_in_confirm(peg_in_graph.id()).await
                 }
                 _ => {
                     println!(
@@ -645,7 +645,9 @@ impl BitVMClient {
 
     pub async fn process_peg_in_as_verifier(&mut self, peg_in_graph: &PegInGraph) {
         if let Some(ref context) = self.verifier_context {
-            let status = peg_in_graph.verifier_status(&self.esplora, Some(&context)).await;
+            let status = peg_in_graph
+                .verifier_status(&self.esplora, Some(&context))
+                .await;
 
             match status {
                 PegInVerifierStatus::PendingOurNonces => {
@@ -678,41 +680,39 @@ impl BitVMClient {
 
     pub async fn process_peg_outs(&mut self) {
         let peg_out_graphs = self.get_data().peg_out_graphs.clone();
-            for peg_out_graph in peg_out_graphs.iter() {
-                let status = peg_out_graph.operator_status(&self.esplora).await;
-                match status {
-                    PegOutOperatorStatus::PegOutStartTimeAvailable => {
-                        self.broadcast_start_time(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutPegOutConfirmAvailable => {
-                        self
-                            .broadcast_peg_out_confirm(peg_out_graph.id())
-                            .await
-                    }
-                    PegOutOperatorStatus::PegOutKickOff1Available => {
-                        self.broadcast_kick_off_1(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutKickOff2Available => {
-                        self.broadcast_kick_off_2(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutAssertAvailable => {
-                        self.broadcast_assert(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutTake1Available => {
-                        self.broadcast_take_1(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutTake2Available => {
-                        self.broadcast_take_2(peg_out_graph.id()).await
-                    }
-                    _ => {
-                        println!(
-                            "Peg-out graph {} is in status: {}",
-                            peg_out_graph.id(),
-                            status
-                        );
-                    }
+        for peg_out_graph in peg_out_graphs.iter() {
+            let status = peg_out_graph.operator_status(&self.esplora).await;
+            match status {
+                PegOutOperatorStatus::PegOutStartTimeAvailable => {
+                    self.broadcast_start_time(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutPegOutConfirmAvailable => {
+                    self.broadcast_peg_out_confirm(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutKickOff1Available => {
+                    self.broadcast_kick_off_1(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutKickOff2Available => {
+                    self.broadcast_kick_off_2(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutAssertAvailable => {
+                    self.broadcast_assert(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutTake1Available => {
+                    self.broadcast_take_1(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutTake2Available => {
+                    self.broadcast_take_2(peg_out_graph.id()).await
+                }
+                _ => {
+                    println!(
+                        "Peg-out graph {} is in status: {}",
+                        peg_out_graph.id(),
+                        status
+                    );
                 }
             }
+        }
     }
 
     async fn verifier_status(&self) {
@@ -1606,11 +1606,13 @@ impl ClientCliQuery for BitVMClient {
             .as_ref()
             .unwrap()
             .n_of_n_taproot_public_key;
+        let n_of_n_public_keys = &self.depositor_context.as_ref().unwrap().n_of_n_public_keys;
         let peg_in_graph = PegInGraph::new_for_query(
             self.depositor_context.as_ref().unwrap().network,
             depositor_public_key,
             depositor_taproot_public_key,
             n_of_n_public_key,
+            n_of_n_public_keys,
             n_of_n_taproot_public_key,
             depositor_evm_address,
             deposit_input,

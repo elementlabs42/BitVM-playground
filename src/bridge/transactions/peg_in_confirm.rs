@@ -4,7 +4,6 @@ use bitcoin::{
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::bridge::contexts::depositor;
 
 use super::{
     super::{
@@ -34,27 +33,17 @@ pub struct PegInConfirmTransaction {
 }
 
 impl PreSignedTransaction for PegInConfirmTransaction {
-    fn tx(&self) -> &Transaction {
-        &self.tx
-    }
+    fn tx(&self) -> &Transaction { &self.tx }
 
-    fn tx_mut(&mut self) -> &mut Transaction {
-        &mut self.tx
-    }
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
-    fn prev_outs(&self) -> &Vec<TxOut> {
-        &self.prev_outs
-    }
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
-        &self.prev_scripts
-    }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl PreSignedMusig2Transaction for PegInConfirmTransaction {
-    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> {
-        &self.musig2_nonces
-    }
+    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
     }
@@ -99,9 +88,15 @@ impl PegInConfirmTransaction {
         connector_0: &Connector0,
         connector_z: &ConnectorZ,
         input_0: Input,
+        n_of_n_public_keys: &Vec<PublicKey>,
         depositor_signature: bitcoin::taproot::Signature,
     ) -> Self {
-        let mut this = Self::new_for_validation(connector_0, connector_z, input_0);
+        let mut this = Self::new_for_validation(
+            connector_0,
+            connector_z,
+            input_0,
+            n_of_n_public_keys.clone(),
+        );
 
         this.push_depositor_signature_input(0, depositor_signature);
 
@@ -258,7 +253,5 @@ impl PegInConfirmTransaction {
 }
 
 impl BaseTransaction for PegInConfirmTransaction {
-    fn finalize(&self) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

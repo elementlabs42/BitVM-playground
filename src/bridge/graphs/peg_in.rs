@@ -68,24 +68,34 @@ pub enum PegInVerifierStatus {
     PendingOurNonces,    // the given verifier needs to submit nonces
     AwaitingNonces,      // the given verifier submitted nonces, awaiting other verifier's nonces
     PendingOurSignature, // the given verifier needs to submit signature
-    AwaitingSignatures,  // the given verifier submitted signatures, awaiting other verifier's signatures
-    ReadyToSubmit,       // all signatures collected, can now submit
-    Complete,            // peg-in complete
+    AwaitingSignatures, // the given verifier submitted signatures, awaiting other verifier's signatures
+    ReadyToSubmit,      // all signatures collected, can now submit
+    Complete,           // peg-in complete
 }
 
 impl Display for PegInVerifierStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            PegInVerifierStatus::AwaitingDeposit => write!(f, "Peg-in deposit transaction not confirmed yet. Wait..."),
-            PegInVerifierStatus::ReadyToSubmit => {
-                write!(f, "Peg-in confirm transaction pre-signed. Broadcast confirm transaction?")
+            PegInVerifierStatus::AwaitingDeposit => {
+                write!(f, "Peg-in deposit transaction not confirmed yet. Wait...")
             }
-            PegInVerifierStatus::PendingOurNonces => write!(f, "Nonce required. Share peg-in confirm nonce?"),
+            PegInVerifierStatus::ReadyToSubmit => {
+                write!(
+                    f,
+                    "Peg-in confirm transaction pre-signed. Broadcast confirm transaction?"
+                )
+            }
+            PegInVerifierStatus::PendingOurNonces => {
+                write!(f, "Nonce required. Share peg-in confirm nonce?")
+            }
             PegInVerifierStatus::AwaitingNonces => {
                 write!(f, "Awaiting peg-in confirm nonces. Wait...")
             }
             PegInVerifierStatus::PendingOurSignature => {
-                write!(f, "Signature required. Pre-sign peg-in confirm transaction?")
+                write!(
+                    f,
+                    "Signature required. Pre-sign peg-in confirm transaction?"
+                )
             }
             PegInVerifierStatus::AwaitingSignatures => {
                 write!(f, "Awaiting peg-in confirm signatures. Wait...")
@@ -146,13 +156,9 @@ pub struct PegInGraph {
 }
 
 impl BaseGraph for PegInGraph {
-    fn network(&self) -> Network {
-        self.network
-    }
+    fn network(&self) -> Network { self.network }
 
-    fn id(&self) -> &String {
-        &self.id
-    }
+    fn id(&self) -> &String { &self.id }
 }
 
 impl PegInGraph {
@@ -205,6 +211,7 @@ impl PegInGraph {
         depositor_public_key: &PublicKey,
         depositor_taproot_public_key: &XOnlyPublicKey,
         n_of_n_public_key: &PublicKey,
+        n_of_n_public_keys: &Vec<PublicKey>,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         depositor_evm_address: &str,
         deposit_input: Input,
@@ -214,6 +221,7 @@ impl PegInGraph {
             depositor_public_key,
             depositor_taproot_public_key,
             n_of_n_public_key,
+            n_of_n_public_keys,
             n_of_n_taproot_public_key,
             depositor_evm_address,
             deposit_input,
@@ -260,6 +268,7 @@ impl PegInGraph {
             &connectors.connector_0,
             &connectors.connector_z,
             generate_input(&peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
+            n_of_n_public_keys,
             signatures.confirm,
         );
 
@@ -287,6 +296,7 @@ impl PegInGraph {
             &self.depositor_public_key,
             &self.depositor_taproot_public_key,
             &self.n_of_n_public_key,
+            &self.n_of_n_public_keys,
             &self.n_of_n_taproot_public_key,
             &self.depositor_evm_address,
             Input {
@@ -370,7 +380,6 @@ impl PegInGraph {
             return PegInVerifierStatus::AwaitingSignatures;
         }
 
-        
         // we have all signature, but confirm wasn't included in a block yet
         PegInVerifierStatus::ReadyToSubmit
     }
@@ -646,6 +655,7 @@ fn create_graph_without_signing(
     depositor_public_key: &PublicKey,
     depositor_taproot_public_key: &XOnlyPublicKey,
     n_of_n_public_key: &PublicKey,
+    n_of_n_public_keys: &Vec<PublicKey>,
     n_of_n_taproot_public_key: &XOnlyPublicKey,
     depositor_evm_address: &str,
     deposit_input: Input,
@@ -676,6 +686,7 @@ fn create_graph_without_signing(
         &connectors.connector_0,
         &connectors.connector_z,
         generate_input(&peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
+        n_of_n_public_keys.clone(),
     );
 
     PegInGraph {
@@ -685,8 +696,8 @@ fn create_graph_without_signing(
         peg_in_deposit_transaction,
         peg_in_refund_transaction,
         peg_in_confirm_transaction,
-        n_of_n_presigned: false,
         n_of_n_public_key: *n_of_n_public_key,
+        n_of_n_public_keys: n_of_n_public_keys.clone(),
         n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
         depositor_public_key: *depositor_public_key,
         depositor_taproot_public_key: *depositor_taproot_public_key,
