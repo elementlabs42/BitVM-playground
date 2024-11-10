@@ -1,16 +1,13 @@
 use super::base::DataStoreDriver;
 use async_trait::async_trait;
 use dotenv;
-use futures::{executor, TryStreamExt};
+use futures::TryStreamExt;
 use openssh_sftp_client::{
     file::TokioCompatFile,
     openssh::{KnownHosts, Session as SshSession},
     Sftp as _Sftp,
 };
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    runtime::Handle,
-};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 // To use this data store, create a .env file in the base directory with the following values:
 // export BRIDGE_SFTP_HOST="..."
@@ -53,8 +50,6 @@ impl Sftp {
             return None;
         }
 
-        println!("SFTP 46");
-
         let credentials = SftpCredentials {
             host: host.unwrap(),
             port: port.unwrap(),
@@ -62,8 +57,6 @@ impl Sftp {
             // keyfile_path: keyfile_path.unwrap(),
             base_path: base_path.unwrap(),
         };
-
-        println!("SFTP 55");
 
         match test_connection(&credentials).await {
             Ok(_) => Some(Self { credentials }),
@@ -79,9 +72,11 @@ impl Sftp {
 
         match connect(&self.credentials).await {
             Ok(sftp) => match sftp.open(key).await.map(TokioCompatFile::from) {
-                Ok(file) => {
-                    tokio::pin!(file);
-                    match file.read_to_end(&mut buffer).await {
+                Ok(_file) => {
+                    let mut file = Box::pin(_file);
+                    let result = file.read_to_end(&mut buffer).await;
+                    drop(file);
+                    match result {
                         Ok(_) => {
                             disconnect(sftp).await;
                             Ok(buffer)
@@ -108,38 +103,37 @@ impl Sftp {
         _file_path: Option<&str>,
     ) -> Result<(), String> {
         match connect(&self.credentials).await {
-            Ok(sftp) => match sftp
-                .options()
-                .write(true)
-                .create_new(true)
-                .open(key)
-                .await
-                .map(TokioCompatFile::from)
-            {
-                Ok(file) => {
-                    tokio::pin!(file);
-                    match file.write(data).await {
-                        Ok(_) => match file.flush().await {
-                            Ok(_) => {
-                                disconnect(sftp).await;
-                                Ok(())
-                            }
+            Ok(sftp) => {
+                let result = sftp.options().write(true).create_new(true).open(key).await;
+                match result {
+                    Ok(_file) => {
+                        let mut file = Box::pin(TokioCompatFile::from(_file));
+                        match file.write(data).await {
+                            Ok(_) => match file.flush().await {
+                                Ok(_) => {
+                                    drop(file);
+                                    disconnect(sftp).await;
+                                    Ok(())
+                                }
+                                Err(err) => {
+                                    drop(file);
+                                    disconnect(sftp).await;
+                                    return Err(format!("Unable to write {}: {}", key, err));
+                                }
+                            },
                             Err(err) => {
+                                drop(file);
                                 disconnect(sftp).await;
                                 return Err(format!("Unable to write {}: {}", key, err));
                             }
-                        },
-                        Err(err) => {
-                            disconnect(sftp).await;
-                            return Err(format!("Unable to write {}: {}", key, err));
                         }
                     }
+                    Err(err) => {
+                        disconnect(sftp).await;
+                        return Err(format!("Unable to write {}: {}", key, err));
+                    }
                 }
-                Err(err) => {
-                    disconnect(sftp).await;
-                    return Err(format!("Unable to write {}: {}", key, err));
-                }
-            },
+            }
             Err(err) => Err(format!("Unable to write {}: {}", key, err)),
         }
     }
@@ -153,18 +147,18 @@ impl DataStoreDriver for Sftp {
                 let mut fs = sftp.fs();
                 match fs.open_dir(".").await {
                     Ok(dir) => {
-                        let read_dir = dir.read_dir();
-                        tokio::pin!(read_dir);
-
+                        let mut read_dir = Box::pin(dir.read_dir());
                         let mut buffer: Vec<String> = vec![];
                         while let Some(entry) = read_dir.try_next().await.unwrap() {
                             buffer.push(entry.filename().to_str().unwrap().to_string());
                         }
-
+                        drop(read_dir);
+                        drop(fs);
                         disconnect(sftp).await;
                         Ok(buffer)
                     }
                     Err(err) => {
+                        drop(fs);
                         disconnect(sftp).await;
                         Err(format!("Unable to list objects: {}", err.to_string()))
                     }
@@ -207,10 +201,8 @@ impl DataStoreDriver for Sftp {
 }
 
 async fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
-    println!("SFTP 190");
     match connect(credentials).await {
         Ok(sftp) => {
-            println!("SFTP 192");
             disconnect(sftp).await;
             Ok(())
         }
@@ -253,6 +245,7 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
     let mut fs = sftp.fs();
     fs.set_cwd(&credentials.base_path);
     let result = fs.open_dir(&credentials.base_path).await;
+    drop(fs);
     if result.is_err() {
         return Err(format!("Invalid base path: {}", &credentials.base_path));
     }
@@ -261,9 +254,11 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
 }
 
 async fn disconnect(sftp: _Sftp) {
-    if sftp.close().await.is_ok() {
-        return;
+    let result = sftp.close().await;
+    if result.is_err() {
+        eprintln!(
+            "Unable to close connection: {}",
+            result.err().unwrap().to_string()
+        );
     }
-
-    eprintln!("Unable to close connection");
 }

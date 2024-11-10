@@ -11,15 +11,15 @@ async fn test_ftp() {
     let objects = ftp.list_objects(Some(path)).await;
     println!("Objects: {:?}", objects);
 
-    println!("Try to fetch json");
-    let json = ftp
-        .fetch_json("1721392247764-bridge-client-data.json", Some(path))
-        .await;
-    println!("Json: {:?}", json);
-
     println!("Try to upload json");
     let result = ftp
         .upload_json("ftp_test.json", "{\"dog\":\"cat\"}".to_string(), Some(path))
         .await;
     println!("Result: {:?}", result);
+
+    println!("Try to fetch json");
+    let json = ftp
+        .fetch_json("1721392247764-bridge-client-data.json", Some(path))
+        .await;
+    println!("Json: {:?}", json);
 }

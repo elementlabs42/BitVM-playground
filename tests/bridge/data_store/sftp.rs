@@ -11,12 +11,6 @@ async fn test_sftp() {
     let objects = sftp.list_objects(Some(path)).await;
     println!("Objects: {:?}", objects);
 
-    println!("Try to fetch json");
-    let json = sftp
-        .fetch_json("1721392247764-bridge-client-data.json", Some(path))
-        .await;
-    println!("Json: {:?}", json);
-
     println!("Try to upload json");
     let result = sftp
         .upload_json(
@@ -26,4 +20,8 @@ async fn test_sftp() {
         )
         .await;
     println!("Result: {:?}", result);
+
+    println!("Try to fetch json");
+    let json = sftp.fetch_json("sftp_test.json", Some(path)).await;
+    println!("Json: {:?}", json);
 }

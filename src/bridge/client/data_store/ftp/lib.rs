@@ -1,4 +1,4 @@
-use futures::{executor, AsyncReadExt, AsyncWriteExt};
+use futures::{AsyncReadExt, AsyncWriteExt};
 use suppaftp::{
     async_native_tls::TlsConnector, AsyncFtpStream, AsyncNativeTlsConnector,
     AsyncNativeTlsFtpStream,
