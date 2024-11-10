@@ -31,7 +31,6 @@ pub struct Sftp {
     credentials: SftpCredentials,
 }
 
-// TODO: implement creating and reading from directories
 impl Sftp {
     pub async fn new() -> Option<Self> {
         dotenv::dotenv().ok();
@@ -67,31 +66,37 @@ impl Sftp {
         }
     }
 
-    async fn get_object(&self, key: &str, _file_path: Option<&str>) -> Result<Vec<u8>, String> {
+    async fn get_object(&self, key: &str, file_path: Option<&str>) -> Result<Vec<u8>, String> {
         let mut buffer: Vec<u8> = vec![];
 
         match connect(&self.credentials).await {
-            Ok(sftp) => match sftp.open(key).await.map(TokioCompatFile::from) {
-                Ok(_file) => {
-                    let mut file = Box::pin(_file);
-                    let result = file.read_to_end(&mut buffer).await;
-                    drop(file);
-                    match result {
-                        Ok(_) => {
-                            disconnect(sftp).await;
-                            Ok(buffer)
-                        }
-                        Err(err) => {
-                            disconnect(sftp).await;
-                            Err(format!("Unable to get {}: {}", key, err))
+            Ok(sftp) => {
+                let mut full_filename = key.to_string();
+                if file_path.is_some() {
+                    full_filename = format!("{}/{}", file_path.unwrap(), key);
+                }
+                match sftp.open(full_filename).await.map(TokioCompatFile::from) {
+                    Ok(_file) => {
+                        let mut file = Box::pin(_file);
+                        let result = file.read_to_end(&mut buffer).await;
+                        drop(file);
+                        match result {
+                            Ok(_) => {
+                                disconnect(sftp).await;
+                                Ok(buffer)
+                            }
+                            Err(err) => {
+                                disconnect(sftp).await;
+                                Err(format!("Unable to get {}: {}", key, err))
+                            }
                         }
                     }
+                    Err(err) => {
+                        disconnect(sftp).await;
+                        Err(format!("Unable to get {}: {}", key, err))
+                    }
                 }
-                Err(err) => {
-                    disconnect(sftp).await;
-                    Err(format!("Unable to get {}: {}", key, err))
-                }
-            },
+            }
             Err(err) => Err(format!("Unable to get {}: {}", key, err)),
         }
     }
@@ -100,38 +105,55 @@ impl Sftp {
         &self,
         key: &str,
         data: &Vec<u8>,
-        _file_path: Option<&str>,
+        file_path: Option<&str>,
     ) -> Result<(), String> {
         match connect(&self.credentials).await {
             Ok(sftp) => {
-                let result = sftp.options().write(true).create_new(true).open(key).await;
-                match result {
-                    Ok(_file) => {
-                        let mut file = Box::pin(TokioCompatFile::from(_file));
-                        match file.write(data).await {
-                            Ok(_) => match file.flush().await {
-                                Ok(_) => {
-                                    drop(file);
-                                    disconnect(sftp).await;
-                                    Ok(())
+                match create_directories_if_non_existent(&sftp, file_path).await {
+                    Ok(_) => {
+                        let mut full_filename = key.to_string();
+                        if file_path.is_some() {
+                            full_filename = format!("{}/{}", file_path.unwrap(), key);
+                        }
+                        let result = sftp
+                            .options()
+                            .write(true)
+                            .create_new(true)
+                            .open(full_filename)
+                            .await; // Use intermediate variable to prevent GC issue
+                        match result {
+                            Ok(_file) => {
+                                let mut file = Box::pin(TokioCompatFile::from(_file));
+                                match file.write(data).await {
+                                    Ok(_) => match file.flush().await {
+                                        Ok(_) => {
+                                            drop(file);
+                                            disconnect(sftp).await;
+                                            Ok(())
+                                        }
+                                        Err(err) => {
+                                            drop(file);
+                                            disconnect(sftp).await;
+                                            return Err(format!(
+                                                "Unable to write {}: {}",
+                                                key, err
+                                            ));
+                                        }
+                                    },
+                                    Err(err) => {
+                                        drop(file);
+                                        disconnect(sftp).await;
+                                        return Err(format!("Unable to write {}: {}", key, err));
+                                    }
                                 }
-                                Err(err) => {
-                                    drop(file);
-                                    disconnect(sftp).await;
-                                    return Err(format!("Unable to write {}: {}", key, err));
-                                }
-                            },
+                            }
                             Err(err) => {
-                                drop(file);
                                 disconnect(sftp).await;
                                 return Err(format!("Unable to write {}: {}", key, err));
                             }
                         }
                     }
-                    Err(err) => {
-                        disconnect(sftp).await;
-                        return Err(format!("Unable to write {}: {}", key, err));
-                    }
+                    Err(err) => Err(format!("Unable to write {}: {}", key, err)),
                 }
             }
             Err(err) => Err(format!("Unable to write {}: {}", key, err)),
@@ -141,11 +163,11 @@ impl Sftp {
 
 #[async_trait]
 impl DataStoreDriver for Sftp {
-    async fn list_objects(&self, _file_path: Option<&str>) -> Result<Vec<String>, String> {
+    async fn list_objects(&self, file_path: Option<&str>) -> Result<Vec<String>, String> {
         match connect(&self.credentials).await {
             Ok(sftp) => {
                 let mut fs = sftp.fs();
-                match fs.open_dir(".").await {
+                match fs.open_dir(file_path.unwrap_or(".")).await {
                     Ok(dir) => {
                         let mut read_dir = Box::pin(dir.read_dir());
                         let mut buffer: Vec<String> = vec![];
@@ -241,14 +263,7 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
     }
 
     let sftp = result.unwrap();
-
-    let mut fs = sftp.fs();
-    fs.set_cwd(&credentials.base_path);
-    let result = fs.open_dir(&credentials.base_path).await;
-    drop(fs);
-    if result.is_err() {
-        return Err(format!("Invalid base path: {}", &credentials.base_path));
-    }
+    change_directory(&sftp, Some(&credentials.base_path)).await;
 
     Ok(sftp)
 }
@@ -261,4 +276,61 @@ async fn disconnect(sftp: _Sftp) {
             result.err().unwrap().to_string()
         );
     }
+}
+
+async fn change_directory(sftp: &_Sftp, file_path: Option<&str>) -> Result<(), String> {
+    if let Some(path) = file_path {
+        let mut fs = sftp.fs();
+        fs.set_cwd(path);
+        let result = fs.open_dir(path).await;
+        drop(fs);
+        if result.is_err() {
+            return Err(format!(
+                "Failed to change directory to {}: {}",
+                path,
+                result.err().unwrap()
+            ));
+        }
+    }
+
+    return Ok(());
+}
+
+async fn create_directories_if_non_existent(
+    sftp: &_Sftp,
+    file_path: Option<&str>,
+) -> Result<(), String> {
+    if file_path.is_some() {
+        let file_path = String::from(file_path.unwrap());
+        let folders: Vec<&str> = file_path.split("/").collect();
+        let mut fs = sftp.fs();
+        let mut processed_folders: Vec<String> = vec![];
+        for folder in folders {
+            match fs.open_dir(folder).await {
+                Ok(_) => {
+                    processed_folders.push(folder.to_string());
+                    fs.set_cwd(processed_folders.join("/"));
+                }
+                Err(_) => match fs.create_dir(folder).await {
+                    Ok(_) => match fs.open_dir(folder).await {
+                        Ok(_) => {
+                            processed_folders.push(folder.to_string());
+                            fs.set_cwd(processed_folders.join("/"));
+                        }
+                        Err(err) => {
+                            drop(fs);
+                            return Err(format!("Failed to open {} folder: {}", folder, err));
+                        }
+                    },
+                    Err(err) => {
+                        drop(fs);
+                        return Err(format!("Failed to create {} folder: {}", folder, err));
+                    }
+                },
+            }
+        }
+        drop(fs);
+    }
+
+    return Ok(());
 }
