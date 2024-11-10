@@ -263,7 +263,14 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
     }
 
     let sftp = result.unwrap();
-    change_directory(&sftp, Some(&credentials.base_path)).await;
+    let result = change_directory(&sftp, Some(&credentials.base_path)).await;
+    if result.is_err() {
+        return Err(format!(
+            "Invalid base path: {} (error: {})",
+            &credentials.base_path,
+            result.err().unwrap()
+        ));
+    }
 
     Ok(sftp)
 }
