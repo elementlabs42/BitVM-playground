@@ -1473,7 +1473,7 @@ impl ClientCliQuery for BitVMClient {
         }))
         .await
         .iter()
-        .map(|v| v.clone().unwrap())
+        .filter_map(|x| x.clone())
         .collect()
     }
 
