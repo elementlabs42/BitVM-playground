@@ -7,7 +7,7 @@ use bitvm::bridge::{
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
-        disprove_chain::DisproveChainTransaction,
+        disprove_chain::DisproveChainTransaction, pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 

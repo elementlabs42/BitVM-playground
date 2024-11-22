@@ -5,7 +5,7 @@ use bitvm::bridge::{
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     transactions::{
         base::{BaseTransaction, Input},
-        peg_in_confirm::PegInConfirmTransaction,
+        peg_in_confirm::PegInConfirmTransaction, pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 

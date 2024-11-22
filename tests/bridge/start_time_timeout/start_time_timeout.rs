@@ -4,8 +4,7 @@ use bitvm::bridge::{
     connectors::base::TaprootConnector,
     graphs::base::{DUST_AMOUNT, ONE_HUNDRED},
     transactions::{
-        base::{BaseTransaction, Input},
-        start_time_timeout::StartTimeTimeoutTransaction,
+        base::{BaseTransaction, Input}, pre_signed_musig2::PreSignedMusig2Transaction, start_time_timeout::StartTimeTimeoutTransaction
     },
 };
 

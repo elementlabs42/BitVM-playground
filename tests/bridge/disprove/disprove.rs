@@ -12,7 +12,7 @@ mod tests {
         scripts::generate_pay_to_pubkey_script,
         transactions::{
             base::{BaseTransaction, Input},
-            disprove::DisproveTransaction,
+            disprove::DisproveTransaction, pre_signed_musig2::PreSignedMusig2Transaction,
         },
     };
 

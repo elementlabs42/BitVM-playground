@@ -4,8 +4,7 @@ use bitvm::bridge::{
     connectors::base::{P2wshConnector, TaprootConnector},
     graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
     transactions::{
-        base::{BaseTransaction, Input},
-        take_1::Take1Transaction,
+        base::{BaseTransaction, Input}, pre_signed_musig2::PreSignedMusig2Transaction, take_1::Take1Transaction
     },
 };
 

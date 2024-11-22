@@ -6,9 +6,7 @@ use bitvm::bridge::{
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
-        base::{BaseTransaction, Input},
-        kick_off_2::KickOff2Transaction,
-        take_1::Take1Transaction,
+        base::{BaseTransaction, Input}, kick_off_2::KickOff2Transaction, pre_signed_musig2::PreSignedMusig2Transaction, take_1::Take1Transaction
     },
 };
 use tokio::time::sleep;

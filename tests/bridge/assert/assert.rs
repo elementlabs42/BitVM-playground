@@ -5,7 +5,7 @@ use bitvm::bridge::{
     graphs::base::ONE_HUNDRED,
     transactions::{
         assert::AssertTransaction,
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input}, pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 

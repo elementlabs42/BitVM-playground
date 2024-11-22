@@ -8,7 +8,7 @@ use bitvm::bridge::{
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
-        kick_off_timeout::KickOffTimeoutTransaction,
+        kick_off_timeout::KickOffTimeoutTransaction, pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 

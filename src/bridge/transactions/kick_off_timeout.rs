@@ -62,6 +62,9 @@ impl PreSignedMusig2Transaction for KickOffTimeoutTransaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
+    fn verifier_inputs(&self) -> Vec<usize> {
+        vec![0]
+    }
 }
 
 impl KickOffTimeoutTransaction {
@@ -137,15 +140,6 @@ impl KickOffTimeoutTransaction {
         );
     }
 
-    pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
-        let mut secret_nonces = HashMap::new();
-
-        let input_index = 0;
-        let secret_nonce = push_nonce(self, context, input_index);
-        secret_nonces.insert(input_index, secret_nonce);
-
-        secret_nonces
-    }
 
     pub fn pre_sign(
         &mut self,

@@ -11,12 +11,7 @@ use bitvm::bridge::{
     contexts::{depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext},
     graphs::peg_out::CommitmentMessageId,
     transactions::{
-        assert::AssertTransaction,
-        base::{BaseTransaction, Input},
-        kick_off_1::KickOff1Transaction,
-        kick_off_2::KickOff2Transaction,
-        peg_in_confirm::PegInConfirmTransaction,
-        signing_winternitz::{WinternitzPublicKey, WinternitzPublicKeyVariant, WinternitzSecret},
+        assert::AssertTransaction, base::{BaseTransaction, Input}, kick_off_1::KickOff1Transaction, kick_off_2::KickOff2Transaction, peg_in_confirm::PegInConfirmTransaction, pre_signed_musig2::PreSignedMusig2Transaction, signing_winternitz::{WinternitzPublicKey, WinternitzPublicKeyVariant, WinternitzSecret}
     },
 };
 

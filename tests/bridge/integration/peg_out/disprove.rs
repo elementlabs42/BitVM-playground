@@ -5,7 +5,7 @@ use bitvm::bridge::{
     transactions::{
         assert::AssertTransaction,
         base::{BaseTransaction, Input},
-        disprove::DisproveTransaction,
+        disprove::DisproveTransaction, pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 
